@@ -1,11 +1,10 @@
 import sys
-sys.path.append('../')
 import numpy as np
 from sklearn import linear_model
 import statsmodels.formula.api as smf
-from utils import *
+from capexplain.utils import *
 
-class LocalRegressionConstraint(object):
+class LocalRegressionPattern(object):
     """
         The local regression constraint derived with fixed attributes F, 
         variable attributes V, the assigned values f over fixed attributes F

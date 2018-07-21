@@ -7,7 +7,7 @@ import csv
 import time
 import math
 
-from utils import *
+from capexplain.utils import *
 
 def compare(t1, t2, aggr_col):
     for k in range(0, len(t1)):

@@ -36,10 +36,10 @@ def build_local_regression_constraint(data, column_index, t, con, epsilon, agg_c
         epsilon: threshold for local regression constraint
         regression_package: which package is used to compute regression 
     Returns:
-        A LocalRegressionConstraint object whose model is trained on \pi_{con[1]}(Q_{t[con[0]]}(R))
+        A LocalRegressionPattern object whose model is trained on \pi_{con[1]}(Q_{t[con[0]]}(R))
     """
     tF = get_F_value(con[0], t)
-    local_con = LocalRegressionConstraint(con[0], tF, con[1], agg_col, epsilon)
+    local_con = LocalRegressionPattern(con[0], tF, con[1], agg_col, epsilon)
     train_data = {agg_col: []}
     for v in con[1]:
         train_data[v] = []
@@ -85,7 +85,7 @@ def validate_local_regression_constraint(data, local_con, t, dir, agg_col, regre
     Args:
         data: data['df'] is the data frame storing Q(R)
             data['le'] is the label encoder, data['ohe'] is the one-hot encoder
-        local_con: a LocalRegressionConstraint object
+        local_con: a LocalRegressionPattern object
         t: target tuple in Q(R)
         dir: whether user thinks t[agg(B)] is high or low
         agg_col: the column of aggregated value
@@ -380,13 +380,13 @@ def main(argv=[]):
     constraint_epsilon = DEFAULT_CONSTRAINT_EPSILON
     aggregate_column = DEFAULT_AGGREGATE_COLUMN
     try:
-        opts, args = getopt.getopt(argv,"hq:c:u:o:e:a",["qfile=","cfile=","ufile=","ofile=","epsilon=","aggregate_column="])
+        opts, args = getopt.getopt(argv,"hq:c:u:o:e:a",["help","qfile=","cfile=","ufile=","ofile=","epsilon=","aggregate_column="])
     except getopt.GetoptError:
         print('explanation.py -q <query_result_file> -c <constraint_file> -u \
         <user_question_file> -o <outputfile> -e <epsilon> -a <aggregate_column>')
         sys.exit(2)
     for opt, arg in opts:
-        if opt == '-h':
+        if opt in ("-h", "--help"):
             print('explanation.py -q <query_result_file> -c <constraint_file> -u \
             <user_question_file> -o <outputfile> -e <epsilon> -a <aggregate_column>')
             sys.exit(2)    
@@ -403,6 +403,7 @@ def main(argv=[]):
         elif opt in ("-a", "--aggcolumn"):
             aggregate_column = arg
 
+    print(opts)
     start = time.clock()
     data = load_data(query_result_file)
     constraints = load_constraints(DEFAULT_CONSTRAINT_PATH)

@@ -30,7 +30,7 @@ setup(
         description='Cape is a system for explaining outliers in aggregation results.',
         long_description='Cape ... \n\n',
 
-        packages=find_packages(exclude=['capexplain.dev'])
+        packages=find_packages(exclude=['capexplain.dev']),
         # packages=[
         #     'capexplain',
         #     'capexplain.pattern_miner',
