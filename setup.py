@@ -3,6 +3,8 @@ try:
 except ImportError:
     from distutils.core import setup
 
+from setuptools import find_packages
+    
 PACKAGE = 'capexplain'
 VERSION = '0.1'
 
@@ -28,11 +30,12 @@ setup(
         description='Cape is a system for explaining outliers in aggregation results.',
         long_description='Cape ... \n\n',
 
-        packages=[
-            'capexplain',
-            'capexplain.pattern_miner',
-            'capexplain.fd',
-        ],
+        packages=find_packages(exclude=['capexplain.dev'])
+        # packages=[
+        #     'capexplain',
+        #     'capexplain.pattern_miner',
+        #     'capexplain.fd',
+        # ],
         keywords='db',
         platforms='any',
         license='Apache2',
