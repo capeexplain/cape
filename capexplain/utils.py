@@ -1,4 +1,20 @@
 import datetime
+import traceback
+
+def printException(ex,finfo):
+    print(exceptionToString(ex,finfo))
+
+def exceptionToString(ex,finfo):
+    trace=traceback.format_stack()
+    trace=trace[:-3]
+    formatStr = '{}\n\nEXCEPTION:{}\n\n{}\n\nSTACK TRACE\n-----------\n{}'
+    return formatStr.format(formatCurFileAndLine(finfo),
+                            type(ex),
+                            ex,
+                            "\n".join(trace))
+
+def formatCurFileAndLine(finfo):
+    return 'FILE: {0.filename} LINE: {0.lineno}:'.format(finfo) 
 
 def projection(t, cols):
     return list(map(lambda x: t[x], cols))

@@ -1,3 +1,4 @@
+import sys
 import pprint
 import pandas as pd
 from itertools import combinations
@@ -7,6 +8,8 @@ from sklearn.linear_model import LinearRegression
 from scipy.stats import chisquare, mode
 from numpy import percentile, mean
 from time import time
+from inspect import currentframe, getframeinfo
+from capexplain.utils import printException
 from capexplain.pattern_miner.permtest import *
 from capexplain.fd.fd import closure
 
@@ -31,6 +34,9 @@ class MinerConfig:
     supp_inf=None #toggle on/off support inference rules
     algorithm=None #{'optimized','naive','naive_alternative'}
 
+    ALGORITHMS={'naive','naive_alternative','optimized'}
+    STATS_MODELS={'statsmodels','sklearn'}
+    
     def __init__(self,
                  conn=None,
                  table=None,
@@ -60,16 +66,19 @@ class MinerConfig:
         self.table=table
 
     def validateConfiguration(self):
-        if reg_package not in {'statsmodels','sklearn'}:
+        if self.reg_package not in self.STATS_MODELS:
             print('Invalid input for reg_package, reset to default')
-            reg_package='statsmodels'
-        if algorithm not in {'naive','naive_alternative','optimized'}:
+            self.reg_package='statsmodels'
+        if self.algorithm not in self.ALGORITHMS:
             print('Invalid input for algorithm, reset to default')
-            algorithm='optimized'
+            self.algorithm='optimized'
+        if self.table is None:
+            raise Exception('please specify a table to mine')
         return True
 
     def printConfig(self):
         pprint.pprint(self.__dict__)
+
 
 # ********************************************************************************
 class MinerStats:
@@ -79,8 +88,8 @@ class MinerStats:
 
     time=None
 
-    def __init__():
-        time={'aggregate':0,
+    def __init__(self):
+        self.time={'aggregate':0,
               'df':0,
               'regression':0,
               'insertion':0,
@@ -121,7 +130,8 @@ class PatternFinder:
         try:
             self.schema=list(pd.read_sql("SELECT * FROM "+config.table+" LIMIT 1",config.conn))
         except Exception as ex:
-            print(ex)
+            printException(ex, getframeinfo(currentframe()))
+            sys.exit(2)
         
         self.n=len(self.schema)
         for i in range(self.n):
@@ -147,7 +157,7 @@ class PatternFinder:
             except:
                 self.cat.append(col)
 
-    def initDataStructures():
+    def initDataStructures(self):
         self.stats = MinerStats()
         self.superkey=set()        
         self.cat=[]
