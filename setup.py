@@ -4,7 +4,12 @@ except ImportError:
     from distutils.core import setup
 
 from setuptools import find_packages
-    
+
+# Long description is github readme
+long_description = None
+with open('README.md') as f:
+    long_description = f.read()
+
 PACKAGE = 'capexplain'
 VERSION = '0.1'
 
@@ -45,8 +50,9 @@ setup(
         ]
     },
 
-    description='Cape is a system for explaining outliers in aggregation results.',
-    long_description='Cape ... \n\n',
+    description='Cape - a system for explaining outliers in aggregation results.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
 
     packages=find_packages(exclude=['capexplain.dev']),
 
@@ -64,6 +70,6 @@ setup(
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Developers',
 
-        'Topic :: Data Analysis :: Explanations',
+        'Topic :: Scientific/Engineering :: Information Analysis',
     ],
 )
