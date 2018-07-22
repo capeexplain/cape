@@ -1,5 +1,6 @@
 import sys
 import pprint
+import logging
 import pandas as pd
 from itertools import combinations
 import statsmodels.formula.api as sm
@@ -12,6 +13,9 @@ from inspect import currentframe, getframeinfo
 from capexplain.utils import printException
 from capexplain.pattern_miner.permtest import *
 from capexplain.fd.fd import closure
+
+# setup logging
+log = logging.getLogger(__name__)
 
 # ********************************************************************************
 class MinerConfig:
@@ -64,16 +68,20 @@ class MinerConfig:
         self.supp_inf=supp_inf
         self.algorithm=algorithm
         self.table=table
+        log.debug("created miner configuration:\n%s", self.__dict__)
 
     def validateConfiguration(self):
+        log.debug("validate miner configuration ...")
         if self.reg_package not in self.STATS_MODELS:
-            print('Invalid input for reg_package, reset to default')
+            log.warning('Invalid input for reg_package, reset to default')
             self.reg_package='statsmodels'
         if self.algorithm not in self.ALGORITHMS:
-            print('Invalid input for algorithm, reset to default')
+            log.warning('Invalid input for algorithm, reset to default')
             self.algorithm='optimized'
         if self.table is None:
+            log.error("user did not specify table for mining")
             raise Exception('please specify a table to mine')
+        log.debug("validation of miner configuration successful:\n%s", self.__dict__)
         return True
 
     def printConfig(self):
@@ -87,18 +95,66 @@ class MinerStats:
     """
 
     time=None
+    numcalls=None
+    timer=None
 
+    TIMERS={'aggregate',
+            'df',
+            'regression',
+            'insertion',
+            'drop',
+            'loop',
+            'innerloop',
+            'fd_detect',
+            'check_fd',
+            'total',
+            'query_cube',
+            'query_materializecube',
+    }
+
+    COUNTERS={'patcand.local',
+              'patcand.global',
+              'patterns.local',
+              'patterns.global',
+              'query.agg',
+              'query.sort',
+              'G',
+              'F,V'
+    }
+    
     def __init__(self):
-        self.time={'aggregate':0,
-              'df':0,
-              'regression':0,
-              'insertion':0,
-              'drop':0,
-              'loop':0,
-              'innerloop':0,
-              'fd_detect':0,
-              'check_fd':0,
-              'total':0}
+        self.time = {}
+        self.numcalls = {}
+        self.timer = {}
+        self.counters = {}
+        for t in self.TIMERS:
+            self.time[t] = 0
+            self.numcalls[t] = 0
+            self.timer[t] = 0
+        for c in self.COUNTERS:
+            self.counters[c] = 0
+
+    def formatStats(self):
+        res='TIME MEASUREMENTS:\n{:*<40}\n'.format('')
+        for t in sorted(self.time):
+            res+="{:40}#calls: {:<20d}total-time: {:.8f}\n".format(t,self.numcalls[t],self.time[t])
+        res+='\nCOUNTERS:\n{:*<40}\n'.format('')
+        for c in sorted(self.counters):
+            res+="number of {:20}{:<20d}\n".format(c,self.counters[c])
+        return res
+
+    def startTimer(self, name):
+        self.timer[name] = time()
+        self.numcalls[name]+=1
+        #log.debug("numcalls: %d", self.numcalls[name])
+
+    def stopTimer(self, name):
+        measuredTime = time() - self.timer[name]
+        #log.debug("timer %s ran for %f secs", name, measuredTime)
+        self.time[name] += measuredTime
+
+    def incr(self,name):
+        self.counters[name] += 1
 
 
 
@@ -127,24 +183,34 @@ class PatternFinder:
     def __init__(self, config : MinerConfig):
         self.config = config
         self.initDataStructures()
+        log.debug("initialized datastructures")
+        self.fetchInputTableInfo()
+        log.info("fetched basic table information - ready to mine")
+
+    def fetchInputTableInfo(self):
         try:
-            self.schema=list(pd.read_sql("SELECT * FROM "+config.table+" LIMIT 1",config.conn))
+            self.schema=list(pd.read_sql("SELECT * FROM "+self.config.table+" LIMIT 1",self.config.conn))
         except Exception as ex:
             printException(ex, getframeinfo(currentframe()))
             sys.exit(2)
-        
         self.n=len(self.schema)
+        log.debug("fetched schema for input table: %s with %d attributes", self.schema, self.n)        
+        
         for i in range(self.n):
             self.attr_index[self.schema[i]]=i
-
-        self.num_rows=pd.read_sql("SELECT count(*) as num from "+config.table,config.conn)['num'][0]
+        log.debug("attribute index: %s", self.attr_index)
+            
+        self.num_rows=pd.read_sql("SELECT count(*) as num from "+self.config.table,self.config.conn)['num'][0]
+        log.debug("input table has %d rows", self.num_rows)
 #         self.fd={}
         #check uniqueness, grouping_attr contains only non-unique attributes
-        unique=pd.read_sql("SELECT attname,n_distinct FROM pg_stats WHERE tablename='"+table+"'",config.conn)
+        unique=pd.read_sql("SELECT attname,n_distinct FROM pg_stats WHERE tablename='"+self.config.table+"'",self.config.conn)
         for tup in unique.itertuples():
-            if (tup.n_distinct<0 and tup.n_distinct > -config.dist_thre) or \
-            (tup.n_distinct>0 and tup.n_distinct<self.num_rows*config.dist_thre):
+            if (tup.n_distinct<0 and tup.n_distinct > -self.config.dist_thre) or \
+            (tup.n_distinct>0 and tup.n_distinct<self.num_rows*self.config.dist_thre):
                 self.grouping_attr.append(tup.attname)
+
+        log.debug("possible grouping attributes: %s", self.grouping_attr)
                 
         for col in self.schema:
 #             if col=='year':
@@ -152,11 +218,12 @@ class PatternFinder:
 #             elif col!='id':
 #                 self.cat.append(col)
             try: # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
-                config.conn.execute("SELECT CAST("+col+" AS NUMERIC) FROM "+config.table)
+                self.config.conn.execute("SELECT CAST("+col+" AS NUMERIC) FROM "+self.config.table)
                 self.num.append(col)
             except:
                 self.cat.append(col)
-
+        log.debug("tables has categorical attributes %s and numerical attributes %s", self.cat, self.num)
+        
     def initDataStructures(self):
         self.stats = MinerStats()
         self.superkey=set()        
@@ -168,7 +235,7 @@ class PatternFinder:
         '''
         type fd:list of size-2 tuples, tuple[0]=list of lhs attributes and tuple[1]=list of rhs attributes
         '''
-        if not config.fd_check: #if toggle is off, not adding anything
+        if not self.config.fd_check: #if toggle is off, not adding anything
             return
         for tup in fd:
             for i in range(2):
@@ -176,7 +243,7 @@ class PatternFinder:
                     try:
                         tup[i][j]=self.attr_index[tup[i][j]]
                     except KeyError as ex:
-                        print(str(ex)+" is not in the table")
+                        log.error(str(ex)+" is not in the table")
                         raise ex
         self.fd.extend(fd)
         
@@ -217,14 +284,15 @@ class PatternFinder:
 #       self.pc=PC.PatternCollection(list(self.schema))
         self.glob=[]#reset self.glob
         self.createTable()
-        start=time()
+        self.stats.startTimer('total')
         if not user:
             grouping_attr=self.grouping_attr
             aList=self.num+['*']
-            
         else:
+            log.debug("user provided list of group-by and aggregation input attributes %s", user)
             grouping_attr=user['group']
             aList=user['a']
+        log.debug("mine patterns for group-by attrs %s and aggregate input attributes %s", grouping_attr, aList)
         
         for a in aList:
             if not user:
@@ -234,20 +302,29 @@ class PatternFinder:
                     agg="sum"
             else:
                 agg=user['agg']
+
+            log.debug("consider aggregation %s(%s) ", agg, a)
             #for agg in aggList :
             cols=[col for col in grouping_attr if col!=a]
             n=len(cols)
-            if config.algorithm=='naive':
+            # ****************************************
+            # CUBE ALGORITHM
+            if self.config.algorithm=='naive':
                 self.formCube(a, agg, cols)
                 for size in range(min(4,n),1,-1):
                     combs=combinations(cols,size)
                     for group in combs:#comb=f+v
+                        self.stats.incr('G')
+                        log.debug("consider group-by attributes %s", group)
                         for fsize in range(1,len(group)):
                             fs=combinations(group,fsize)
                             for f in fs:
+                                self.stats.incr('F,V')
+                                self.stats.incr('patcand.global')
+                                log.debug("consider group-by attributes %s with F=%s", group, f)
                                 self.fit_naive(f,group,a,agg,cols)
                 self.dropCube()
-            else:#config.algorithm=='optimized' or config.algorithm=='naive_alternative'
+            else:#self.config.algorithm=='optimized' or self.config.algorithm=='naive_alternative'
                 combs=combinations([i for i in range(n)],min(4,n))
                 for comb in combs:
                     grouping=[cols[i] for i in comb]
@@ -283,26 +360,26 @@ class PatternFinder:
                             group=tuple([cols[i] for i in perm])
                             self.rollupQuery(group, pre, d_index, agg)
                             
-                            fd_detect_start=time()
-                            if config.fd_check==True:
+                            self.stats.startTimer('fd_detect')
+                            if self.config.fd_check==True:
                                 prev_rows=None
                                 for j in range(pre,d_index+1):#first loop is to set prev_rows
                                     condition=' and '.join(['g_'+group[k]+'=0' if k<j else 'g_'+group[k]+'=1'
                                                             for k in range(d_index)])
                                     cur_rows=pd.read_sql('SELECT count(*) as num FROM grouping WHERE '+condition,
-                                                   con=config.conn)['num'][0]
+                                                   con=self.config.conn)['num'][0]
                                     if prev_rows:
-                                        if cur_rows>=self.num_rows*config.dist_thre:
+                                        if cur_rows>=self.num_rows*self.config.dist_thre:
                                             d_index=j-1 #group[:j] will be distinct value groups (superkey)
                                             #self.addFd([group[:j-1],group[j-1]])
                                             self.superkey.add(group[:j])
                                             break
-                                        elif prev_rows>=cur_rows*config.dist_thre:
+                                        elif prev_rows>=cur_rows*self.config.dist_thre:
                                             d_index=j-1#group[:j-1] implies group[j-1]
                                             self.addFd([(list(group[:j-1]),[group[j-1]])])
                                             break
                                     prev_rows=cur_rows
-                            stats.time['fd_detect']+=time()-fd_detect_start
+                            self.stats.stopTimer('fd_detect')
                                 
                             for j in range(d_index,pre,-1):
                                 prefix=group[:j]
@@ -316,29 +393,31 @@ class PatternFinder:
                                         division=None
                                         
                                     #check functional dependency here if division exists, otherwise check in fit
-                                    check_fd_start=time()
+                                    self.stats.startTimer('check_fd')
                                     if division and not self.validateFd(prefix,division):
                                         continue
-                                    stats.time['check_fd']+=time()-check_fd_start
+                                    self.stats.stopTimer('check_fd')
                                     
                                     condition=' and '.join(['g_'+group[k]+'=0' if k<j else 'g_'+group[k]+'=1'
                                                             for k in range(d_index)])
-                                    df_start=time()                              
+                                    self.stats.startTimer('df')
                                     df=pd.read_sql('SELECT '+','.join(prefix)+','+agg+' FROM grouping WHERE '+condition,
-                                                   con=config.conn)
-                                    stats.time['df']+=time()-df_start                                
+                                                   con=self.config.conn)
+                                    self.stats.stopTimer('df')
                                     self.fitmodel(df,prefix,a,agg,division)
                             self.dropRollup()
                     self.dropAgg()    
         if self.glob:
-            insert_start=time()
-            config.conn.execute("INSERT INTO "+config.table+"_global values"+','.join(self.glob))
-            stats.time['insertion']+=time()-insert_start
-        stats.time['total']=time()-start
+            self.stats.startTimer('insertion')
+            self.config.conn.execute("INSERT INTO "+self.config.table+"_global values"+','.join(self.glob))
+            self.stats.stopTimer('insertion')
+        self.stats.stopTimer('total')
         self.insertTime(str(len(self.glob)))
-        
+        log.warning("pattern mining finished: time stats:\n\n%s", self.stats.formatStats())
         
     def formCube(self, a, agg, attr):
+        self.stats.startTimer('query_materializecube')
+        self.stats.incr('query.agg')
         group=",".join(["CAST("+num+" AS NUMERIC)" for num in attr if num in self.num]+
                         [cat for cat in attr if cat not in self.num])
         grouping=",".join(["CAST("+num+" AS NUMERIC), GROUPING(CAST("+num+" AS NUMERIC)) as g_"+num
@@ -346,12 +425,15 @@ class PatternFinder:
             [cat+", GROUPING("+cat+") as g_"+cat for cat in attr if cat not in self.num])
         if a in self.num:
             a="CAST("+a+" AS NUMERIC)"
-        config.conn.execute("DROP TABLE IF EXISTS cube")
-        query="CREATE TABLE cube AS SELECT "+agg+"("+a+"), "+grouping+" FROM "+config.table+" GROUP BY CUBE("+group+")"
-        config.conn.execute(query)        
-     
+        self.config.conn.execute("DROP TABLE IF EXISTS cube")
+        query="CREATE TABLE cube AS SELECT "+agg+"("+a+"), "+grouping+" FROM "+self.config.table+" GROUP BY CUBE("+group+")"
+        log.debug("Materialize CUBE:\n\n%s", query)
+        self.config.conn.execute(query)        
+        self.stats.stopTimer('query_materializecube')
+
     def dropCube(self):
-        config.conn.execute("DROP TABLE cube;")
+        log.debug("DROP materialized CUBE")
+        self.config.conn.execute("DROP TABLE cube;")
         
     def cubeQuery(self, g, f, cols):
         #=======================================================================
@@ -360,15 +442,20 @@ class PatternFinder:
         #     null=" and ".join([b+".isna()" for b in cols if b not in g])
         #     res=res+" and "+null
         #=======================================================================
+        self.stats.startTimer('query_cube')
+        self.stats.incr('query.sort')
         res=" and ".join(["g_"+a+"=0" for a in g])
         if len(g)<len(cols):
             unused=" and ".join(["g_"+b+"=1" for b in cols if b not in g])
             res=res+" and "+unused
-        return "SELECT * FROM cube where "+res+" ORDER BY "+",".join(f)
+        query= "SELECT * FROM cube where "+res+" ORDER BY "+",".join(f)
+        log.debug("Run query over materialized CUBE:\n\n %s", query)
+        self.stats.stopTimer('query_cube')
+        return query
     
     def fit_naive(self,f,group,a,agg,cols):
         self.failedf=set()#to not trigger error
-        fd=pd.read_sql(self.cubeQuery(group, f, cols),config.conn)
+        fd=pd.read_sql(self.cubeQuery(group, f, cols),self.config.conn)
         g=tuple([att for att in f]+[attr for attr in group if attr not in f])
         division=len(f)
         self.fitmodel_with_division(fd, g, a, agg, division)
@@ -379,42 +466,42 @@ class PatternFinder:
         self.findPattern(user)
         
     def aggQuery(self, g, a, agg):
-        start=time()
+        self.stats.startTimer('aggregate')
         group=",".join(["CAST("+att+" AS NUMERIC)" if att in self.num else att for att in g])
         if agg=='sum':
             a='CAST('+a+' AS NUMERIC)'
-        query="CREATE TEMP TABLE agg as SELECT "+group+","+agg+"("+a+")"+" FROM "+config.table+" GROUP BY "+group
-        config.conn.execute(query)
-        stats.time['aggregate']+=time()-start
+        query="CREATE TEMP TABLE agg as SELECT "+group+","+agg+"("+a+")"+" FROM "+self.config.table+" GROUP BY "+group
+        self.config.conn.execute(query)
+        self.stats.stopTimer('aggregate')
     
     def rollupQuery(self, group, pre, d_index, agg):
-        start=time()
+        self.stats.startTimer('aggregate')
         grouping=",".join([attr+", GROUPING("+attr+") as g_"+attr for attr in group[:d_index]])
 #        gsets=','.join(['('+','.join(group[:prefix])+')' for prefix in range(d_index,pre,-1)])
-        config.conn.execute('CREATE TEMP TABLE grouping AS '+
+        self.config.conn.execute('CREATE TEMP TABLE grouping AS '+
                         'SELECT '+grouping+', SUM('+agg+') as '+agg+
 #                        ' FROM agg GROUP BY GROUPING SETS('+gsets+')'+
                         ' FROM agg GROUP BY ROLLUP('+','.join(group)+')'+
                         ' ORDER BY '+','.join(group[:d_index]))
-        stats.time['aggregate']+=time()-start
+        self.stats.stopTimer('aggregate')
         
     def dropRollup(self):
-        drop_start=time()
-        config.conn.execute('DROP TABLE grouping')
-        stats.time['drop']+=time()-drop_start
+        self.stats.startTimer('drop')
+        self.config.conn.execute('DROP TABLE grouping')
+        self.stats.stopTimer('drop')
         
     def dropAgg(self):
-        drop_start=time()
-        config.conn.execute('DROP TABLE agg')
-        self.time['drop']+=time()-drop_start
+        self.stats.startTimer('drop')
+        self.config.conn.execute('DROP TABLE agg')
+        self.stats.stopTimer('drop')
         
     def fitmodel(self, fd, group, a, agg, division):
-        loop_start=time()
+        self.stats.startTimer('loop')
         if division:
             self.fitmodel_with_division(fd, group, a, agg, division)
         else:
             self.fitmodel_no_division(fd, group, a, agg)
-        self.time['loop']+=time()-loop_start
+        self.stats.stopTimer('loop')
             
     def fitmodel_no_division(self, fd, group, a, agg):
         size=len(group)-1
@@ -427,34 +514,34 @@ class PatternFinder:
         v=[list(group[j:]) for j in range(1,size+1)]
         supp_valid=[group[:i] not in self.failedf for i in range(1,size+1)]
         f_dict=[{} for i in range(1,size+1)]
-        check_fd_start=time()
+        self.stats.startTimer('check_fd')
         fd_valid=self.validateFd(group)
-        self.time['check_fd']+=time()-check_fd_start
+        self.stats.startTimer('check_fd')
         
         if not any(fd_valid) or not any(supp_valid):
             return
         pattern=[]
         def fit(df,fval,i,n):
-            if not config.fit:
+            if not self.config.fit:
                 return
-            reg_start=time()
+            self.stats.startTimer('regression')
             describe=[mean(df[agg]),mode(df[agg]),percentile(df[agg],25)
                       ,percentile(df[agg],50),percentile(df[agg],75)]
                                 
             #fitting constant
             theta_c=chisquare(df[agg])[1]
-            if theta_c>config.theta_c:
+            if theta_c>self.config.theta_c:
                 nonlocal valid_c_f
                 valid_c_f[i]+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
                 pattern.append(self.addLocal(f[i],fval,v[i],a,agg,'const',theta_c,describe,'NULL'))
               
             #fitting linear
-            if  theta_c!=1 and ((config.reg_package=='sklearn' and all(attr in self.num for attr in v[i])
+            if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in v[i])
                                 or
-                                (config.reg_package=='statsmodels' and any(attr in self.num for attr in v[i])))):
+                                (self.config.reg_package=='statsmodels' and any(attr in self.num for attr in v[i])))):
 
-                if config.reg_package=='sklearn':   
+                if self.config.reg_package=='sklearn':   
                     lr=LinearRegression()
                     lr.fit(df[v[i]],df[agg])
                     theta_l=lr.score(df[v[i]],df[agg])
@@ -467,15 +554,15 @@ class PatternFinder:
                     theta_l=lr.rsquared_adj
                     param=Json(dict(lr.params))
                 
-                if theta_l and theta_l>config.theta_l:
+                if theta_l and theta_l>self.config.theta_l:
                     nonlocal valid_l_f
                     valid_l_f[i]+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                     pattern.append(self.addLocal(f[i],fval,v[i],a,agg,'linear',theta_l,describe,param))
                     
-            self.time['regression']+=time()-reg_start
+            self.stats.stopTimer('regression')
             
-        inner_loop_start=time()
+        self.stats.startTimer('innerloop')
  
         for tup in fd.itertuples():
             
@@ -491,11 +578,11 @@ class PatternFinder:
                 for i in range(position,size):
 #                     make_reference=time()
 #                     temp=fd[oldIndex[i]:index].copy()
-#                     self.time['make_reference']+=time()-make_reference
+#                     self.stats.time['make_reference']+=time()-make_reference
                     if not fd_valid[i] or not supp_valid[i]:
                         continue
                     n=index-oldIndex[i]
-                    if n>=config.supp_l:
+                    if n>=self.config.supp_l:
                         num_f[i]+=1
                         fval=tuple([getattr(oldKey,j) for j in f[i]])
                         f_dict[i][fval]=[oldIndex[i],index]
@@ -508,20 +595,20 @@ class PatternFinder:
             for i in range(size):
 #                 make_reference=time()
 #                 temp=fd[oldIndex[i]:].copy()
-#                 self.time['make_reference']+=time()-make_reference
+#                 self.stats.time['make_reference']+=time()-make_reference
                 if not fd_valid[i] or not supp_valid[i]:
                     continue
                 n=oldKey.Index-oldIndex[i]+1
-                if n>config.supp_l:
+                if n>self.config.supp_l:
                     num_f[i]+=1
                     fval=tuple([getattr(oldKey,j) for j in f[i]])
                     f_dict[i][fval]=[oldIndex[i]]
                     #fit(fd[oldIndex[i]:],fval,i,n)
-        self.time['innerloop']+=time()-inner_loop_start
+        self.stats.stopTimer('innerloop')
         
         for i in range(size):
-            if len(f_dict[i])<config.supp_g:
-                if config.supp_inf:#if toggle is on
+            if len(f_dict[i])<self.config.supp_g:
+                if self.config.supp_inf:#if toggle is on
                     self.failedf.add(tuple(f[i]))
                 supp_valid[i]=False
             else:
@@ -536,17 +623,17 @@ class PatternFinder:
         for i in range(size):
             if not fd_valid[i] or not supp_valid[i]:
                     continue
-            if num_f[i]>config.supp_g:
+            if num_f[i]>self.config.supp_g:
                 lamb_c=valid_c_f[i]/num_f[i]
                 lamb_l=valid_l_f[i]/num_f[i]
-                if lamb_c>config.lamb:
-                    #self.pc.add_global(f,v,a,agg,'const',config.theta_c,lamb_c)
-                    self.glob.append(self.addGlobal(f[i],v[i],a,agg,'const',config.theta_c,lamb_c))
-                if lamb_l>config.lamb:
-                    #self.pc.add_global(f,v,a,agg,'linear',str(config.theta_l),str(lamb_l))
-                    self.glob.append(self.addGlobal(f[i],v[i],a,agg,'linear',config.theta_l,lamb_l))
+                if lamb_c>self.config.lamb:
+                    #self.pc.add_global(f,v,a,agg,'const',self.config.theta_c,lamb_c)
+                    self.glob.append(self.addGlobal(f[i],v[i],a,agg,'const',self.config.theta_c,lamb_c))
+                if lamb_l>self.config.lamb:
+                    #self.pc.add_global(f,v,a,agg,'linear',str(self.config.theta_l),str(lamb_l))
+                    self.glob.append(self.addGlobal(f[i],v[i],a,agg,'linear',self.config.theta_l,lamb_l))
         
-        if not config.fit:
+        if not self.config.fit:
             return 
         
         '''
@@ -559,18 +646,18 @@ class PatternFinder:
                            
         #fitting constant
         theta_c=chisquare(fd[agg])[1]
-        if theta_c>config.theta_c:
+        if theta_c>self.config.theta_c:
             pattern.append(self.addLocal([' '],[' '],group,a,agg,'const',theta_c,describe,'NULL'))
           
           
                     
         #fitting linear
-        if  theta_c!=1 and ((config.reg_package=='sklearn' and all(attr in self.num for attr in group)
+        if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in group)
                             or
-                            (config.reg_package=='statsmodels' and any(attr in self.num for attr in group)))):
+                            (self.config.reg_package=='statsmodels' and any(attr in self.num for attr in group)))):
             
             gl=list(group)
-            if config.reg_package=='sklearn':
+            if self.config.reg_package=='sklearn':
                 lr=LinearRegression()
                 lr.fit(fd[gl],fd[agg])
                 theta_l=lr.score(fd[gl],fd[agg])
@@ -584,21 +671,23 @@ class PatternFinder:
                 theta_l=lr.rsquared_adj
                 param=Json(dict(lr.params))
             
-            if theta_l and theta_l>config.theta_l:
+            if theta_l and theta_l>self.config.theta_l:
             #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                 pattern.append(self.addLocal([' '],[' '],group,a,agg,'linear',theta_l,describe,param))
-        self.time['regression']+=time()-reg_start
+        self.stats.time['regression']+=time()-reg_start
         '''
         
         if pattern:
-            insert_start=time()
-            config.conn.execute("INSERT INTO "+config.table+"_local values"+','.join(pattern))        
-            self.time['insertion']+=time()-insert_start
+            self.stats.startTimer('insertion')
+            self.config.conn.execute("INSERT INTO "+self.config.table+"_local values"+','.join(pattern))        
+            self.stats.stopTimer('insertion')
+
     def fitmodel_with_division(self, fd, group, a, agg, division): 
         #fd=d.sort_values(by=f).reset_index(drop=True)
         
         #check global support inference
         if group[:division] in self.failedf:
+            log.debug("do not consider already failed F=%s", group[:division])
             return
         
         oldKey=None
@@ -607,30 +696,33 @@ class PatternFinder:
         valid_l_f=0
         valid_c_f=0
         f=list(group[:division])
-        v=list(group[division:])  
+        v=list(group[division:])
+        log.debug("fitting patterns for F=%s, V=%s", f, v)
         #df:dataframe n:length    
         pattern=[]
         def fit(df,f,fval,v,n):
-            if not config.fit:
+            self.stats.incr('patcand.local')
+            if not self.config.fit:
                 return
-            reg_start=time()
+            log.debug("do regression for F=%s, f=%s", f, fval)
+            self.stats.startTimer('regression')
             describe=[mean(df[agg]),mode(df[agg]),percentile(df[agg],25)
                                           ,percentile(df[agg],50),percentile(df[agg],75)]
                                 
             #fitting constant
             theta_c=chisquare(df[agg])[1]
-            if theta_c>config.theta_c:
+            if theta_c>self.config.theta_c:
                 nonlocal valid_c_f
                 valid_c_f+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
                 pattern.append(self.addLocal(f,fval,v,a,agg,'const',theta_c,describe,'NULL'))
                 
             #fitting linear
-            if  theta_c!=1 and ((config.reg_package=='sklearn' and all(attr in self.num for attr in v)
+            if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in v)
                                 or
-                                (config.reg_package=='statsmodels' and any(attr in self.num for attr in v)))):
+                                (self.config.reg_package=='statsmodels' and any(attr in self.num for attr in v)))):
 
-                if config.reg_package=='sklearn': 
+                if self.config.reg_package=='sklearn': 
                     lr=LinearRegression()
                     lr.fit(df[v],df[agg])
                     theta_l=lr.score(df[v],df[agg])
@@ -643,15 +735,15 @@ class PatternFinder:
                     theta_l=lr.rsquared_adj
                     param=Json(dict(lr.params))
                     
-                if theta_l and theta_l>config.theta_l:
+                if theta_l and theta_l>self.config.theta_l:
                     nonlocal valid_l_f
                     valid_l_f+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                     pattern.append(self.addLocal(f,fval,v,a,agg,'linear',theta_l,describe,param))
                     
-            self.time['regression']+=time()-reg_start
+            self.stats.stopTimer('regression')
         
-        inner_loop_start=time()
+        self.stats.startTimer('innerloop')
         change=False
         f_dict={}
         for tup in fd.itertuples():
@@ -661,12 +753,13 @@ class PatternFinder:
                 index=tup.Index
 #                 make_reference=time()
 #                 temp=fd[oldIndex:index].copy()
-#                 self.time['make_reference']+=time()-make_reference
+#                 self.stats.time['make_reference']+=time()-make_reference
                 n=index-oldIndex
-                if n>=config.supp_l:
+                if n>=self.config.supp_l:
                     num_f+=1
                     #fit(fd[oldIndex:index],f,v,n)
                     fval=tuple([getattr(oldKey,j) for j in f])
+                    log.debug("local support high enough for %s (%d > %d)", fval, n, self.config.supp_l)
                     f_dict[fval]=[oldIndex,index]
                 oldIndex=index
             oldKey=tup
@@ -674,18 +767,19 @@ class PatternFinder:
         if oldKey:
 #             make_reference=time()
 #             temp=fd[oldIndex:].copy()
-#             self.time['make_reference']+=time()-make_reference
+#             self.stats.time['make_reference']+=time()-make_reference
             n=oldKey.Index-oldIndex+1
-            if n>=config.supp_l:
+            if n>=self.config.supp_l:
                 num_f+=1
                 #fit(fd[oldIndex:],f,v,n)
                 fval=tuple([getattr(oldKey,j) for j in f])
                 f_dict[fval]=[oldIndex]
-        self.time['innerloop']+=time()-inner_loop_start
+        self.stats.stopTimer('innerloop')
         
-        if len(f_dict)<config.supp_g:
-            if config.supp_inf:#if toggle is on
+        if len(f_dict)<self.config.supp_g:
+            if self.config.supp_inf:#if toggle is on
                 self.failedf.add(group[:division])
+            log.debug("global support threshold not reached for pattern F=%s, V=%s (%d < %d)", f, v, len(f_dict), self.config.supp_g)
             return
         else:
             for fval in f_dict:
@@ -696,19 +790,24 @@ class PatternFinder:
                     fit(fd[indices[0]:],f,fval,v,oldKey.Index-indices[0]+1)
         
         if pattern:
-            insert_start=time()
-            config.conn.execute("INSERT INTO "+config.table+"_local values"+','.join(pattern))
-            self.time['insertion']+=time()-insert_start
+            log.debug("insert local pattern %s", pattern)
+            self.stats.startTimer('insertion')
+            self.config.conn.execute("INSERT INTO "+self.config.table+"_local values"+','.join(pattern))
+            self.stats.stopTimer('insertion')
         
-        if num_f>config.supp_g:
+        if num_f>self.config.supp_g:
             lamb_c=valid_c_f/num_f
             lamb_l=valid_l_f/num_f
-            if lamb_c>config.lamb:
-                #self.pc.add_global(f,v,a,agg,'const',config.theta_c,lamb_c)
-                self.glob.append(self.addGlobal(f,v,a,agg,'const',config.theta_c,lamb_c))
-            if lamb_l>config.lamb:
-                #self.pc.add_global(f,v,a,agg,'linear',str(config.theta_l),str(lamb_l))
-                self.glob.append(self.addGlobal(f,v,a,agg,'linear',config.theta_l,lamb_l))
+            if lamb_c>self.config.lamb:
+                log.info("found global pattern P = (%s, %s, %s(%s), const)", f, v, agg, a)
+                #self.pc.add_global(f,v,a,agg,'const',self.config.theta_c,lamb_c)
+                self.glob.append(self.addGlobal(f,v,a,agg,'const',self.config.theta_c,lamb_c))
+            if lamb_l>self.config.lamb:
+                log.info("found global pattern P = (%s, %s, %s(%s), linear)", f, v, agg, a)
+                #self.pc.add_global(f,v,a,agg,'linear',str(self.config.theta_l),str(lamb_l))
+                self.glob.append(self.addGlobal(f,v,a,agg,'linear',self.config.theta_l,lamb_l))
+        else:
+            log.info("global pattern candidate P = (%s, %s, %s(%s), linear) does not hold", f, v, agg, a)
                           
     def addLocal(self,f,f_val,v,a,agg,model,theta,describe,param):
         f="'"+str(f).replace("'","")+"'"
@@ -719,7 +818,7 @@ class PatternFinder:
         model="'"+model+"'"
         theta="'"+str(theta)+"'"
         describe="'"+str(describe).replace("'","")+"'"
-        #return 'insert into '+config.table+'_local values('+','.join([f,f_val,v,a,agg,model,theta,describe,param])+');'
+        #return 'insert into '+self.config.table+'_local values('+','.join([f,f_val,v,a,agg,model,theta,describe,param])+');'
         return '('+','.join([f,f_val,v,a,agg,model,theta,describe,str(param)])+')'
     
     
@@ -731,18 +830,19 @@ class PatternFinder:
         model="'"+model+"'"
         theta="'"+str(theta)+"'"
         lamb="'"+str(lamb)+"'"
-        #return 'insert into '+config.table+'_global values('+','.join([f,v,a,agg,model,theta,lamb])+');'
+        #return 'insert into '+self.config.table+'_global values('+','.join([f,v,a,agg,model,theta,lamb])+');'
         return '('+','.join([f,v,a,agg,model,theta,lamb])+')'
          
     
     def createTable(self):
-        config.conn.execute('DROP TABLE IF EXISTS '+config.table+'_local;')
-        if config.reg_package=='sklearn':
+        log.debug("creating pattern and stats tables %s_local, %s_global, and time_detail_fd", self.config.table, self.config.table)
+        self.config.conn.execute('DROP TABLE IF EXISTS '+self.config.table+'_local;')
+        if self.config.reg_package=='sklearn':
             type='varchar'
         else:
             type='json'
             
-        config.conn.execute('create table IF NOT EXISTS '+config.table+'_local('+
+        self.config.conn.execute('create table IF NOT EXISTS '+self.config.table+'_local('+
                      'fixed varchar,'+
                      'fixed_value varchar,'+
                      'variable varchar,'+
@@ -753,8 +853,8 @@ class PatternFinder:
                      'stats varchar,'+
                      'param '+type+');')
         
-        config.conn.execute('DROP TABLE IF EXISTS '+config.table+'_global')
-        config.conn.execute('create table IF NOT EXISTS '+config.table+'_global('+
+        self.config.conn.execute('DROP TABLE IF EXISTS '+self.config.table+'_global')
+        self.config.conn.execute('create table IF NOT EXISTS '+self.config.table+'_global('+
                      'fixed varchar,'+
                      'variable varchar,'+
                      'in_a varchar,'+
@@ -764,17 +864,18 @@ class PatternFinder:
                      'lambda float);')
         
         attr=''
-        for key in self.time:
+        for key in self.stats.time:
             attr+=key+' varchar,'
-        config.conn.execute('create table IF NOT EXISTS time_detail_fd('+
+        self.config.conn.execute('create table IF NOT EXISTS time_detail_fd('+
                           'id serial primary key,'+
                           attr+
                           'description varchar);')
+        log.debug("done creating tables")
         
         
     def insertTime(self,description):
-        attributes=list(self.time)
-        values=[str(self.time[i]) for i in attributes]
+        attributes=list(self.stats.time)
+        values=[str(self.stats.time[i]) for i in attributes]
         attributes.append('description')
         values.append(description)
-        config.conn.execute('INSERT INTO time_detail_fd('+','.join(attributes)+') values('+','.join(values)+')')
+        self.config.conn.execute('INSERT INTO time_detail_fd('+','.join(attributes)+') values('+','.join(values)+')')
