@@ -1,3 +1,0 @@
-[submodule "dev"]
-	path = dev
-	url = git@github.com:IITDBGroup/cape-dev.git
