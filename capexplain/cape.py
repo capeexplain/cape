@@ -13,8 +13,8 @@ import logging
 from inspect import currentframe, getframeinfo
 from capexplain.pattern_miner.PatternMiner import PatternFinder, MinerConfig
 from capexplain.database.dbaccess import DBConnection
-from capexplain.cl.cfgoption import ConfigOption, OptionType
-from capexplain.cl.commands import CmdTypes, Command, CmdOptions
+from capexplain.cl.cfgoption import ConfigOpt, OptionType
+from capexplain.cl.command import CmdTypes, Command, CmdOptions
 import colorful
 
 LOGFORMAT='{c.white_on_black}%(levelname)s{c.reset} {c.red}%(asctime)s{c.reset} {c.blue}[%(filename)s:%(funcName)s:%(lineno)d]{c.reset} %(message)s'.format(c=colorful)

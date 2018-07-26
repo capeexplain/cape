@@ -2,7 +2,11 @@ from enum import Enum, unique
 
 # ********************************************************************************
 # commandline option possible datatypes
+@unique
 class OptionType(Enum):
+    """
+    Type of the value of a configuration option
+    """
     Int = 'int',
     Float = 'float',
     String = 'string',
@@ -11,7 +15,9 @@ class OptionType(Enum):
 # ********************************************************************************
 # a commandline option
 class ConfigOpt:
-    
+    """
+    A commandline configuration option.
+    """
     def __init__(self, longopt, shortopt=None, desc=None, hasarg=False, value=None, otype=OptionType.String, cfgFieldName=None):
         self.longopt = longopt
         self.shortopt = shortopt
@@ -42,3 +48,25 @@ class ConfigOpt:
             elif self.otype == OptionType.Boolean:
                 self.value =  int(self.boolean)
             return self
+
+# ********************************************************************************
+# add support for accessing a class like a dictionary.
+class DictLike:
+    """
+    Class used like an interface that makes a configuration class (data object) behave like a dictionary.
+    """
+    # overwrite __getitem__ to allow dictory style access to options
+    def __getitem__(self, key):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        return self.__dict__[key]
+
+    # overwrite __getitem__ to allow dictory style setting of options
+    def __setitem__(self,key,value):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        self.__dict__[key] = value
+
+    # get access to list of field names
+    def getValidKeys(self):
+        return self.__dict__

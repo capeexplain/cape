@@ -8,17 +8,17 @@ from psycopg2.extras import Json
 from sklearn.linear_model import LinearRegression
 from scipy.stats import chisquare, mode
 from numpy import percentile, mean
-from time import time
 from inspect import currentframe, getframeinfo
 from capexplain.utils import printException
 from capexplain.pattern_miner.permtest import *
 from capexplain.fd.fd import closure
-
+from capexplain.cl.cfgoption import DictLike
+from capexplain.cl.instrumentation import ExecStats
 # setup logging
 log = logging.getLogger(__name__)
 
 # ********************************************************************************
-class MinerConfig:
+class MinerConfig(DictLike):
     """
     MinerConfig - configuration for the pattern mining algorithm
     """
@@ -54,21 +54,6 @@ class MinerConfig:
         self.algorithm=algorithm
         self.table=table
         log.debug("created miner configuration:\n%s", self.__dict__)
-
-
-    # overwrite __getitem__ to allow dictory style access to options
-    def __getitem__(self, key):
-        if key not in self.__dict__:
-            raise AttributeError("No such attribute: " + key)
-        return self.__dict__[key]
-
-    def __setitem__(self,key,value):
-        if key not in self.__dict__:
-            raise AttributeError("No such attribute: " + key)
-        self.__dict__[key] = value
-    
-    def getValidKeys(self):
-        return self.__dict__
     
     def validateConfiguration(self):
         log.debug("validate miner configuration ...")
@@ -89,14 +74,10 @@ class MinerConfig:
 
 
 # ********************************************************************************
-class MinerStats:
+class MinerStats(ExecStats):
     """
     Statistics gathered during mining
     """
-
-    time=None
-    numcalls=None
-    timer=None
 
     TIMERS={'aggregate',
             'df',
@@ -121,41 +102,6 @@ class MinerStats:
               'G',
               'F,V'
     }
-    
-    def __init__(self):
-        self.time = {}
-        self.numcalls = {}
-        self.timer = {}
-        self.counters = {}
-        for t in self.TIMERS:
-            self.time[t] = 0
-            self.numcalls[t] = 0
-            self.timer[t] = 0
-        for c in self.COUNTERS:
-            self.counters[c] = 0
-
-    def formatStats(self):
-        res='TIME MEASUREMENTS:\n{:*<40}\n'.format('')
-        for t in sorted(self.time):
-            res+="{:40}#calls: {:<20d}total-time: {:.8f}\n".format(t,self.numcalls[t],self.time[t])
-        res+='\nCOUNTERS:\n{:*<40}\n'.format('')
-        for c in sorted(self.counters):
-            res+="number of {:20}{:<20d}\n".format(c,self.counters[c])
-        return res
-
-    def startTimer(self, name):
-        self.timer[name] = time()
-        self.numcalls[name]+=1
-        #log.debug("numcalls: %d", self.numcalls[name])
-
-    def stopTimer(self, name):
-        measuredTime = time() - self.timer[name]
-        #log.debug("timer %s ran for %f secs", name, measuredTime)
-        self.time[name] += measuredTime
-
-    def incr(self,name):
-        self.counters[name] += 1
-
 
 
 # ********************************************************************************
