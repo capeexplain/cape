@@ -70,3 +70,7 @@ class DictLike:
     # get access to list of field names
     def getValidKeys(self):
         return self.__dict__
+
+    # check whether configuration is valid
+    def validateConfiguration(self):
+        return True

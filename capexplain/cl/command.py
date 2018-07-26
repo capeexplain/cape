@@ -1,4 +1,9 @@
 from enum import Enum, unique
+from capexplain.cl.cfgoption import DictLike
+import logging
+
+# logger for this module
+log = logging.getLogger(__name__)
 
 ################################################################################
 # Cmd types
@@ -56,3 +61,17 @@ class CmdOptions:
         self.longopt_map = {}
         self.shortopt_map = {}
         self.constructOptions()
+
+    def setupConfig(self, config : DictLike):
+        o = self
+        for opt in o.cmdConfig:
+            option = o.cmdConfig[opt]
+            if option.value != None:
+                key =  opt if (option.cfgFieldName is None) else option.cfgFieldName
+                val = option.value
+                log.debug("option: {}:{}".format(key,val))
+                if key in config.getValidKeys():
+                    config[key] = val
+                else:
+                    log.warning("unhandled config option <{}>".format(option.longopt))
+

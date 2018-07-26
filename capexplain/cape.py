@@ -15,19 +15,23 @@ from capexplain.pattern_miner.PatternMiner import PatternFinder, MinerConfig
 from capexplain.database.dbaccess import DBConnection
 from capexplain.cl.cfgoption import ConfigOpt, OptionType
 from capexplain.cl.command import CmdTypes, Command, CmdOptions
+from capexplain.explain.explanation import ExplanationGenerator, ExplConfig
 import colorful
 
+# ********************************************************************************
+# format for logging
 LOGFORMAT='{c.white_on_black}%(levelname)s{c.reset} {c.red}%(asctime)s{c.reset} {c.blue}[%(filename)s:%(funcName)s:%(lineno)d]{c.reset} %(message)s'.format(c=colorful)
 
 
-                        
+# ********************************************************************************
+# command for mining patterns                        
 def mineCommand(c,log):
     """
     command action for mine for patterns (options are parsed commandline options).
     """
     # create configuration based on options
     config=MinerConfig()
-    dbconn=defaultDBConfig()
+    dbconn=DBConnection()
 
     log.debug("executing mine command")
 
@@ -74,14 +78,51 @@ def helpCommand(argv):
     
 def statsCommand(command,log):
     """
-    command for printing stats of previous executions
+    command for printing stats and patterns of previous executions of miner or explainer
     """
+    # create configuration based on options
+    config=DictLike()
+    dbconn=DBConnection()
+
+    log.debug("executing mine command")
+
+    o = c.options
+    for opt in o.cmdConfig:
+        option = o.cmdConfig[opt]
+        if option.value != None:
+            key =  opt if (option.cfgFieldName is None) else option.cfgFieldName
+            val = option.value
+            log.debug("option: {}:{}".format(key,val))
+            if key in dbconn.getValidKeys():
+                dbconn[key] = val
+            elif key in config.getValidKeys():
+                config[key] = val
+            else:
+                log.warning("unhandled config option <{}>".format(option.longopt))
+    
+    config.validateConfiguration()
+    config.conn = dbconn.connect()
+    log.debug("connected to database")
+    config.conn.close()
+    log.debug("closed database connection ... DONE")
 
 def explainCommand(command,log):
     """
     command for explaining an outlier
     """
+    # create configuration based on options
+    config=ExplConfig()
 
+    # setup configuration
+    command.options.setupConfig(config)
+
+    # do explaining
+    log.debug("executing explain command")
+    e = ExplanationGenerator(config)
+    log.debug("created ExplanationGenerator")
+    e.doExplain()
+    log.debug("explanation generation finished")
+    
 
 # ********************************************************************************
 # options for difference commands using ConfigOpt
@@ -103,8 +144,14 @@ MINE_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
             ConfigOpt(longopt='algorithm', shortopt='a', desc='algorithm to use for pattern mining {}'.format(MinerConfig.ALGORITHMS), hasarg=True),
 ]
 
-EXPLAIN_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
+EXPLAIN_OPTIONS = [ ConfigOpt(longopt='help', shortopt='h', desc='show this help message'),
                     ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="DEBUG"),
+                    ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
+                    ConfigOpt(longopt='cfile', shortopt='c', desc='file storing patterns', hasarg=True, cfgFieldName='constraint_file'),
+                    ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
+                    ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
+                    ConfigOpt(longopt='epsilon', shortopt='e', desc='file to write output to', hasarg=True, otype=OptionType.Float, cfgFieldName='constraint_epsilon'),
+                    ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
 ]
 
 STATS_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
@@ -152,12 +199,6 @@ def printHelp(c=None):
             c.helpMessage,
             "\n".join(o.helpString() for o in c.options.optionlist))
     print(helpMessage)
-
-def defaultDBConfig():
-    """
-    get a default database connection
-    """
-    return DBConnection()
 
 def parseOptions(argv):
     """

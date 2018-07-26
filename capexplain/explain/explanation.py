@@ -9,22 +9,52 @@ from sklearn import preprocessing
 import math
 import time
 from heapq import *
-
+import logging
 from capexplain.similarity.category_similarity_matrix import *
 from capexplain.similarity.category_network_embedding import *
 from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
+from capexplain.cl.cfgoption import DictLike
 
+# setup logging
+log = logging.getLogger(__name__)
 
-DEFAULT_RESULT_PATH = './input/query_res.csv'
-DEFAULT_QUESTION_PATH = './input/user_question.csv'
-DEFAULT_CONSTRAINT_PATH = './input/CONSTRAINTS'
-EXAMPLE_NETWORK_EMBEDDING_PATH = './input/NETWORK_EMBEDDING'
-EXAMPLE_SIMILARITY_MATRIX_PATH = './input/SIMILARITY_DEFINITION'
-DEFAULT_AGGREGATE_COLUMN = 'count'
-DEFAULT_CONSTRAINT_EPSILON = 0.05
-TOP_K = 5
+#********************************************************************************
+# Configuration for Explanation generation
+class ExplConfig(DictLike):
 
+    DEFAULT_RESULT_PATH = './input/query_res.csv'
+    DEFAULT_QUESTION_PATH = './input/user_question.csv'
+    DEFAULT_CONSTRAINT_PATH = './input/CONSTRAINTS'
+    EXAMPLE_NETWORK_EMBEDDING_PATH = './input/NETWORK_EMBEDDING'
+    EXAMPLE_SIMILARITY_MATRIX_PATH = './input/SIMILARITY_DEFINITION'
+    DEFAULT_AGGREGATE_COLUMN = 'count'
+    DEFAULT_CONSTRAINT_EPSILON = 0.05
+    TOP_K = 5
+    REGRESSION_PACKAGES = [ 'scikit-learn', 'statsmodels' ]
+    
+    def __init__(self,
+                 query_result_file = DEFAULT_RESULT_PATH,
+                 constraint_file = DEFAULT_CONSTRAINT_PATH,
+                 user_question_file = DEFAULT_QUESTION_PATH,
+                 outputfile = '',
+                 constraint_epsilon = DEFAULT_CONSTRAINT_EPSILON,
+                 aggregate_column = DEFAULT_AGGREGATE_COLUMN,
+                 regression_package = 'statsmodels'
+    ):
+        self.query_result_file = query_result_file
+        self.constraint_file = constraint_file
+        self.user_question_file = user_question_file
+        self.outputfile = outputfile
+        self.constraint_epsilon = constraint_epsilon
+        self.aggregate_column = aggregate_column
+        self.regression_package = regression_package
+
+    def __str__(self):
+        return self.__dict__.__str__()
+
+#********************************************************************************
+# construct local patterns
 def build_local_regression_constraint(data, column_index, t, con, epsilon, agg_col, regression_package):
     """Build local regression constraint from Q(R), t, and global regression constraint
 
@@ -303,7 +333,7 @@ def find_explanation_regression_based(data, user_question_list, cons, cat_sim, n
     #print('Result merging time: ' + str(result_merging_time) + 'seconds')
     return answer
 
-def load_data(qr_file=DEFAULT_RESULT_PATH):
+def load_data(qr_file=ExplConfig.DEFAULT_RESULT_PATH):
     ''' 
         load query result
     '''
@@ -326,7 +356,7 @@ def load_data(qr_file=DEFAULT_RESULT_PATH):
     data = {'df':df, 'le':le, 'ohe':ohe}
     return data
 
-def load_user_question(uq_path=DEFAULT_QUESTION_PATH):
+def load_user_question(uq_path=ExplConfig.DEFAULT_QUESTION_PATH):
     '''
         load user questions
     '''
@@ -354,7 +384,7 @@ def load_user_question(uq_path=DEFAULT_QUESTION_PATH):
             uq.append({'target_tuple': row_data, 'dir':dir})
     return uq
 
-def load_constraints(cons_path=DEFAULT_CONSTRAINT_PATH):
+def load_constraints(cons_path=ExplConfig.DEFAULT_CONSTRAINT_PATH):
     '''
         load pre-defined constraints(currently only fixed attributes and variable attributes)
     '''
@@ -371,14 +401,71 @@ def load_constraints(cons_path=DEFAULT_CONSTRAINT_PATH):
     inf.close()
     return cons
 
+class ExplanationGenerator:
+
+    def __init__(self, config : ExplConfig):
+        self.config = config
+
+    def doExplain(self):
+        c=self.config
+        log.info("start explaining ...")
+        start = time.clock()
+        data = load_data(c.query_result_file)
+        log.debug("loaded query results from file")
+        constraints = load_constraints(ExplConfig.DEFAULT_CONSTRAINT_PATH)
+        log.debug("loaded patterns from file")
+        Q = load_user_question(c.user_question_file)
+        log.debug("loaded user question from file")
+        category_similarity = CategorySimilarityMatrix(ExplConfig.EXAMPLE_SIMILARITY_MATRIX_PATH)
+        #category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
+        num_dis_norm = normalize_numerical_distance(data['df'])
+        end = time.clock()
+        log.debug("done loading")
+        print('Loading time: ' + str(end-start) + 'seconds')
+
+        log.debug("start finding explanations ...")
+        start = time.clock()
+        #regression_package = 'scikit-learn'
+        regression_package = 'statsmodels'
+        explanations_list = find_explanation_regression_based(data, Q, constraints, category_similarity, 
+                                                              num_dis_norm, c.constraint_epsilon, 
+                                                              aggregate_column, regression_package)
+        end = time.clock()
+        print('Total querying time: ' + str(end-start) + 'seconds')
+        log.debug("finding explanations ... DONE")
+        
+        ofile = sys.stdout
+        if outputfile != '':
+            ofile = open(outputfile, 'w')
+
+        for i, top_k_list in enumerate(explanations_list):
+            ofile.write('User question ' + str(i+1) + ':\n')
+            for k, list_by_con in enumerate(top_k_list):
+                for j in range(5):
+                    e = list_by_con[j]
+                    ofile.write('------------------------\n')
+                    print_str = ''
+                    e_tuple = data['df'].loc[data['df']['index'] == e[2]]
+                    e_tuple_str = ','.join(e_tuple.to_string(header=False,index=False,index_names=False).split('  ')[1:])
+                    ofile.write('Top ' + str(j+1) + ' explanation:\n')
+                    ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(constraints[e[1]][0]) + ']' + '[' + ','.join(constraints[e[1]][1]) + ']')
+                    ofile.write('\n')
+                    #ofile.write('Score: ' + str(e[0]))
+                    ofile.write('Score: ' + str(-e[0]))
+                    ofile.write('\n')
+                    ofile.write('(' + e_tuple_str + ')')
+                    ofile.write('\n')
+            
+                ofile.write('------------------------\n')
+        
         
 def main(argv=[]):
-    query_result_file = DEFAULT_RESULT_PATH
-    constraint_file = DEFAULT_CONSTRAINT_PATH
-    user_question_file = DEFAULT_QUESTION_PATH
+    query_result_file = ExplConfig.DEFAULT_RESULT_PATH
+    constraint_file = ExplConfig.DEFAULT_CONSTRAINT_PATH
+    user_question_file = ExplConfig.DEFAULT_QUESTION_PATH
     outputfile = ''
-    constraint_epsilon = DEFAULT_CONSTRAINT_EPSILON
-    aggregate_column = DEFAULT_AGGREGATE_COLUMN
+    constraint_epsilon = ExplConfig.DEFAULT_CONSTRAINT_EPSILON
+    aggregate_column = ExplConfig.DEFAULT_AGGREGATE_COLUMN
     try:
         opts, args = getopt.getopt(argv,"hq:c:u:o:e:a",["help","qfile=","cfile=","ufile=","ofile=","epsilon=","aggregate_column="])
     except getopt.GetoptError:
@@ -406,10 +493,10 @@ def main(argv=[]):
     print(opts)
     start = time.clock()
     data = load_data(query_result_file)
-    constraints = load_constraints(DEFAULT_CONSTRAINT_PATH)
+    constraints = load_constraints(ExplConfig.DEFAULT_CONSTRAINT_PATH)
     Q = load_user_question(user_question_file)
-    category_similarity = CategorySimilarityMatrix(EXAMPLE_SIMILARITY_MATRIX_PATH)
-    #category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
+    category_similarity = CategorySimilarityMatrix(ExplConfig.EXAMPLE_SIMILARITY_MATRIX_PATH)
+    #category_similarity = CategoryNetworkEmbedding(ExplConfig.EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
     num_dis_norm = normalize_numerical_distance(data['df'])
     end = time.clock()
     print('Loading time: ' + str(end-start) + 'seconds')

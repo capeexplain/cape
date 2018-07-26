@@ -14,6 +14,7 @@ from capexplain.pattern_miner.permtest import *
 from capexplain.fd.fd import closure
 from capexplain.cl.cfgoption import DictLike
 from capexplain.cl.instrumentation import ExecStats
+
 # setup logging
 log = logging.getLogger(__name__)
 
@@ -69,6 +70,9 @@ class MinerConfig(DictLike):
         log.debug("validation of miner configuration successful:\n%s", self.__dict__)
         return True
 
+    def __str__(self):
+        return self.__dict__.__str__()
+    
     def printConfig(self):
         pprint.pprint(self.__dict__)
 
@@ -748,10 +752,12 @@ class PatternFinder:
                 log.info("found global pattern P = (%s, %s, %s(%s), const)", f, v, agg, a)
                 #self.pc.add_global(f,v,a,agg,'const',self.config.theta_c,lamb_c)
                 self.glob.append(self.addGlobal(f,v,a,agg,'const',self.config.theta_c,lamb_c))
+                self.stats.incr('patterns.global')
             if lamb_l>self.config.lamb:
                 log.info("found global pattern P = (%s, %s, %s(%s), linear)", f, v, agg, a)
                 #self.pc.add_global(f,v,a,agg,'linear',str(self.config.theta_l),str(lamb_l))
                 self.glob.append(self.addGlobal(f,v,a,agg,'linear',self.config.theta_l,lamb_l))
+                self.stats.incr('patterns.global')
         else:
             log.info("global pattern candidate P = (%s, %s, %s(%s), linear) does not hold", f, v, agg, a)
                           
