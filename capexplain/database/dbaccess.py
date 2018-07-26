@@ -25,15 +25,7 @@ class DBConnection:
     """
     DBConnection wraps an sqlalchemy database connection (currently only postgres through psycopg2).
     """
-    
-    host='127.0.0.1'
-    user='postgres'
-    port=5432
-    db='postgres'
-    password=None
-    engine=None
-    conn=None
-    
+
     def __init__ (self,
                   host='127.0.0.1',
                   user='postgres',
@@ -45,9 +37,24 @@ class DBConnection:
         self.port=port
         self.db=db
         self.password=password
-        engine = None
+        self.engine = None
+        self.conn=None
         log.debug("create DBconnection info: %s", self.__dict__)
 
+    # overwrite __getitem__ to allow dictory style access to options
+    def __getitem__(self, key):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        return self.__dict__[key]
+
+    def __setitem__(self,key,value):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        self.__dict__[key] = value
+    
+    def getValidKeys(self):
+        return self.__dict__
+        
     def getUrl(self):
         url = 'postgresql://{}:{}@{}:{:d}/{}'.format(self.user,
                                                   ('' if self.password is None else self.password),

@@ -11,7 +11,7 @@ import getopt
 import logging
 from inspect import currentframe, getframeinfo
 from capexplain.pattern_miner.PatternMiner import PatternFinder, MinerConfig
-from capexplain.db.dbaccess import DBConnection
+from capexplain.database.dbaccess import DBConnection
 import colorful
 
 LOGFORMAT='{c.white_on_black}%(levelname)s{c.reset} {c.red}%(asctime)s{c.reset} {c.blue}[%(filename)s:%(funcName)s:%(lineno)d]{c.reset} %(message)s'.format(c=colorful)

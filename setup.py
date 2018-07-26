@@ -45,6 +45,7 @@ setup(
     
     entry_points={
         'console_scripts': [
+            'capexplain=capexplain.cape:main',
             'cape-mine=capexplain.cape_miner:main',
             'cape-xplain=capexplain.cape_xplain:main',
         ]
@@ -54,7 +55,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
 
-    packages=find_packages(exclude=['capexplain.dev']),
+    packages=find_packages(),
 
     keywords='db',
     platforms='any',

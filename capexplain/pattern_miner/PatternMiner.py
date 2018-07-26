@@ -22,21 +22,6 @@ class MinerConfig:
     """
     MinerConfig - configuration for the pattern mining algorithm
     """
-    conn=None
-    table=None
-    theta_c=None #theta for constant regression
-    theta_l=None #theta for linear regression
-    lamb=None #lambda
-    #c_star=False
-    #pc=None
-    fit=None #if we are fitting model
-    dist_thre=None #threshold for identifying distinct-value attributes
-    reg_package=None #statsmodels or sklearn
-    supp_l=None #local support
-    supp_g=None #global support
-    fd_check=None #toggle on/off functional dependency checks
-    supp_inf=None #toggle on/off support inference rules
-    algorithm=None #{'optimized','naive','naive_alternative'}
 
     ALGORITHMS={'naive','naive_alternative','optimized'}
     STATS_MODELS={'statsmodels','sklearn'}
@@ -70,6 +55,21 @@ class MinerConfig:
         self.table=table
         log.debug("created miner configuration:\n%s", self.__dict__)
 
+
+    # overwrite __getitem__ to allow dictory style access to options
+    def __getitem__(self, key):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        return self.__dict__[key]
+
+    def __setitem__(self,key,value):
+        if key not in self.__dict__:
+            raise AttributeError("No such attribute: " + key)
+        self.__dict__[key] = value
+    
+    def getValidKeys(self):
+        return self.__dict__
+    
     def validateConfiguration(self):
         log.debug("validate miner configuration ...")
         if self.reg_package not in self.STATS_MODELS:
