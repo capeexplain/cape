@@ -126,9 +126,11 @@ def explainCommand(command,log):
 
 # ********************************************************************************
 # options for difference commands using ConfigOpt
-MINE_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
-            ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="DEBUG"),
-            ConfigOpt(longopt='host', shortopt='h', desc='database connection host IP address', hasarg=True),
+COMMON_OPTIONS =  [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="ERROR"),
+                    ConfigOpt(longopt='help', desc='show this help message'),
+]
+
+MINE_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='host', shortopt='h', desc='database connection host IP address', hasarg=True),
             ConfigOpt(longopt='user', shortopt='u', desc='database connection user', hasarg=True),
             ConfigOpt(longopt='password', shortopt='p', desc='database connection password', hasarg=True),
             ConfigOpt(longopt='db', shortopt='d', desc='database name', hasarg=True),
@@ -142,11 +144,10 @@ MINE_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
             ConfigOpt(longopt='global-support', shortopt=None, desc='global support thresh', hasarg=True, otype=OptionType.Int,cfgFieldName='supp_g'),
             ConfigOpt(longopt='fd-optimizations', shortopt='f', desc='activate functional dependency detection and optimizations',cfgFieldName='fd_check'),
             ConfigOpt(longopt='algorithm', shortopt='a', desc='algorithm to use for pattern mining {}'.format(MinerConfig.ALGORITHMS), hasarg=True),
+            ConfigOpt(longopt='show-progress', shortopt=None, desc='show progress meters', otype=OptionType.Boolean, hasarg=True, cfgFieldName='showProgress'),
 ]
 
-EXPLAIN_OPTIONS = [ ConfigOpt(longopt='help', shortopt='h', desc='show this help message'),
-                    ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="DEBUG"),
-                    ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
+EXPLAIN_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
                     ConfigOpt(longopt='cfile', shortopt='c', desc='file storing patterns', hasarg=True, cfgFieldName='constraint_file'),
                     ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
                     ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
@@ -154,11 +155,10 @@ EXPLAIN_OPTIONS = [ ConfigOpt(longopt='help', shortopt='h', desc='show this help
                     ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
 ]
 
-STATS_OPTIONS = [ ConfigOpt(longopt='help', desc='show this help message'),
-                  ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="DEBUG"),
+STATS_OPTIONS = COMMON_OPTIONS + [ 
 ]
 
-HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="DEBUG"),
+HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="ERROR"),
 ]
 
 # mapping strings to log levels
@@ -204,8 +204,6 @@ def parseOptions(argv):
     """
     parse options from command line
     """
-    loglevel='DEBUG'
-
     # detect command
     if len(argv) > 0:
         cmdString = argv[0]

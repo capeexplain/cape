@@ -1,5 +1,8 @@
 import datetime
 import traceback
+from itertools import combinations, permutations
+from math import factorial
+from tqdm import tqdm
 
 def printException(ex,finfo):
     print(exceptionToString(ex,finfo))
@@ -105,3 +108,46 @@ def normalize_numerical_distance(df=None, cur=None, table_name=''):
                     res[col]['range'] = res[col]['max'] - res[col]['min']
         return res
 
+################################################################################
+class CombinationsWithLen():
+    """
+    Wrapping a combinations generator to provide its length without having to iterate through all elements
+    """
+
+    def __init__(self,it,r):
+        self._inLen = len(it)
+        self._it = it
+        self._r = r
+        self._comb=combinations(it,r)
+
+    def __iter__(self):
+        for el in self._comb:
+            yield el
+
+    def __len__(self):
+        return factorial(self._inLen) // (factorial(self._inLen - self._r)) // factorial(self._r)
+
+def progress_iter(iter, showProgress=True, desc=None):
+    if (showProgress == True):
+        return tqdm(iter, desc=desc)
+    else:
+        return iter
+    
+################################################################################
+class PermutationsWithLen():
+    """
+    Wrapping a permutations generator to provide its length without having to iterate through all elements
+    """
+
+    def __init__(self,it,r):
+        self._inLen = len(it)
+        self._it = it
+        self._r = r
+        self._perms=permutations(it,r)
+
+    def __iter__(self):
+        for el in self._perms:
+            yield el
+
+    def __len__(self):
+        return factorial(self._inLen) // (factorial(self._inLen - self._r))

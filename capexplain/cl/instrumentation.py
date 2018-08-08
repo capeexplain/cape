@@ -47,3 +47,6 @@ class ExecStats:
 
     def incr(self,name):
         self.counters[name] += 1
+
+    def getCounter(self,name):
+        return self.counters[name]

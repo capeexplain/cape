@@ -45,9 +45,7 @@ setup(
     
     entry_points={
         'console_scripts': [
-            'capexplain=capexplain.cape:main',
-            'cape-mine=capexplain.cape_miner:main',
-            'cape-xplain=capexplain.cape_xplain:main',
+            'capexplain=capexplain.cape:main'
         ]
     },
 

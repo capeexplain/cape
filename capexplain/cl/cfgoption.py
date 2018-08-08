@@ -46,7 +46,15 @@ class ConfigOpt:
             elif self.otype == OptionType.Float:
                 self.value =  float(self.value)
             elif self.otype == OptionType.Boolean:
-                self.value =  int(self.boolean)
+                self.value = { 'True' : True,
+                               'True' : True,
+                               't' : True,
+                               '1' : True,
+                               'False' : False,
+                               'false' : False,
+                               'f' : False,
+                               '0' : False}[self.value]
+                self.value = bool(self.value)
             return self
 
 # ********************************************************************************

@@ -2,18 +2,21 @@ import sys
 import pprint
 import logging
 import pandas as pd
-from itertools import combinations
+from itertools import combinations, permutations
+from time import sleep
 import statsmodels.formula.api as sm
 from psycopg2.extras import Json
 from sklearn.linear_model import LinearRegression
 from scipy.stats import chisquare, mode
 from numpy import percentile, mean
 from inspect import currentframe, getframeinfo
-from capexplain.utils import printException
+from tqdm import tqdm
+from capexplain.utils import printException, CombinationsWithLen, progress_iter, PermutationsWithLen
 from capexplain.pattern_miner.permtest import *
 from capexplain.fd.fd import closure
 from capexplain.cl.cfgoption import DictLike
 from capexplain.cl.instrumentation import ExecStats
+
 
 # setup logging
 log = logging.getLogger(__name__)
@@ -40,7 +43,8 @@ class MinerConfig(DictLike):
                  supp_g=100,
                  fd_check=True,
                  supp_inf=True,
-                 algorithm='optimized'):
+                 algorithm='optimized',
+                 showProgress=True):
         self.conn=conn
         self.theta_c=theta_c
         self.theta_l=theta_l
@@ -54,6 +58,7 @@ class MinerConfig(DictLike):
         self.supp_inf=supp_inf
         self.algorithm=algorithm
         self.table=table
+        self.showProgress=showProgress
         log.debug("created miner configuration:\n%s", self.__dict__)
     
     def validateConfiguration(self):
@@ -173,6 +178,9 @@ class PatternFinder:
             except:
                 self.cat.append(col)
         log.debug("tables has categorical attributes %s and numerical attributes %s", self.cat, self.num)
+
+    def progress(self, iter, desc=None):
+        return progress_iter(iter=iter, desc=desc, showProgress=self.config.showProgress)
         
     def initDataStructures(self):
         self.stats = MinerStats()
@@ -231,6 +239,8 @@ class PatternFinder:
             return ret
             
     def findPattern(self,user=None):
+        if (self.config.showProgress):
+            print(" MINING PATTERNS FOR: {}".format(self.config.table))
 #       self.pc=PC.PatternCollection(list(self.schema))
         self.glob=[]#reset self.glob
         self.createTable()
@@ -244,7 +254,7 @@ class PatternFinder:
             aList=user['a']
         log.debug("mine patterns for group-by attrs %s and aggregate input attributes %s", grouping_attr, aList)
         
-        for a in aList:
+        for a in self.progress(aList, desc='agg functions'):
             if not user:
                 if a=='*':#For count, only do a count(*)
                     agg="count"
@@ -261,26 +271,26 @@ class PatternFinder:
             # CUBE ALGORITHM
             if self.config.algorithm=='naive':
                 self.formCube(a, agg, cols)
-                for size in range(min(4,n),1,-1):
-                    combs=combinations(cols,size)
-                    for group in combs:#comb=f+v
+                for size in self.progress(range(min(4,n),1,-1), desc='pattern size'):
+                    combs=CombinationsWithLen(cols,size)
+                    for group in self.progress(combs, desc='F,V combinations'):#comb=f+v
                         self.stats.incr('G')
                         log.debug("consider group-by attributes %s", group)
-                        for fsize in range(1,len(group)):
-                            fs=combinations(group,fsize)
-                            for f in fs:
+                        for fsize in self.progress(range(1,len(group)), desc='F size'):
+                            fs=CombinationsWithLen(group,fsize)
+                            for f in self.progress(fs, desc='F'):
                                 self.stats.incr('F,V')
                                 self.stats.incr('patcand.global')
                                 log.debug("consider group-by attributes %s with F=%s", group, f)
                                 self.fit_naive(f,group,a,agg,cols)
                 self.dropCube()
             else:#self.config.algorithm=='optimized' or self.config.algorithm=='naive_alternative'
-                combs=combinations([i for i in range(n)],min(4,n))
-                for comb in combs:
+                combs=CombinationsWithLen([i for i in range(n)],min(4,n))
+                for comb in self.progress(combs, desc='combinations'):
                     grouping=[cols[i] for i in comb]
                     self.aggQuery(grouping,a,agg)
-                    perms=permutations(comb,len(comb))
-                    for perm in perms:
+                    perms=PermutationsWithLen(comb,len(comb))
+                    for perm in self.progress(perms, desc='permutations'):
                         self.failedf=set()#reset failed f for each permutation
                         #check if perm[0]->perm[1], if so, ignore whole group
                         if perm[1] in closure(self.fd,self.n,[perm[0]]):
@@ -364,6 +374,10 @@ class PatternFinder:
         self.stats.stopTimer('total')
         self.insertTime(str(len(self.glob)))
         log.warning("pattern mining finished: time stats:\n\n%s", self.stats.formatStats())
+        if (self.config.showProgress):
+            sleep(0.5)
+            print("\n\n\n\n\nFINISHED MINING PATTERNS FOR {} found {} global patterns based on {} local patterns\n\n"
+                  .format(self.config.table, self.stats.getCounter('patterns.global'), self.stats.getCounter('patterns.local')))
         
     def formCube(self, a, agg, attr):
         self.stats.startTimer('query_materializecube')
@@ -485,6 +499,7 @@ class PatternFinder:
                 valid_c_f[i]+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
                 pattern.append(self.addLocal(f[i],fval,v[i],a,agg,'const',theta_c,describe,'NULL'))
+                self.stats.incr('patterns.local')
               
             #fitting linear
             if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in v[i])
@@ -509,6 +524,7 @@ class PatternFinder:
                     valid_l_f[i]+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                     pattern.append(self.addLocal(f[i],fval,v[i],a,agg,'linear',theta_l,describe,param))
+                    self.stats.incr('patterns.local')
                     
             self.stats.stopTimer('regression')
             
@@ -666,6 +682,7 @@ class PatternFinder:
                 valid_c_f+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
                 pattern.append(self.addLocal(f,fval,v,a,agg,'const',theta_c,describe,'NULL'))
+                self.stats.incr('patterns.local')
                 
             #fitting linear
             if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in v)
@@ -690,6 +707,7 @@ class PatternFinder:
                     valid_l_f+=1
                 #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                     pattern.append(self.addLocal(f,fval,v,a,agg,'linear',theta_l,describe,param))
+                    self.stats.incr('patterns.local')
                     
             self.stats.stopTimer('regression')
         
