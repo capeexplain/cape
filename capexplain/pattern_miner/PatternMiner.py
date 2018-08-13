@@ -62,6 +62,9 @@ class MinerConfig(DictLike):
         log.debug("created miner configuration:\n%s", self.__dict__)
     
     def validateConfiguration(self):
+        """
+        Validate configuration.
+        """
         log.debug("validate miner configuration ...")
         if self.reg_package not in self.STATS_MODELS:
             log.warning('Invalid input for reg_package, reset to default')

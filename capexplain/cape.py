@@ -1,9 +1,7 @@
 """
-Cape system for explaining outliers to aggregation queries.
+Commandline tool capexplain for the Cape system which explains outliers to aggregation queries.
 
-cape_mine: mine patterns
-
-
+Installation through setuptools will create a script capexplain. Run "capexplain help" to see usage.
 """
 
 import sys
@@ -24,10 +22,9 @@ LOGFORMAT='{c.white_on_black}%(levelname)s{c.reset} {c.red}%(asctime)s{c.reset} 
 
 
 # ********************************************************************************
-# command for mining patterns                        
 def mineCommand(c,log):
     """
-    command action for mine for patterns (options are parsed commandline options).
+    Command action for mine for patterns (options are parsed commandline options).
     """
     # create configuration based on options
     config=MinerConfig()
@@ -60,9 +57,10 @@ def mineCommand(c,log):
     config.conn.close()
     log.debug("closed database connection ... DONE")
 
+# ********************************************************************************
 def helpCommand(argv):
     """
-    command for showing help message
+    Command for showing help message.
     """
     if len(argv) == 0:
         printHelp()
@@ -75,10 +73,10 @@ def helpCommand(argv):
         else:
             printHelp(command)
 
-    
+# ********************************************************************************
 def statsCommand(command,log):
     """
-    command for printing stats and patterns of previous executions of miner or explainer
+    Command for printing stats and patterns of previous executions of miner or explainer.
     """
     # create configuration based on options
     config=DictLike()
@@ -106,9 +104,10 @@ def statsCommand(command,log):
     config.conn.close()
     log.debug("closed database connection ... DONE")
 
+# ********************************************************************************
 def explainCommand(command,log):
     """
-    command for explaining an outlier
+    Command for explaining an outlier.
     """
     # create configuration based on options
     config=ExplConfig()
@@ -178,16 +177,17 @@ COMMANDS = [ Command(cmd=CmdTypes.Mine,cmdstr='mine',options=CmdOptions(MINE_OPT
 # maps command names to Command objects
 COMMAND_BY_TYPE = { x.cmd : x for x in COMMANDS}
 
+# ********************************************************************************
 def getCmdList():
     """ 
-    return list of commands
+    Return a help message for the supported commands.
     """
     return "\n".join((x.helpString() for x in COMMANDS))
 
-
+# ********************************************************************************
 def printHelp(c=None):
     """
-    print command specific help message
+    Print command specific or general help message.
     """
     if c is None:
         helpMessage = 'capexplain COMMAND [OPTIONS]:\n\texplain unusually high or low aggregation query results.\n\nAVAILABLE COMMANDS:\n\n' + getCmdList()
@@ -202,7 +202,7 @@ def printHelp(c=None):
 
 def parseOptions(argv):
     """
-    parse options from command line
+    Parse options from commandline.
     """
     # detect command
     if len(argv) > 0:
