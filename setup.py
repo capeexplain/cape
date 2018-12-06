@@ -28,7 +28,7 @@ setup(
         'pandas>=0.23.3',
         'patsy>=0.5.0',
         'pkginfo>=1.4.2',
-        'psycopg2>=2.7.5',
+        'psycopg2-binary>=2.7.6',
         'python-dateutil>=2.7.3',
         'pytz>=2018.5',
         'requests>=2.19.1',
