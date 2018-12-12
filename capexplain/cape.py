@@ -146,12 +146,20 @@ MINE_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='host', shortopt='h', desc='
             ConfigOpt(longopt='show-progress', shortopt=None, desc='show progress meters', otype=OptionType.Boolean, hasarg=True, cfgFieldName='showProgress'),
 ]
 
-EXPLAIN_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
-                    ConfigOpt(longopt='cfile', shortopt='c', desc='file storing patterns', hasarg=True, cfgFieldName='constraint_file'),
-                    ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
-                    ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
-                    ConfigOpt(longopt='epsilon', shortopt='e', desc='file to write output to', hasarg=True, otype=OptionType.Float, cfgFieldName='constraint_epsilon'),
-                    ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
+# EXPLAIN_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
+#                     ConfigOpt(longopt='cfile', shortopt='c', desc='file storing patterns', hasarg=True, cfgFieldName='constraint_file'),
+#                     ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
+#                     ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
+#                     ConfigOpt(longopt='epsilon', shortopt='e', desc='file to write output to', hasarg=True, otype=OptionType.Float, cfgFieldName='constraint_epsilon'),
+#                     ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
+# ]
+
+EXPLAIN_OPTIONS = COMMON_OPTIONS + [ 
+            ConfigOpt(longopt='ptable', shortopt='p', desc='table storing aggregate regression patterns', hasarg=True, cfgFieldName='pattern_table'),
+            ConfigOpt(longopt='qtable', shortopt='q', desc='table storing aggregation query result', hasarg=True, cfgFieldName='query_result_table'),
+            ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
+            ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
+            ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
 ]
 
 STATS_OPTIONS = COMMON_OPTIONS + [ 
