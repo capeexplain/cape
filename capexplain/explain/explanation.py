@@ -11,6 +11,7 @@ import time
 from heapq import *
 import logging
 from capexplain.similarity.category_similarity_matrix import *
+from capexplain.similarity.category_similarity_naive import *
 from capexplain.similarity.category_network_embedding import *
 from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
@@ -60,7 +61,7 @@ class ExplConfig(DictLike):
         self.regression_package = regression_package
 
         try:
-            self.conn = psycopg2.connect("host=localhost port=5432 dbname=antiprov user=antiprov")
+            self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
             self.cur = self.conn.cursor()
         except psycopg2.OperationalError:
             print('Fail to connect to the database!')
@@ -680,7 +681,7 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
         # dev_ub = agg_maxmin[0][0] - agg_maxmin[0][1]
         k_score = tkheap.MinValue()
         print(888, dev_ub, k_score, 100 * float(dev_ub) / (dist_lb * float(norm_lb)))
-        if tkheap.HeapSize() == TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
+        if tkheap.HeapSize() == ExplConfig.TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
             print(890, dev_ub, dist_lb, norm_lb, gp2[0], gp2[1])
             continue
         # lp2_list = get_local_patterns(gp2[0], None, gp2[1], gp2[2], None, t_prime, conn, cur, pat_table_name, res_table_name)
@@ -712,7 +713,7 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
             # dev_ub = agg_maxmin[0][0] - agg_maxmin[0][1]
             k_score = tkheap.MinValue()
             print(919, dev_ub, k_score, 100 * float(dev_ub) / (dist_lb * float(norm_lb)))
-            if tkheap.HeapSize() == TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
+            if tkheap.HeapSize() == ExplConfig.TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
                 print(921, dev_ub, dist_lb, norm_lb, lp3[0], lp3[1])
                 continue
             f_key = str(lp3[1]).replace('\'', '')[1:-1]
@@ -763,7 +764,7 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
     return reslist
 
 def find_explanation_regression_based(user_question_list, global_patterns, global_patterns_dict, 
-    cat_sim, num_dis_norm, epsilon, agg_col, conn, cur, pat_table_name, res_table_name, ExplConfig):
+    cat_sim, num_dis_norm, agg_col, conn, cur, pat_table_name, res_table_name, ExplConfig):
 
     """Find explanations for user questions
 
@@ -791,7 +792,7 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
 
     for j, uq in enumerate(user_question_list):
         dir = uq['dir']
-        topK_heap = TopkHeap(TOP_K)
+        topK_heap = TopkHeap(ExplConfig.TOP_K)
         marked = {}
 
         t = dict(uq['target_tuple'])
@@ -956,7 +957,7 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
         #         heappush(complementary_explanation_list, poped_tuple)
         #     else:
         #         refute_explanation_list.append(top_k_lists[i])
-        answer[j] = [{} for i in range(TOP_K)]
+        answer[j] = [{} for i in range(ExplConfig.TOP_K)]
 
         # cnt = 0
         # while cnt < TOP_K and len(complementary_explanation_list) > 0:
@@ -1246,13 +1247,13 @@ class ExplanationGenerator:
         conn = ecf.conn
         cur = ecf.cur
         
-        print(opts)
+        # print(opts)
         start = time.clock()
         log.info("start explaining ...")
         global_patterns, schema, global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
         log.debug("loaded patterns from database")
-        category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
-        # category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        # category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
+        category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         #num_dis_norm = normalize_numerical_distance(data['df'])
         num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
@@ -1271,11 +1272,12 @@ class ExplanationGenerator:
         start = time.clock()
         #regression_package = 'scikit-learn'
         regression_package = 'statsmodels'
+        
         explanations_list, local_patterns_list, score_computing_time_list = find_explanation_regression_based(
-            Q, global_patterns, global_patterns_dict, category_similarity, 
-            num_dis_norm, epsilon, 
-            aggregate_column, 
-            pattern_table, query_result_table, ecf)
+            Q, global_patterns, global_patterns_dict, category_similarity, num_dis_norm,
+            aggregate_column, conn, cur, 
+            pattern_table, query_result_table, ecf
+        )
         expl_end = time.time()
             
         end = time.clock()
