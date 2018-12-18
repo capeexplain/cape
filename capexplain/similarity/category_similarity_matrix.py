@@ -2,19 +2,28 @@ class CategorySimilarityMatrix(object):
     """ Similarity measure for categorical attributes defined manually
     """
     def compute_similarity(self, col, val1, val2, aggr_col):
-        # print(col, val1, val2, self.sim_matrix[col][val1])
+        # if col == 'pubkey':
+            # print('In compute_similarity:', col, val1, val2, self.sim_matrix[col][val1])
         if col not in self.sim_matrix:
-            return -1
+            return 0
         else:
             if val1 not in self.sim_matrix[col] and val2 not in self.sim_matrix[col]:
-                return -1
+                if val1 == val2:
+                    return 1
+                else:
+                    return 0
             return self.sim_matrix[col][val1][val2]
 
-    def __init__(self, inf=''):
+    def __init__(self, inf='', schema=None):
+        self.sim_matrix = {}
+        if schema is not None:
+            for k in schema:
+                if schema[k] != 'integer' and not schema[k].startswith('double') and not schema[k].startswith('float'):
+                    self.sim_matrix[k] = {}
         if inf == '':
             return
         infile = open(inf, 'r')
-        self.sim_matrix = {}
+
         col = ''
         while True:
             line = infile.readline()
@@ -32,6 +41,8 @@ class CategorySimilarityMatrix(object):
                     self.sim_matrix[col][sim_tuple[1]] = {sim_tuple[1]:1.0}
                 self.sim_matrix[col][sim_tuple[0]][sim_tuple[1]] = float(sim_tuple[2])
                 self.sim_matrix[col][sim_tuple[1]][sim_tuple[0]] = float(sim_tuple[2])
+        print('Similarity Matrix')
+        print(self.sim_matrix)
 
 
     def is_categorical(self, col):
