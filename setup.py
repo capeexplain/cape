@@ -23,6 +23,7 @@ setup(
         'certifi>=2018.4.16',
         'chardet>=3.0.4',
         'colorful>=0.4.1',
+        'geopy',
         'idna>=2.7',
         'numpy>=1.14.5',
         'pandas>=0.23.3',
