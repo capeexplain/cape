@@ -148,7 +148,7 @@ class CAPE_UI:
 
 		self.pattern_df['set'] = self.pattern_df['set'].apply(self.delete_parenthesis)
 
-		# print(self.pattern_df.head())
+		print(self.pattern_df.head())
 
 		
 
@@ -172,7 +172,11 @@ class CAPE_UI:
 	
 	def delete_parenthesis(self,colstr):
 
-		return str(colstr.replace("{","").replace("}",""))
+		string1=str(colstr.replace("{","").replace("}",""))
+		list1=string1.split(',')
+		list1.sort()
+
+		return  (','.join(list1))
 
 	def run_query(self):
 		
@@ -206,16 +210,18 @@ class CAPE_UI:
 		for n in query_group_list: # delete whitespaces
 			n = n.strip()
 			query_group_set.append(n)
+		query_group_set.sort()
+		query_group_str = ','.join(query_group_set)
+		print(query_group_str)
 
-		# print("query_agg is "+str(query_agg))
-		# print(query_group_list)
-		# print(query_final_group_list)
+		self.pattern_df = self.pattern_df[self.pattern_df.set.apply(lambda x: x in query_group_str)]
+		
 		for index, row in self.pattern_df.iterrows():
-			row_set = row['set'].split(',')
-			result = set(row_set).issubset(query_group_set)
-			# result = all(elem in query_group_set for elem in row_set)			
-			if not result:
-				self.pattern_df = self.pattern_df.drop(index)
+			row_list = row['set'].split(',')
+			for n in row_list:
+				if n not in query_group_set:
+					self.pattern_df = self.pattern_df.drop(index)
+		
 		output_pattern_df = self.pattern_df.drop(columns=['set'],axis=1)
 
 		pattern_model = TableModel(dataframe=output_pattern_df)
