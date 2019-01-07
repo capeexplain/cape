@@ -18,9 +18,10 @@ from matplotlib.figure import Figure
 from matplotlib import style
  
 
-conn = psycopg2.connect("dbname = math564 user = chenjie password = lcj53242 \
-						host = newbballserver.ctkmtyhjwqb1.us-east-2.rds.amazonaws.com")
+conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 
+# "dbname = math564 user = chenjie password = lcj53242 \
+# 						host = newbballserver.ctkmtyhjwqb1.us-east-2.rds.amazonaws.com"
 cur = conn.cursor() # activate cursor
 
 
@@ -36,9 +37,9 @@ class CAPE_UI:
 		self.main_frame_style.configure('Main_Frame', background='#334353')
 		self.main_frame=ttk.Frame(self.parent,padding=(3,3,12,12),width=2000, height=100)
 
-		self.main_frame.columnconfigure(0, weight=1)
-		self.main_frame.columnconfigure(1, weight=1)
-		self.main_frame.columnconfigure(2, weight=1)
+		# self.main_frame.columnconfigure(0, weight=1)
+		# self.main_frame.columnconfigure(1, weight=1)
+		# self.main_frame.columnconfigure(2, weight=1)
 
 		self.main_frame.rowconfigure(0,weight=1)
 		self.main_frame.rowconfigure(1,weight=1)
@@ -64,15 +65,15 @@ class CAPE_UI:
 		self.query_result = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=600)
 		self.query_result.grid(column=1, row=2, columnspan=1, rowspan=8, sticky='nsew')
 
-		self.plot = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=800)
+		self.plot = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=900)
 		self.plot.grid(column=2, row=0, columnspan=1, rowspan=5, sticky='nsew')
 
-		self.explaination = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=800)
+		self.explaination = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=900)
 		self.explaination.grid(column=2, row=5, columnspan=1, rowspan=5, sticky='nsew')
 
 
 #---------------------------table frame-----------------------------------------#
-		self.table_view = ttk.Treeview(self.table_frame,height=45)
+		self.table_view = ttk.Treeview(self.table_frame,height=46)
 		self.table_info = Label(self.table_frame, text="Database Information")
 		self.table_info.grid(column=0, row=0)
 		self.table_view.grid(column=0, row=1)
