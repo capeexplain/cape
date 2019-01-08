@@ -22,7 +22,6 @@ conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port=
 cur = conn.cursor() # activate cursor
 
 
-test_frame = pd.read_csv('/home/chenjie/Desktop/team_stats.csv')
 
 class CAPE_UI:
 
