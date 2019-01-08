@@ -16,11 +16,11 @@ from capexplain.similarity.category_network_embedding import *
 from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
 from capexplain.cl.cfgoption import DictLike
-
+from capexplain.explanation_model.explanation_model import *
 # setup logging
 log = logging.getLogger(__name__)
 
-
+TEST_ID = ''
 #********************************************************************************
 # Configuration for Explanation generation
 class ExplConfig(DictLike):
@@ -80,13 +80,18 @@ class TopkHeap(object):
         if len(self.data) < self.topk:
             heappush(self.data, elem)
         else:
+            # topk_small = self.data[0]
+            # if elem[0] > topk_small[0]:
+            #     heapreplace(self.data, elem)
             topk_small = self.data[0]
-            if elem[0] > topk_small[0]:
+            if elem.score > topk_small.score:
                 heapreplace(self.data, elem)
     def MinValue(self):
-        return min(list(map(lambda x: x[0], self.data)))
+        # return min(list(map(lambda x: x[0], self.data)))
+        return min(list(map(lambda x: x.score, self.data)))
     def MaxValue(self):
-        return max(list(map(lambda x: x[0], self.data)))
+        # return max(list(map(lambda x: x[0], self.data)))
+        return max(list(map(lambda x: x.score, self.data)))
     def TopK(self):
         return [x for x in reversed([heappop(self.data) for x in range(len(self.data))])]
     def HeapSize(self):
@@ -227,7 +232,7 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
 def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_name, res_table_name):
     local_patterns = []
     local_patterns_dict = {}
-    
+    print(235, F, t)
     tF = get_F_value(F, t)
         
     if model_type is not None:
@@ -527,7 +532,7 @@ def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim, Ex
     tuples_query = '''SELECT {} FROM MV_{} WHERE {};'''.format(
             gp[2], str(ExplConfig.MATERIALIZED_DICT[G_key][f_value_key]), where_clause
         )
-    # print(604, tuples_query)
+    print(530, tuples_query)
     cur.execute(tuples_query)
     res = cur.fetchall()
     return res[0]
@@ -661,13 +666,13 @@ def compare_tuple(t1, t2):
 
 def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_coarser, t_coarser, t_prime, target_tuple,
         conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm, 
-        epsilon, dir, query_result, norm_lb, dist_lb, tkheap, ExplConfig):
+        dir, query_result, norm_lb, dist_lb, tkheap, ExplConfig):
     reslist = []
     F_prime_set = F_set.union(U_set)
     agg_col = local_pattern[3]
     # gp2_list = find_global_patterns_exact_match(global_patterns_dict, F_prime_set, V_set, local_pattern[3], local_pattern[4])
     # gp2_list = find_patterns_refinement(global_patterns_dict, F_prime_set, V_set, local_pattern[3], local_pattern[4])
-    gp2_list = find_patterns_refinement(global_patterns_dict, F_set, V_set, local_pattern[3], local_pattern[4])
+    gp2_list = find_patterns_refinement(global_patterns_dict, F_set, V_set, local_pattern[3], local_pattern[4], ExplConfig)
     # print(420, F_set, V_set, gp2_list)
     if len(gp2_list) == 0:
         return []
@@ -730,7 +735,8 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
                     cmp_res = compare_tuple(row, target_tuple)
                     if cmp_res == 0: # row is not subset of target_tuple, target_tuple is not subset of row
                         # print(551, row, target_tuple, s)
-                        reslist.append([s[0], s[1:], dict(row), local_pattern, lp3, 1])  
+                        # reslist.append([s[0], s[1:], dict(row), local_pattern, lp3, 1])  
+                        reslist.append(Explanation(1, s[0], s[1], s[2], s[3], dir, dict(row), ExplConfig.TOP_K, local_pattern, lp3))
                     # else:
                     #     reslist.append([-s[0], s[1:], dict(row), local_pattern, lp3, 1])  
             # for f_key in tuples_same_F_dict:
@@ -788,7 +794,7 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
     score_computing_time_list = []
     result_merging_time = 0
     local_patterns_list = []
-    # print(492, global_patterns)
+    # print(792, global_patterns)
 
     for j, uq in enumerate(user_question_list):
         dir = uq['dir']
@@ -807,7 +813,7 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
         uq['global_patterns'] = find_patterns_relevant(
                 global_patterns_dict, uq['target_tuple'], conn, cur, res_table_name, pat_table_name, cat_sim)
 
-
+        print(811, len(uq['global_patterns']))
         candidate_list = [[] for i in range(len(uq['global_patterns']))]
         top_k_lists = [[] for i in range(len(uq['global_patterns']))]
         validate_res_list = []
@@ -874,10 +880,17 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
                     s = score_of_explanation(t_t, t, cat_sim, num_dis_norm, dir, t_t[agg_col], local_patterns[i], local_patterns[i])
                     if str(t_t) not in marked:
                         marked[str(t_t)] = True
-                        topK_heap.Push([s[0], s[1:], 
-                            list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))), 
-                            local_patterns[i], None, 0])
-                    top_k_lists[i][-1].append([s[0], s[1:], dict(t_t), local_patterns[i], None, 0])
+                        # topK_heap.Push([s[0], s[1:], 
+                        #     list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))), 
+                        #     local_patterns[i], None, 0])
+                        topK_heap.Push(Explanation(0, s[0], s[1], s[2], s[3], uq['dir'],
+                            # list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))), 
+                            dict(t_t),
+                            ExplConfig.TOP_K, local_patterns[i], None))
+                    # top_k_lists[i][-1].append([s[0], s[1:], dict(t_t), local_patterns[i], None, 0])
+                    top_k_lists[i][-1].append(Explanation(0, s[0], s[1], s[2], s[3], uq['dir'],
+                            dict(t_t),
+                            ExplConfig.TOP_K, local_patterns[i], None))
                     if s[1] < dist_lb:
                         dist_lb = s[1]
                     if abs(s[3]) > dev_ub:
@@ -916,20 +929,24 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
             k_score = topK_heap.MinValue()
             # k_score = topK_heap.MaxValue()
             print(1124, k_score, 100 * float(dev_ub) / (dist_lb * float(norm_lb)))
-            if topK_heap.HeapSize() == TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
+            if topK_heap.HeapSize() == ExplConfig.TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
                 print(1126, dev_ub, dist_lb, norm_lb, local_patterns[i][0], local_patterns[i][1])
                 continue
             top_k_lists[i][-1] += DrillDown(global_patterns_dict, local_patterns[i], 
                 F_set, T_set.difference(F_set.union(V_set)), V_set, t_coarser_copy, t_coarser_copy, t, t,
-                conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm, epsilon,
+                conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm,
                 dir, uq['query_result'],
                 norm_lb, dist_lb, topK_heap, ExplConfig)
             for tk in top_k_lists[i][-1]:
-                if str(tk[2]) not in marked:
-                    marked[str(tk[2])] = True
-                    topK_heap.Push([tk[0], tk[1], 
-                        list(map(lambda y: y[1], sorted(tk[2].items(), key=lambda x: x[0]))), 
-                        tk[3], tk[4], tk[5]])
+                # print(937, tk.to_string())
+                # if str(tk[2]) not in marked:
+                if str(tk.tuple_value) not in marked:
+                    # marked[str(tk[2])] = True
+                    marked[str(tk.tuple_value)] = True
+                    # topK_heap.Push([tk[0], tk[1], 
+                    #     list(map(lambda y: y[1], sorted(tk[2].items(), key=lambda x: x[0]))), 
+                    #     tk[3], tk[4], tk[5]])
+                    topK_heap.Push(tk)
             
 
             end = time.time()
@@ -1029,7 +1046,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
     l_pat_list = []
     res_list = []
     t_set = set(t.keys())
-    # print(global_patterns_dict.keys())
+    # print(1036, global_patterns_dict[0].keys())
     for v_key in global_patterns_dict[0]:
         # print(pat, pat[0])
         V_set = set(v_key[1:-1].replace("'", '').split(', '))
@@ -1046,7 +1063,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
                 # print(587, f_key, F_set, V_set, t_set)
                 if not F_set.issubset(t_set):
                     continue
-                # print(pat)
+                print(1053, pat, t)
                 if pat[2] not in t:
                     continue
 
@@ -1058,6 +1075,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
                 
     res_list = sorted(res_list, key = lambda x: (len(x[0][0]) + len(x[0][1]), x[1]))
     g_pat_list = list(map(lambda x: x[0], res_list))
+    # print(1065, g_pat_list)
     return g_pat_list
 
 
@@ -1140,7 +1158,7 @@ def load_patterns(cur, pat_table_name, query_table_name):
         if 'name' in pat[1] or 'venue' in pat[1]:
             continue
         patterns.append(list(pat))
-        print(pat)
+        # print(pat)
         # print(patterns[-1])
         # patterns[-1][0] = patterns[-1][0][1:-1].replace(' ', '').split(',')
         # patterns[-1][1] = patterns[-1][1][1:-1].replace(' ', '').split(',')
@@ -1293,62 +1311,65 @@ class ExplanationGenerator:
                 str(i+1), 'high' if Q[i]['dir'] > 0 else 'low', str(Q[i]['target_tuple']))
             )
 
-            # print(1217, len(top_k_list))
+            # print(1300, len(top_k_list))
             for j, e in enumerate(top_k_list):
                 ofile.write('------------------------\n')
-                print_str = ''
-                # e_tuple_str = ','.join(e_tuple.to_string(header=False,index=False,index_names=False).split('  ')[1:])
-                # print(e)
-                if isinstance(e, dict):
-                    continue
-                e_tuple_str = ','.join(map(str, e[2]))
                 ofile.write('Top ' + str(j+1) + ' explanation:\n')
-                # ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(global_patterns[e[1]][0]) + ']' + '[' + ','.join(global_patterns[e[1]][1]) + ']')
-                # print(827, e[1], local_patterns_list[i][e[1]][0])
-                # print(828, local_patterns_list[i][e[1]][1])
-                # print(829, local_patterns_list[i][e[1]][2])
-                # ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(local_patterns_list[i][e[1]][0]) + ']' + 
-                #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][1]))) + ']' +
-                #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][2]))) + ']')
+                ofile.write(e.to_string())
+                ofile.write('------------------------\n')
+            #     print_str = ''
+            #     # e_tuple_str = ','.join(e_tuple.to_string(header=False,index=False,index_names=False).split('  ')[1:])
+            #     # print(e)
+            #     if isinstance(e, dict):
+            #         continue
+            #     e_tuple_str = ','.join(map(str, e[2]))
+            #     ofile.write('Top ' + str(j+1) + ' explanation:\n')
+            #     # ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(global_patterns[e[1]][0]) + ']' + '[' + ','.join(global_patterns[e[1]][1]) + ']')
+            #     # print(827, e[1], local_patterns_list[i][e[1]][0])
+            #     # print(828, local_patterns_list[i][e[1]][1])
+            #     # print(829, local_patterns_list[i][e[1]][2])
+            #     # ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(local_patterns_list[i][e[1]][0]) + ']' + 
+            #     #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][1]))) + ']' +
+            #     #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][2]))) + ']')
                 
-                if e[5] == 1:
-                    ofile.write('From local pattern' + ': [' + ','.join(e[3][0]) + ']' + 
-                        '[' + ','.join(list(map(str, e[3][1]))) + ']' +
-                        '[' + ','.join(list(map(str, e[3][2]))) + ']' +
-                        '[' + e[3][4] + ']' + 
-                        (('[' + str(e[3][6].split(',')[0][1:]) + ']') if e[3][4] == 'const' else ('[' + str(e[3][7]) + ']'))
-                    )
-                    ofile.write('\ndrill down to\n' + ': [' + ','.join(e[4][0]) + ']' + 
-                        '[' + ','.join(list(map(str, e[4][1]))) + ']' +
-                        '[' + ','.join(list(map(str, e[4][2]))) + ']' + 
-                        '[' + e[4][4] + ']' + 
-                        (('[' + str(e[4][6].split(',')[0][1:]) + ']') if e[4][4] == 'const' else ('[' + str(e[4][7]) + ']'))
-                    )
-                else:
-                    ofile.write('Directly from local pattern ' + ': [' + ','.join(e[3][0]) + ']' + 
-                        '[' + ','.join(list(map(str, e[3][1]))) + ']' +
-                        '[' + ','.join(list(map(str, e[3][2]))) + ']' +
-                        '[' + e[3][4] + ']' + 
-                        (('[' + str(e[3][6].split(',')[0][1:]) + ']') if e[3][4] == 'const' else ('[' + str(e[3][7]) + ']'))
-                    )
-                ofile.write('\n')
-                ofile.write('Score: ' + str(e[0]))
-                ofile.write('\n')
-                ofile.write('Distance: ' + str(e[1][0]))
-                ofile.write('\n')
-                # ofile.write('Simialriry: ' + str(e[1][1]))
-                # ofile.write('\n')
-                ofile.write('Outlierness: ' + str(e[1][2]))
-                ofile.write('\n')
-                ofile.write('Denominator: ' + str(e[1][3]))
-                ofile.write('\n')
-                ofile.write('(' + e_tuple_str + ')')
-                ofile.write('\n')
-            # else:
-                #     ofile.write('------------------------\n')
-                #     ofile.write('Explanation:\n')
-                #     ofile.write(str(list_by_pat) + '\n')
-            ofile.write('------------------------\n\n')
+            #     if e[5] == 1:
+            #         ofile.write('From local pattern' + ': [' + ','.join(e[3][0]) + ']' + 
+            #             '[' + ','.join(list(map(str, e[3][1]))) + ']' +
+            #             '[' + ','.join(list(map(str, e[3][2]))) + ']' +
+            #             '[' + e[3][4] + ']' + 
+            #             (('[' + str(e[3][6].split(',')[0][1:]) + ']') if e[3][4] == 'const' else ('[' + str(e[3][7]) + ']'))
+            #         )
+            #         ofile.write('\ndrill down to\n' + ': [' + ','.join(e[4][0]) + ']' + 
+            #             '[' + ','.join(list(map(str, e[4][1]))) + ']' +
+            #             '[' + ','.join(list(map(str, e[4][2]))) + ']' + 
+            #             '[' + e[4][4] + ']' + 
+            #             (('[' + str(e[4][6].split(',')[0][1:]) + ']') if e[4][4] == 'const' else ('[' + str(e[4][7]) + ']'))
+            #         )
+            #     else:
+            #         ofile.write('Directly from local pattern ' + ': [' + ','.join(e[3][0]) + ']' + 
+            #             '[' + ','.join(list(map(str, e[3][1]))) + ']' +
+            #             '[' + ','.join(list(map(str, e[3][2]))) + ']' +
+            #             '[' + e[3][4] + ']' + 
+            #             (('[' + str(e[3][6].split(',')[0][1:]) + ']') if e[3][4] == 'const' else ('[' + str(e[3][7]) + ']'))
+            #         )
+            #     ofile.write('\n')
+            #     ofile.write('Score: ' + str(e[0]))
+            #     ofile.write('\n')
+            #     ofile.write('Distance: ' + str(e[1][0]))
+            #     ofile.write('\n')
+            #     # ofile.write('Simialriry: ' + str(e[1][1]))
+            #     # ofile.write('\n')
+            #     ofile.write('Outlierness: ' + str(e[1][2]))
+            #     ofile.write('\n')
+            #     ofile.write('Denominator: ' + str(e[1][3]))
+            #     ofile.write('\n')
+            #     ofile.write('(' + e_tuple_str + ')')
+            #     ofile.write('\n')
+            # # else:
+            #     #     ofile.write('------------------------\n')
+            #     #     ofile.write('Explanation:\n')
+            #     #     ofile.write(str(list_by_pat) + '\n')
+            # ofile.write('------------------------\n\n')
         ofile.close()
 
         for g_key in ecf.MATERIALIZED_DICT:
