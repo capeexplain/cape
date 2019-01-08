@@ -13,11 +13,12 @@ import re
 
 agg_function = re.compile('.*(sum|max|avg|min|count).*')
 group_by = re.compile("group by(.*)",re.IGNORECASE)
+float_num = re.compile('\d+\.\d+')
 
 conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 
 # "dbname = math564 user = chenjie password = lcj53242 \
-# 						host = newbballserver.ctkmtyhjwqb1.us-east-2.rds.amazonaws.com"
+#                       host = newbballserver.ctkmtyhjwqb1.us-east-2.rds.amazonaws.com"
 cur = conn.cursor() # activate cursor
 
 
@@ -27,7 +28,7 @@ class CAPE_UI:
 
 	def __init__(self,parent):
 
-#----------------------------main frame----------------------------------------#		
+#----------------------------main frame----------------------------------------#        
 		self.parent=parent
 		self.main_frame_style=ttk.Style()
 		self.main_frame_style.configure('Main_Frame', background='#334353')
@@ -131,28 +132,30 @@ class CAPE_UI:
 #-------------------------------pattern frame---------------------------------------#
 		self.pattern.rowconfigure(0,weight=1)
 		self.pattern.rowconfigure(1,weight=10)
+		self.pattern.rowconfigure(2,weight=1)
 		self.pattern.columnconfigure(0,weight=10)
-		self.pattern.columnconfigure(1,weight=1)
 
 		self.show_patterns = Frame(self.pattern)
 		self.show_patterns.grid(column=0,row=1,sticky='nsew')
 
-		self.pattern_label = Label(self.pattern,text="Query Input")
+		self.pattern_label = Label(self.pattern,text="Patterns")
 		self.pattern_label.grid(column=0,row=0)
+
+		self.pattern_filter_button = Button(self.pattern,text='Filter Pattern',command=self.filter_pattern)
+		self.pattern_filter_button.grid(column=0,row=2)
 
 		self.pattern_table = Table(self.show_patterns)
 		self.pattern_table.show()
-		 
+
 		raw_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.crime_partial_local;"
-		self.pattern_df = pd.read_sql(raw_pattern_query, conn)
 
-		self.pattern_df['set'] = self.pattern_df['set'].apply(self.delete_parenthesis)
+		self.raw_pattern_df = pd.read_sql(raw_pattern_query,conn)
 
-		print(self.pattern_df.head())
+		self.raw_pattern_df = self.raw_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
 
-		
+		self.raw_pattern_df['stats'] = self.raw_pattern_df['stats'].str.split(',',expand=True)[0]
 
-
+		self.raw_pattern_df['stats'] = self.raw_pattern_df['stats'].str.strip('[')
 
 
 
@@ -195,9 +198,13 @@ class CAPE_UI:
 		query_list = self.query.split('\n')
 		# n=0
 		# for line in query_list:
-		# 	print(n)
-		# 	print(line)
-		# 	n+=1
+		#   print(n)
+		#   print(line)
+		#   n+=1
+
+
+		self.pattern_df = self.raw_pattern_df
+		self.pattern_df['set'] = self.pattern_df['set'].apply(self.delete_parenthesis)
 
 		query_agg = None
 		query_group_list = []
@@ -222,18 +229,77 @@ class CAPE_UI:
 				if n not in query_group_set:
 					self.pattern_df = self.pattern_df.drop(index)
 		
-		output_pattern_df = self.pattern_df.drop(columns=['set'],axis=1)
+		self.output_pattern_df = self.pattern_df.drop(columns=['set'],axis=1)
 
-		pattern_model = TableModel(dataframe=output_pattern_df)
+		pattern_model = TableModel(dataframe=self.output_pattern_df)
 		self.pattern_table.updateModel(pattern_model)
 		self.pattern_table.redraw()
+
+	def filter_pattern(self):
+
+		# original_pattern_df = pd.DataFrame.copy(self.output_pattern_df)
+		original_output_df = pd.DataFrame.copy(self.query_result_df)
+
+		# print(self.output_pattern_df.head())
+
+		print(self.pattern_table.multiplerowlist)
+		# print(self.pattern_table.multiplecollist)
+
+		pattern_df_lists = []
+
+		for n in self.pattern_table.multiplerowlist:
+			
+			pattern_fixed = self.output_pattern_df.iloc[int(n)]['fixed']
+			print(pattern_fixed)
+
+			pattern_fixed_value = self.output_pattern_df.iloc[int(n)]['fixed_value']
+			print(pattern_fixed_value)
+
+			pattern_tuples = list(zip(pattern_fixed, pattern_fixed_value))
+
+			df = pd.DataFrame(pattern_tuples, columns=['fixed','fixed_value'])
+			# print(df)
+			pattern_df_lists.append(df)
+		
+		
+		for index,row in original_output_df.iterrows():
+			tuple_match_pattern = False 
+			last_also_match = True
+
+			for pattern_df in pattern_df_lists:
+				for index1,row1 in pattern_df.iterrows():
+					if(row[row1['fixed']]==row1['fixed_value'] and last_also_match==True):
+						tuple_match_pattern=True
+						last_also_match=True
+					else:
+						tuple_match_pattern=False
+						last_also_match=False
+
+				if(tuple_match_pattern==True):
+					last_also_match=True
+					break
+				else:
+					last_also_match=True
+					continue
+
+			if(tuple_match_pattern==False):
+				original_output_df = original_output_df.drop(index)
+
+		model = TableModel(dataframe=original_output_df)
+		self.query_result_table.updateModel(model)
+		self.query_result_table.redraw()
+
+
+
+
+
 
 
 def main():
 	root = Tk()
 	root.title('CAPE')
 	ui = CAPE_UI(root)
-	root.mainloop()		
+	root.mainloop()     
 
 if __name__ == '__main__':
 	main()
