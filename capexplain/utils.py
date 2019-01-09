@@ -20,7 +20,12 @@ def formatCurFileAndLine(finfo):
     return 'FILE: {0.filename} LINE: {0.lineno}:'.format(finfo) 
 
 def projection(t, cols):
-    return list(map(lambda x: t[x], cols))
+    res = list()
+    for c in cols:
+        if c in t:
+            res.append(t[c])
+    return res
+    # return list(map(lambda x: t[x], cols))
 
 def get_F_value(F, t):
     return projection(t, F)
@@ -75,7 +80,7 @@ def normalize_numerical_distance(df=None, cur=None, table_name=''):
                 continue
             if df[col].dtype.kind != 'S' and df[col].dtype.kind != 'O':
                 res[col] = {'max':{}, 'min':{}, 'range':{}}
-                
+
                 res[col]['max'] = float(max_vals[col])
                 res[col]['min'] = float(min_vals[col])
                 res[col]['range'] = res[col]['max'] - res[col]['min']
@@ -85,11 +90,14 @@ def normalize_numerical_distance(df=None, cur=None, table_name=''):
         column_name_query = "SELECT column_name FROM information_schema.columns where table_name='{}';".format(table_name)
         cur.execute(column_name_query)
         column_name = cur.fetchall()
-        max_clause = ', '.join(map(lambda x: 'MAX(' + x + ')', map(lambda x: x[0], column_name)))
+
+        max_clause = ', '.join(map(lambda x: 'MAX(' + x + ')',
+            map(lambda x: x[0] if x[0] != 'arrest' and x[0] != 'domestic' else '1', column_name)))
         max_query = "SELECT {} FROM {};".format(max_clause, table_name)
         cur.execute(max_query)
         max_vals = cur.fetchall()[0]
-        min_clause = ', '.join(map(lambda x: 'MIN(' + x + ')', map(lambda x: x[0], column_name)))
+        min_clause = ', '.join(map(lambda x: 'MIN(' + x + ')',
+            map(lambda x: x[0] if x[0] != 'arrest' and x[0] != 'domestic' else '1', column_name)))
         min_query = "SELECT {} FROM {};".format(min_clause, table_name)
         cur.execute(min_query)
         min_vals = cur.fetchall()[0]

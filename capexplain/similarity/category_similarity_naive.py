@@ -43,6 +43,7 @@ class CategorySimilarityNaive(object):
         for (col, dt) in res:
             if (dt == 'boolean' or dt.find('character') != -1) and (col != 'year' or len(embedding_table_list) == 0):
                 self.cate_cols[col] = True
+
         if table_name.startswith('synthetic'):
             self.cate_cols['beat']  = True
             self.cate_cols['primary_type']  = True
