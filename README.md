@@ -30,7 +30,7 @@ Options are specific to each subcommand. Use `capexplain help` to see a list of 
 
 ## Overview
 
-Cape currently only supports PostgreSQL as a backend database. To use Cape to explain an aggregation outlier, you first have to let cape find patterns for the table over which are you are aggregating. This an offline step that only has to be executed once for each table (unless you want to rerun pattern mining with different parameter settings). 
+Cape currently only supports PostgreSQL as a backend database. To use Cape to explain an aggregation outlier, you first have to let cape find patterns for the table over which are you are aggregating. This an offline step that only has to be executed once for each table (unless you want to rerun pattern mining with different parameter settings).
 
 ## Mining Patterns
 
@@ -38,16 +38,9 @@ Use `capexplain mine [OPTIONS]` to mine patterns. Cape will store the discovered
 
 ## Explaining Outliers
 
-To explain an aggregation outlier use `capexplain explain [OPTIONS]`. 
-
-
-# Technical Background
-
-## Aggregate Regression Patterns
-
-## Explanations
+To explain an aggregation outlier use `capexplain explain [OPTIONS]`.
 
 
 # Links
 
-Cape is developed by researchers at Illinois Institute of Technology and Duke University. For more information and publications see the Cape project page [TODO](TODO)
+Cape is developed by researchers at Illinois Institute of Technology and Duke University. For more information and publications see the Cape project page [http://www.cs.iit.edu/~dbgroup/projects/cape.html](http://www.cs.iit.edu/~dbgroup/projects/cape.html).
