@@ -4,6 +4,7 @@ Module wrapping database access.
 import sys
 import logging
 import sqlalchemy as sa
+import psycopg2
 
 log = logging.getLogger(__name__)
 
@@ -76,6 +77,24 @@ class DBConnection:
             sys.exit(1)
         return conn
 
+    def getPostgresConnectStr(self):
+        connstr = 'host={} port={} dbname={} user={}'.format(self.host,
+                                                          self.port,
+                                                          self.db,
+                                                          self.user)
+        connstr += ('' if self.password is None else ' password={}'.format(self.password))
+        log.debug("psycopg2 connection string is <%s>", connstr)
+        return connstr
+    
+    def pgconnect(self):
+        try:
+             self.conn = psycopg2.connect(self.getPostgresConnectStr())
+             return self.conn
+        except psycopg2.OperationalError as ex:
+             log.error('Fail to connect to the database ({})\n\n{}'.format(self.getUrl(), ex.args))
+             sys.exit(1)
+
+    
     def close(self):
         if conn is not None:
             conn.close()

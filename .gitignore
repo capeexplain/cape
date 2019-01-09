@@ -4,3 +4,4 @@ env/
 __pycache__
 capexplain.egg-info/
 *.pyc
+.mypy_cache

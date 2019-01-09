@@ -8,6 +8,7 @@ import sys
 from enum import Enum, unique
 import getopt
 import logging
+import psycopg2
 from inspect import currentframe, getframeinfo
 from capexplain.pattern_miner.PatternMiner import PatternFinder, MinerConfig
 from capexplain.database.dbaccess import DBConnection
@@ -31,20 +32,7 @@ def mineCommand(c,log):
     dbconn=DBConnection()
 
     log.debug("executing mine command")
-
-    o = c.options
-    for opt in o.cmdConfig:
-        option = o.cmdConfig[opt]
-        if option.value != None:
-            key =  opt if (option.cfgFieldName is None) else option.cfgFieldName
-            val = option.value
-            log.debug("option: {}:{}".format(key,val))
-            if key in dbconn.getValidKeys():
-                dbconn[key] = val
-            elif key in config.getValidKeys():
-                config[key] = val
-            else:
-                log.warning("unhandled config option <{}>".format(option.longopt))
+    c.options.setupConfigAndConnection(dbconn, config)
     
     config.validateConfiguration()
     config.conn = dbconn.connect()
@@ -84,19 +72,7 @@ def statsCommand(command,log):
 
     log.debug("executing mine command")
 
-    o = c.options
-    for opt in o.cmdConfig:
-        option = o.cmdConfig[opt]
-        if option.value != None:
-            key =  opt if (option.cfgFieldName is None) else option.cfgFieldName
-            val = option.value
-            log.debug("option: {}:{}".format(key,val))
-            if key in dbconn.getValidKeys():
-                dbconn[key] = val
-            elif key in config.getValidKeys():
-                config[key] = val
-            else:
-                log.warning("unhandled config option <{}>".format(option.longopt))
+    command.options.setupConfigAndConnection(dbconn, config)
     
     config.validateConfiguration()
     config.conn = dbconn.connect()
@@ -111,16 +87,23 @@ def explainCommand(command,log):
     """
     # create configuration based on options
     config=ExplConfig()
+    dbconn=DBConnection()
 
     # setup configuration
-    command.options.setupConfig(config)
+    command.options.setupConfigAndConnection(dbconn,config)
 
+    # create connection
+    config.conn = dbconn.pgconnect()
+    config.cur = config.conn.cursor()
+    log.debug("connected to database")
+        
     # do explaining
     log.debug("executing explain command")
-    e = ExplanationGenerator(config)
+    e = ExplanationGenerator(config, None)
     log.debug("created ExplanationGenerator")
     e.doExplain()
     log.debug("explanation generation finished")
+    config.conn.close()
     
 
 # ********************************************************************************
@@ -129,11 +112,14 @@ COMMON_OPTIONS =  [ ConfigOpt(longopt='log', shortopt='l', desc='select log leve
                     ConfigOpt(longopt='help', desc='show this help message'),
 ]
 
-MINE_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='host', shortopt='h', desc='database connection host IP address', hasarg=True),
+DB_OPTIONS = [ ConfigOpt(longopt='host', shortopt='h', desc='database connection host IP address', hasarg=True),
             ConfigOpt(longopt='user', shortopt='u', desc='database connection user', hasarg=True),
             ConfigOpt(longopt='password', shortopt='p', desc='database connection password', hasarg=True),
             ConfigOpt(longopt='db', shortopt='d', desc='database name', hasarg=True),
-            ConfigOpt(longopt='port', shortopt='P', desc='database connection port', hasarg=True,otype=OptionType.Int),
+            ConfigOpt(longopt='port', shortopt='P', desc='database connection port', otype=OptionType.Int, hasarg=True)   
+]
+
+MINE_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
             ConfigOpt(longopt='target-table', shortopt='t', desc='mine patterns for this table', hasarg=True, cfgFieldName='table'),
             ConfigOpt(longopt='gof-const', shortopt=None, desc='goodness-of-fit threshold for constant regression', hasarg=True, otype=OptionType.Float, cfgFieldName='theta_c'),
             ConfigOpt(longopt='gof-linear', shortopt=None, desc='goodness-of-fit threshold for linear regression', hasarg=True, otype=OptionType.Float, cfgFieldName='theta_l'),
@@ -154,10 +140,10 @@ MINE_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='host', shortopt='h', desc='
 #                     ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
 # ]
 
-EXPLAIN_OPTIONS = COMMON_OPTIONS + [ 
-            ConfigOpt(longopt='ptable', shortopt='p', desc='table storing aggregate regression patterns', hasarg=True, cfgFieldName='pattern_table'),
-            ConfigOpt(longopt='qtable', shortopt='q', desc='table storing aggregation query result', hasarg=True, cfgFieldName='query_result_table'),
-            ConfigOpt(longopt='ufile', shortopt='u', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
+EXPLAIN_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [ 
+            ConfigOpt(longopt='ptable', desc='table storing aggregate regression patterns', hasarg=True, cfgFieldName='pattern_table'),
+            ConfigOpt(longopt='qtable', desc='table storing aggregation query result', hasarg=True, cfgFieldName='query_result_table'),
+            ConfigOpt(longopt='ufile', desc='file storing user question', hasarg=True, cfgFieldName='user_question_file'),
             ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to', hasarg=True, cfgFieldName='outfile'),
             ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function', hasarg=True, cfgFieldName='aggregate_column'), 
 ]

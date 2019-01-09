@@ -75,3 +75,18 @@ class CmdOptions:
                 else:
                     log.warning("unhandled config option <{}>".format(option.longopt))
 
+    def setupConfigAndConnection(self, conn, config: DictLike):
+        o = self
+        for opt in o.cmdConfig:
+            option = o.cmdConfig[opt]
+            if option.value != None:
+                key =  opt if (option.cfgFieldName is None) else option.cfgFieldName
+                val = option.value
+                log.debug("option: {}:{}".format(key,val))
+                if key in conn.getValidKeys():
+                    conn[key] = val
+                elif key in config.getValidKeys():
+                    config[key] = val
+                else:
+                    log.warning("unhandled config option <{}>".format(option.longopt))
+        
