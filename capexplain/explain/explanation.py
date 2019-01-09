@@ -60,11 +60,11 @@ class ExplConfig(DictLike):
         self.aggregate_column = aggregate_column
         self.regression_package = regression_package
 
-        try:
-            self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
-            self.cur = self.conn.cursor()
-        except psycopg2.OperationalError:
-            print('Fail to connect to the database!')
+        # try:
+        #     self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
+        #     self.cur = self.conn.cursor()
+        # except psycopg2.OperationalError:
+        #     print('Fail to connect to the database!')
 
 
     def __str__(self):
