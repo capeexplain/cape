@@ -10,6 +10,7 @@ from pandastable import TableModel
 from pandastable import PlotViewer
 from pandastable import Table
 import re
+from capexplain.explain.explanation import ExplanationGenerator
 
 agg_function = re.compile('.*(sum|max|avg|min|count).*')
 group_by = re.compile("group by(.*)",re.IGNORECASE)
@@ -17,8 +18,6 @@ float_num = re.compile('\d+\.\d+')
 
 conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 
-# "dbname = math564 user = chenjie password = lcj53242 \
-#                       host = newbballserver.ctkmtyhjwqb1.us-east-2.rds.amazonaws.com"
 cur = conn.cursor() # activate cursor
 
 
@@ -61,8 +60,8 @@ class CAPE_UI:
 		self.query_result = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=600)
 		self.query_result.grid(column=1, row=2, columnspan=1, rowspan=8, sticky='nsew')
 
-		self.pattern = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=760)
-		self.pattern.grid(column=2, row=0, columnspan=1, rowspan=5, sticky='nsew')
+		self.local_pattern = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=760)
+		self.local_pattern.grid(column=2, row=0, columnspan=1, rowspan=5, sticky='nsew')
 
 		self.explaination = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=760)
 		self.explaination.grid(column=2, row=5, columnspan=1, rowspan=5, sticky='nsew')
@@ -70,8 +69,8 @@ class CAPE_UI:
 
 #---------------------------table frame-----------------------------------------#
 		self.table_view = ttk.Treeview(self.table_frame,height=46)
-		self.table_info = Label(self.table_frame, text="Database Information")
-		self.table_info.grid(column=0, row=0)
+		self.table_info = ttk.Label(self.table_frame, text="Database Information",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.table_info.grid(column=0, row=0,sticky='nsew')
 		self.table_view.grid(column=0, row=1)
 		self.all_tables_query = """
 							  SELECT table_name
@@ -100,67 +99,123 @@ class CAPE_UI:
 		self.query_frame.rowconfigure(0,weight=1)
 		self.query_frame.rowconfigure(1,weight=6)
 		self.query_frame.rowconfigure(2,weight=1)
+		self.query_frame.rowconfigure(3,weight=1)
+		self.query_frame.rowconfigure(4,weight=1)
 		self.query_frame.columnconfigure(0,weight=8)
 		self.query_frame.columnconfigure(1,weight=1)
-		self.query_frame.columnconfigure(2,weight=1)
-		self.query_frame.columnconfigure(3,weight=1)
 
-		self.query_info = Label(self.query_frame,text="Query Input")
+		self.query_info = Label(self.query_frame,text="Query Input",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
 		self.query=''
-		self.query_info.grid(column=0,row=0)
+		self.query_info.grid(column=0,row=0,sticky='nsew')
 		self.query_entry = Text(self.query_frame, height=8, width=80)
-		self.query_entry.grid(column=0,row=1)
-		self.query_button = Button(self.query_frame,text="Run",command=self.run_query)
-		self.query_button.grid(column=2,row=2)
-		self.show_pattern_button = Button(self.query_frame,text="Show Pattern",command=self.show_pattern)
-		self.show_pattern_button.grid(column=3,row=2)
+		self.query_entry.grid(column=0,row=1,rowspan=4)
+		self.query_button = Button(self.query_frame,text="Run Query",command=self.run_query)
+		self.query_button.grid(column=1,row=2)
+		self.show_global_pattern_button = Button(self.query_frame,text="Show Global Pattern",command=self.show_global_pattern)
+		self.show_global_pattern_button.grid(column=1,row=3)
+		self.show_local_pattern_button = Button(self.query_frame,text="Show Local Pattern",command=self.show_local_pattern)
+		self.show_local_pattern_button.grid(column=1,row=4)
+		
 
 #----------------------------Query result frame --------------------------------#
-		self.query_result.columnconfigure(0,weight=15)
+		self.query_result.columnconfigure(0,weight=8)
 		self.query_result.columnconfigure(1,weight=1)
 		self.query_result.rowconfigure(0,weight=1)
+		self.query_result.rowconfigure(1,weight=10)
+		self.query_result.rowconfigure(2,weight=10)
+
+		self.result_label = Label(self.query_result,text='Query Result',font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.result_label.grid(row=0,column=0,sticky='nsew')
+
+		self.high_low_frame = Frame(self.query_result)
+		self.high_low_frame.grid(column=1,row=1,rowspan=2,sticky='nsew')
+		
+		self.high_low_frame.columnconfigure(0,weight=1)
+		self.high_low_frame.rowconfigure(0,weight=1)
+		self.high_low_frame.rowconfigure(1,weight=1)
+		self.high_low_frame.rowconfigure(2,weight=1)
+		self.high_low_frame.rowconfigure(3,weight=1)
+		self.high_low_frame.rowconfigure(4,weight=1)
+		self.high_low_frame.rowconfigure(5,weight=1)
+		self.high_low_frame.rowconfigure(6,weight=1)
+		self.high_low_frame.rowconfigure(7,weight=1)
+
+
+		self.high_button = Button(self.high_low_frame,text='High')
+		self.high_button.grid(column=0,row=1)
+
+		self.low_button = Button(self.high_low_frame,text='Low')
+		self.low_button.grid(column=0,row=2)
 
 		self.show_results = Frame(self.query_result)
-		self.show_results.grid(column=0,row=0,sticky='nsew')
+		self.show_results.grid(column=0,row=1,sticky='nsew')
+
+		self.show_global = Frame(self.query_result)
+		self.show_global.grid(column=0,row=2,sticky='nsew')
 
 		self.query_result_table = Table(self.show_results)
 		self.query_result_table.show()
 
+		self.global_result_table = Table(self.show_global)
+		self.global_result_table.show()
 
 
-#-------------------------------pattern frame---------------------------------------#
-		self.pattern.rowconfigure(0,weight=1)
-		self.pattern.rowconfigure(1,weight=10)
-		self.pattern.rowconfigure(2,weight=1)
-		self.pattern.columnconfigure(0,weight=10)
+#---------------------------Global Pattern Frame -----------------------------------#
+		
+		self.show_global.rowconfigure(0,weight=1)
+		self.show_global.rowconfigure(1,weight=10)
+		self.show_global.columnconfigure(0,weight=10)
 
-		self.show_patterns = Frame(self.pattern)
-		self.show_patterns.grid(column=0,row=1,sticky='nsew')
+		self.show_global_patterns = Frame(self.show_global)
+		self.show_global_patterns.grid(column=0,row=1,sticky='nsew')
 
-		self.pattern_label = Label(self.pattern,text="Patterns")
-		self.pattern_label.grid(column=0,row=0)
+		self.global_pattern_label = Label(self.show_global,text="Global Patterns")
+		self.global_pattern_label.grid(column=0,row=0)
 
-		self.pattern_filter_button = Button(self.pattern,text='Filter Pattern',command=self.filter_pattern)
-		self.pattern_filter_button.grid(column=0,row=2)
+		self.global_pattern_filter_button = Button(self.show_global,text='Filter Local Pattern',command=self.use_global_filter_local)
+		self.global_pattern_filter_button.grid(column=0,row=2)
 
-		self.pattern_table = Table(self.show_patterns)
-		self.pattern_table.show()
+		self.global_pattern_table = Table(self.show_global)
+		self.global_pattern_table.show()
 
-		raw_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.crime_partial_local;"
+		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.crime_clean_100000_global;"
 
-		self.raw_pattern_df = pd.read_sql(raw_pattern_query,conn)
+		self.raw_global_pattern_df = pd.read_sql(raw_global_pattern_query,conn)
 
-		self.raw_pattern_df = self.raw_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
-
-		self.raw_pattern_df['stats'] = self.raw_pattern_df['stats'].str.split(',',expand=True)[0]
-
-		self.raw_pattern_df['stats'] = self.raw_pattern_df['stats'].str.strip('[')
-
+		self.raw_global_pattern_df = self.raw_global_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
 
 
 
 
+#------------------------------- local pattern frame---------------------------------------#
+		self.local_pattern.rowconfigure(0,weight=1)
+		self.local_pattern.rowconfigure(1,weight=20)
+		self.local_pattern.rowconfigure(2,weight=1)
+		self.local_pattern.columnconfigure(0,weight=10)
 
+		self.local_show_patterns = Frame(self.local_pattern)
+		self.local_show_patterns.grid(column=0,row=1,sticky='nsew')
+
+		self.local_pattern_label = Label(self.local_pattern,text="Local Patterns",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.local_pattern_label.grid(column=0,row=0,sticky='nsew')
+
+		self.local_pattern_filter_button = Button(self.local_pattern,text='Filter Output',command=self.use_local_filter_output)
+		self.local_pattern_filter_button.grid(column=0,row=2)
+
+		self.local_pattern_table_frame = Frame(self.local_pattern)
+		self.local_pattern_table_frame.grid(row=1,column=0,sticky='nsew')
+		self.local_pattern_table = Table(self.local_pattern_table_frame)
+		self.local_pattern_table.show()
+
+		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.crime_clean_100000_local;"
+
+		self.raw_local_pattern_df = pd.read_sql(raw_local_pattern_query,conn)
+
+		self.raw_local_pattern_df = self.raw_local_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
+
+		self.raw_local_pattern_df['stats'] = self.raw_local_pattern_df['stats'].str.split(',',expand=True)[0]
+
+		self.raw_local_pattern_df['stats'] = self.raw_local_pattern_df['stats'].str.strip('[')
 
 
 
@@ -191,8 +246,7 @@ class CAPE_UI:
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
 
-
-	def show_pattern(self):
+	def show_global_pattern(self):
 
 		query_list = self.query.split('\n')
 		# n=0
@@ -202,8 +256,52 @@ class CAPE_UI:
 		#   n+=1
 
 
-		self.pattern_df = self.raw_pattern_df
-		self.pattern_df['set'] = self.pattern_df['set'].apply(self.delete_parenthesis)
+		self.global_pattern_df = self.raw_global_pattern_df
+		self.global_pattern_df['set'] = self.global_pattern_df['set'].apply(self.delete_parenthesis)
+
+		query_agg = None
+		query_group_list = []
+		query_group_set = []
+		for line in query_list:
+			if(agg_function.search(line) is not None):
+				query_agg = agg_function.search(line).group(1)
+			if(group_by.search(line) is not None):
+				query_group_list = group_by.search(line).group(1).split(',')
+		for n in query_group_list: # delete whitespaces
+			n = n.strip()
+			query_group_set.append(n)
+		query_group_set.sort()
+		query_group_str = ','.join(query_group_set)
+		print(query_group_str)
+		print('the type is :')
+		print(type(self.global_pattern_df.set.str.split(',')))
+
+		self.global_pattern_df = self.global_pattern_df[self.global_pattern_df.apply(lambda row: all(i in query_group_set for i in row.set.split(',')),axis=1)]
+
+		# for index, row in self.global_pattern_df.iterrows():
+		# 	row_list = row['set'].split(',')
+		# 	for n in row_list:
+		# 		if n not in query_group_set:
+		# 			self.global_pattern_df = self.global_pattern_df.drop(index)
+		
+		self.output_pattern_df = self.global_pattern_df.drop(columns=['set'],axis=1)
+
+		pattern_model = TableModel(dataframe=self.output_pattern_df)
+		self.global_pattern_table.updateModel(pattern_model)
+		self.global_pattern_table.redraw()
+
+	def show_local_pattern(self):
+
+		query_list = self.query.split('\n')
+		# n=0
+		# for line in query_list:
+		#   print(n)
+		#   print(line)
+		#   n+=1
+
+
+		self.local_pattern_df = self.raw_local_pattern_df
+		self.local_pattern_df['set'] = self.local_pattern_df['set'].apply(self.delete_parenthesis)
 
 		query_agg = None
 		query_group_list = []
@@ -220,33 +318,71 @@ class CAPE_UI:
 		query_group_str = ','.join(query_group_set)
 		print(query_group_str)
 
-		self.pattern_df = self.pattern_df[self.pattern_df.set.apply(lambda x: x in query_group_str)]
+		self.local_pattern_df = self.local_pattern_df[self.local_pattern_df.apply(lambda row: all(i in query_group_set for i in row.set.split(',')),axis=1)]
 		
-		for index, row in self.pattern_df.iterrows():
-			row_list = row['set'].split(',')
-			for n in row_list:
-				if n not in query_group_set:
-					self.pattern_df = self.pattern_df.drop(index)
-		
-		self.output_pattern_df = self.pattern_df.drop(columns=['set'],axis=1)
+		self.output_pattern_df = self.local_pattern_df.drop(columns=['set'],axis=1)
 
 		pattern_model = TableModel(dataframe=self.output_pattern_df)
-		self.pattern_table.updateModel(pattern_model)
-		self.pattern_table.redraw()
+		self.local_pattern_table.updateModel(pattern_model)
+		self.local_pattern_table.redraw()
 
-	def filter_pattern(self):
+	def use_global_filter_local(self):
+
+		original_output_df = pd.DataFrame.copy(self.query_result_df)
+
+		original_local_df = pd.DataFrame.copy(self.raw_local_pattern_df)
+
+		print(self.global_pattern_table.multiplerowlist)
+
+
+		pattern_df_lists = []
+
+		for n in self.global_pattern_table.multiplerowlist:
+			
+			global_pattern_fixed = self.raw_global_pattern_df.iloc[int(n)]['fixed']
+			print(global_pattern_fixed)
+
+			global_pattern_variable = self.raw_global_pattern_df.iloc[int(n)]['variable']
+			print(global_pattern_variable)
+
+			pattern_tuples = list(zip(global_pattern_fixed, global_pattern_variable))
+
+			df = pd.DataFrame(pattern_tuples, columns=['fixed','variable'])
+			# print(df)
+			pattern_df_lists.append(df)
+		
+		
+		for index,row in original_local_df.iterrows():
+			fixed_variable_match = False 
+
+			for pattern_df in pattern_df_lists:
+				if((str(row['fixed'])==str(pattern_df['fixed'])) & (str(row['variable'])==str(pattern_df['variable']))):
+					fixed_variable_match=True
+					break
+				else:
+					continue
+
+			if(fixed_variable_match==False):
+				original_local_df = original_local_df.drop(index)
+
+		model = TableModel(dataframe=original_local_df)
+		self.local_pattern_table.updateModel(model)
+		self.local_pattern_table.redraw()
+
+
+	def use_local_filter_output(self):
 
 		# original_pattern_df = pd.DataFrame.copy(self.output_pattern_df)
 		original_output_df = pd.DataFrame.copy(self.query_result_df)
 
 		# print(self.output_pattern_df.head())
 
-		print(self.pattern_table.multiplerowlist)
+		print(self.local_pattern_table.multiplerowlist)
 		# print(self.pattern_table.multiplecollist)
 
 		pattern_df_lists = []
 
-		for n in self.pattern_table.multiplerowlist:
+		for n in self.local_pattern_table.multiplerowlist:
 			
 			pattern_fixed = self.output_pattern_df.iloc[int(n)]['fixed']
 			print(pattern_fixed)
@@ -287,6 +423,7 @@ class CAPE_UI:
 		model = TableModel(dataframe=original_output_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
+
 
 
 
