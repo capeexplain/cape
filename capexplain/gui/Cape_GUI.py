@@ -109,11 +109,11 @@ class CAPE_UI:
 		self.query_info.grid(column=0,row=0,sticky='nsew')
 		self.query_entry = Text(self.query_frame, height=8, width=80)
 		self.query_entry.grid(column=0,row=1,rowspan=4)
-		self.query_button = Button(self.query_frame,text="Run Query",command=self.run_query)
+		self.query_button = Button(self.query_frame,text="Run Query",font=('Times New Roman bold',12),command=self.run_query)
 		self.query_button.grid(column=1,row=2)
-		self.show_global_pattern_button = Button(self.query_frame,text="Show Global Pattern",command=self.show_global_pattern)
+		self.show_global_pattern_button = Button(self.query_frame,text="Show Global Pattern",font=('Times New Roman bold',12),command=self.show_global_pattern)
 		self.show_global_pattern_button.grid(column=1,row=3)
-		self.show_local_pattern_button = Button(self.query_frame,text="Show Local Pattern",command=self.show_local_pattern)
+		self.show_local_pattern_button = Button(self.query_frame,text="Show Local Pattern",font=('Times New Roman bold',12),command=self.show_local_pattern)
 		self.show_local_pattern_button.grid(column=1,row=4)
 		
 
@@ -141,10 +141,10 @@ class CAPE_UI:
 		self.high_low_frame.rowconfigure(7,weight=1)
 
 
-		self.high_button = Button(self.high_low_frame,text='High')
+		self.high_button = Button(self.high_low_frame,text='High',font=('Times New Roman bold',12))
 		self.high_button.grid(column=0,row=1)
 
-		self.low_button = Button(self.high_low_frame,text='Low')
+		self.low_button = Button(self.high_low_frame,text='Low',font=('Times New Roman bold',12))
 		self.low_button.grid(column=0,row=2)
 
 		self.show_results = Frame(self.query_result)
@@ -156,26 +156,22 @@ class CAPE_UI:
 		self.query_result_table = Table(self.show_results)
 		self.query_result_table.show()
 
-		self.global_result_table = Table(self.show_global)
-		self.global_result_table.show()
-
-
 #---------------------------Global Pattern Frame -----------------------------------#
 		
 		self.show_global.rowconfigure(0,weight=1)
 		self.show_global.rowconfigure(1,weight=10)
 		self.show_global.columnconfigure(0,weight=10)
 
+		self.global_pattern_label = Label(self.show_global,text="Global Patterns")
+		self.global_pattern_label.grid(column=0,row=0,sticky='nsew')
+
 		self.show_global_patterns = Frame(self.show_global)
 		self.show_global_patterns.grid(column=0,row=1,sticky='nsew')
 
-		self.global_pattern_label = Label(self.show_global,text="Global Patterns")
-		self.global_pattern_label.grid(column=0,row=0)
+		self.global_pattern_filter_button = Button(self.high_low_frame,text='Filter \nLocal\n Pattern',font=('Times New Roman bold',12),command=self.use_global_filter_local)
+		self.global_pattern_filter_button.grid(column=0,row=6)
 
-		self.global_pattern_filter_button = Button(self.show_global,text='Filter Local Pattern',command=self.use_global_filter_local)
-		self.global_pattern_filter_button.grid(column=0,row=2)
-
-		self.global_pattern_table = Table(self.show_global)
+		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
 
 		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.crime_clean_100000_global;"
@@ -199,7 +195,7 @@ class CAPE_UI:
 		self.local_pattern_label = Label(self.local_pattern,text="Local Patterns",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
 		self.local_pattern_label.grid(column=0,row=0,sticky='nsew')
 
-		self.local_pattern_filter_button = Button(self.local_pattern,text='Filter Output',command=self.use_local_filter_output)
+		self.local_pattern_filter_button = Button(self.local_pattern,text='Filter Output',font=('Times New Roman bold',12),command=self.use_local_filter_output)
 		self.local_pattern_filter_button.grid(column=0,row=2)
 
 		self.local_pattern_table_frame = Frame(self.local_pattern)
@@ -284,9 +280,9 @@ class CAPE_UI:
 		# 		if n not in query_group_set:
 		# 			self.global_pattern_df = self.global_pattern_df.drop(index)
 		
-		self.output_pattern_df = self.global_pattern_df.drop(columns=['set'],axis=1)
+		self.global_output_pattern_df = self.global_pattern_df.drop(columns=['set'],axis=1)
 
-		pattern_model = TableModel(dataframe=self.output_pattern_df)
+		pattern_model = TableModel(dataframe=self.global_output_pattern_df)
 		self.global_pattern_table.updateModel(pattern_model)
 		self.global_pattern_table.redraw()
 
@@ -320,74 +316,79 @@ class CAPE_UI:
 
 		self.local_pattern_df = self.local_pattern_df[self.local_pattern_df.apply(lambda row: all(i in query_group_set for i in row.set.split(',')),axis=1)]
 		
-		self.output_pattern_df = self.local_pattern_df.drop(columns=['set'],axis=1)
+		self.local_output_pattern_df = self.local_pattern_df.drop(columns=['set'],axis=1)
 
-		pattern_model = TableModel(dataframe=self.output_pattern_df)
+		pattern_model = TableModel(dataframe=self.local_output_pattern_df)
 		self.local_pattern_table.updateModel(pattern_model)
 		self.local_pattern_table.redraw()
 
 	def use_global_filter_local(self):
 
-		original_output_df = pd.DataFrame.copy(self.query_result_df)
+		# original_output_df = pd.DataFrame.copy(self.query_result_df)
 
 		original_local_df = pd.DataFrame.copy(self.raw_local_pattern_df)
 
 		print(self.global_pattern_table.multiplerowlist)
 
-
 		pattern_df_lists = []
 
 		for n in self.global_pattern_table.multiplerowlist:
 			
-			global_pattern_fixed = self.raw_global_pattern_df.iloc[int(n)]['fixed']
+			global_pattern_fixed = self.global_pattern_df.iloc[int(n)]['fixed']
+			if(len(global_pattern_fixed)==1):
+				global_pattern_fixed=global_pattern_fixed[0]
+			else:
+				global_pattern_fixed=','.join(global_pattern_fixed)
 			print(global_pattern_fixed)
 
-			global_pattern_variable = self.raw_global_pattern_df.iloc[int(n)]['variable']
+			global_pattern_variable = self.global_pattern_df.iloc[int(n)]['variable']
+			if(len(global_pattern_variable)==1):
+				global_pattern_variable=global_pattern_variable[0]
+			else:
+				global_pattern_variable=','.join(global_pattern_variable)
 			print(global_pattern_variable)
 
-			pattern_tuples = list(zip(global_pattern_fixed, global_pattern_variable))
+			pattern_tuples = [[global_pattern_fixed,global_pattern_variable]]
+
+			print(pattern_tuples)
 
 			df = pd.DataFrame(pattern_tuples, columns=['fixed','variable'])
 			# print(df)
 			pattern_df_lists.append(df)
+
+		filtered_df = pd.DataFrame(columns=['fixed','variable'])
 		
-		
-		for index,row in original_local_df.iterrows():
-			fixed_variable_match = False 
+		for pattern_df in pattern_df_lists:
+			print(pattern_df)
+			g_fixed=pattern_df['fixed'].to_string(index=False)
+			print(g_fixed)
+			g_variable=pattern_df['variable'].to_string(index=False)
+			print(g_variable)
+			Q1 ="SELECT * FROM dev.crime_clean_100000_local WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
+			l_result = pd.read_sql(Q1, conn)
+			filtered_df = filtered_df.append(l_result,ignore_index=True)
 
-			for pattern_df in pattern_df_lists:
-				if((str(row['fixed'])==str(pattern_df['fixed'])) & (str(row['variable'])==str(pattern_df['variable']))):
-					fixed_variable_match=True
-					break
-				else:
-					continue
+		self.local_output_pattern_df = filtered_df
 
-			if(fixed_variable_match==False):
-				original_local_df = original_local_df.drop(index)
-
-		model = TableModel(dataframe=original_local_df)
+		model = TableModel(dataframe=filtered_df)
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
 
 
 	def use_local_filter_output(self):
 
-		# original_pattern_df = pd.DataFrame.copy(self.output_pattern_df)
 		original_output_df = pd.DataFrame.copy(self.query_result_df)
-
-		# print(self.output_pattern_df.head())
 
 		print(self.local_pattern_table.multiplerowlist)
 		# print(self.pattern_table.multiplecollist)
 
 		pattern_df_lists = []
-
 		for n in self.local_pattern_table.multiplerowlist:
 			
-			pattern_fixed = self.output_pattern_df.iloc[int(n)]['fixed']
+			pattern_fixed = self.local_output_pattern_df.iloc[int(n)]['fixed']
 			print(pattern_fixed)
 
-			pattern_fixed_value = self.output_pattern_df.iloc[int(n)]['fixed_value']
+			pattern_fixed_value = self.local_output_pattern_df.iloc[int(n)]['fixed_value']
 			print(pattern_fixed_value)
 
 			pattern_tuples = list(zip(pattern_fixed, pattern_fixed_value))
@@ -395,41 +396,32 @@ class CAPE_UI:
 			df = pd.DataFrame(pattern_tuples, columns=['fixed','fixed_value'])
 			# print(df)
 			pattern_df_lists.append(df)
+
 		
-		
-		for index,row in original_output_df.iterrows():
-			tuple_match_pattern = False 
-			last_also_match = True
+		user_query_view = 'WITH user_query as ('+self.query+')' 
+		filtered_result_df = pd.DataFrame(columns=list(self.query_result_df))
 
-			for pattern_df in pattern_df_lists:
-				for index1,row1 in pattern_df.iterrows():
-					if(row[row1['fixed']]==row1['fixed_value'] and last_also_match==True):
-						tuple_match_pattern=True
-						last_also_match=True
-					else:
-						tuple_match_pattern=False
-						last_also_match=False
+		for pattern_df in pattern_df_lists:
+			query_list = []
+			for m in range(len(pattern_df['fixed'])):
+				fixed_col_name = pattern_fixed[m]
+				fixed_col_value = pattern_fixed_value[m]
+				q = "SELECT * FROM user_query uq where "+fixed_col_name+"=\'"+fixed_col_value+"\'"
+				query_list.append(q)
+			querybody = '\nINTERSECT\n'.join(query_list)
+			full_query = user_query_view+querybody
+			print("FULL QUERY IS:")
+			print(full_query)
+			one_df = pd.read_sql(full_query,conn)
+			print('one df here!!!!!!')
+			print(one_df)
+			filtered_result_df = filtered_result_df.append(one_df,ignore_index=True)
+		print("filtered_df here!!!!!!!!!!!!!!!!!!!!!!!")
+		print(filtered_result_df)
 
-				if(tuple_match_pattern==True):
-					last_also_match=True
-					break
-				else:
-					last_also_match=True
-					continue
-
-			if(tuple_match_pattern==False):
-				original_output_df = original_output_df.drop(index)
-
-		model = TableModel(dataframe=original_output_df)
+		model = TableModel(dataframe=filtered_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
-
-
-
-
-
-
-
 
 def main():
 	root = Tk()
