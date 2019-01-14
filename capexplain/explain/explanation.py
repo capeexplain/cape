@@ -1320,7 +1320,6 @@ class ExplanationGenerator:
 
     def do_explain_online(self, uq_tuple):
 
-
         ecf = self.config
         query_result_table = ecf.DEFAULT_RESULT_TABLE
         pattern_table = ecf.DEFAULT_PATTERN_TABLE
@@ -1347,11 +1346,11 @@ class ExplanationGenerator:
         # print('Total querying time: ' + str(end-start) + 'seconds')
         log.debug("finding explanations ... DONE")
 
-        for g_key in ecf.MATERIALIZED_DICT:
-            for fv_key in ecf.MATERIALIZED_DICT[g_key]:
-                dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ecf.MATERIALIZED_DICT[g_key][fv_key]))
-                cur.execute(dv_query)
-                conn.commit()
+        # for g_key in ecf.MATERIALIZED_DICT:
+        #     for fv_key in ecf.MATERIALIZED_DICT[g_key]:
+        #         dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ecf.MATERIALIZED_DICT[g_key][fv_key]))
+        #         cur.execute(dv_query)
+        #         conn.commit()
         return explanations_list[0]
 
 
@@ -1528,9 +1527,9 @@ class ExplanationGenerator:
                 dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ecf.MATERIALIZED_DICT[g_key][fv_key]))
                 cur.execute(dv_query)
                 conn.commit()
+        ecf.MATERIALIZED_DICT = dict()
+        ecf.MATERIALIZED_CNT = 0
 
-
-        
         
 def main(argv=[]):
     try:
