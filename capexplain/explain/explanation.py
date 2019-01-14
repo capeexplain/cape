@@ -65,11 +65,11 @@ class ExplConfig(DictLike):
         self.schema = None
         self.global_patterns_dict = None
 
-        # try:
-        #     self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
-        #     self.cur = self.conn.cursor()
-        # except psycopg2.OperationalError:
-        #     print('Fail to connect to the database!')
+        try:
+            self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
+            self.cur = self.conn.cursor()
+        except psycopg2.OperationalError:
+            print('Fail to connect to the database!')
 
 
     def __str__(self):
