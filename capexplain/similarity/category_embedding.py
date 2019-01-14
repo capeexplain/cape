@@ -90,8 +90,8 @@ class CategoryEmbedding(object):
             # self.cos_sim_map[col] = {}
             self.dist_stats[col] = {'max':0.0, 'min':1e10}
 
-        print col_list
-        print self.cate_val_list['pubkey']
+        print(col_list)
+        print(self.cate_val_list['pubkey'])
         for col in df:
             if col == 'index' or col == 'name':
                 continue
@@ -117,9 +117,9 @@ class CategoryEmbedding(object):
                             self.cate_cols[col][row[col]][-1][1] += row[aggr_col]
                 temp_col_list.append(col)
 
-        print self.cate_val_cnt
+        # print(self.cate_val_cnt)
         for col in self.cate_cols:
-            print col
+            print(col)
             cnt = 0
             for val1 in self.cate_cols[col]:
                 for val2 in self.cate_cols[col]:
@@ -139,7 +139,7 @@ class CategoryEmbedding(object):
 
                     if cnt > 1000000:
                         cnt = 0
-                        print col, val1, val2
+                        # print col, val1, val2
 
             for val1 in self.cate_cols[col]:
                 for val2 in self.cate_cols[col]:
