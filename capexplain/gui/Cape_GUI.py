@@ -11,6 +11,7 @@ from pandastable import PlotViewer
 from pandastable import Table
 import re
 from capexplain.explain.explanation import ExplanationGenerator
+from capexplain.explain.explanation import ExplConfig
 
 agg_function = re.compile('.*(sum|max|avg|min|count).*')
 group_by = re.compile("group by(.*)",re.IGNORECASE)
@@ -30,11 +31,11 @@ class CAPE_UI:
 		self.parent=parent
 		self.main_frame_style=ttk.Style()
 		self.main_frame_style.configure('Main_Frame', background='#334353')
-		self.main_frame=ttk.Frame(self.parent,padding=(3,3,12,12),width=2000, height=100)
+		self.main_frame=ttk.Frame(self.parent,padding=(3,3,12,12))
 
-		self.main_frame.columnconfigure(0, weight=1)
-		self.main_frame.columnconfigure(1, weight=1)
-		self.main_frame.columnconfigure(2, weight=1)
+		self.main_frame.columnconfigure(0,weight=1)
+		self.main_frame.columnconfigure(1,weight=3,uniform=1)
+		self.main_frame.columnconfigure(2,weight=4,uniform=1)
 
 		self.main_frame.rowconfigure(0,weight=1)
 		self.main_frame.rowconfigure(1,weight=1)
@@ -51,24 +52,24 @@ class CAPE_UI:
 		
 		self.main_frame.grid(column=0, row=0, columnspan=3, rowspan=10, sticky='nsew')
 
-		self.table_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=400,height=60)
+		self.table_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
 		self.table_frame.grid(column=0,row=0, columnspan=1, rowspan=10, sticky='nsew')
 
-		self.query_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="ridge",width=600)
+		self.query_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="ridge")
 		self.query_frame.grid(column=1, row=0, columnspan=1, rowspan=2, sticky='nsew')
 
-		self.query_result = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=600)
+		self.query_result = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
 		self.query_result.grid(column=1, row=2, columnspan=1, rowspan=8, sticky='nsew')
 
-		self.local_pattern = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=760)
-		self.local_pattern.grid(column=2, row=0, columnspan=1, rowspan=5, sticky='nsew')
+		self.local_pattern = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.local_pattern.grid(column=2, row=0, columnspan=2, rowspan=5, sticky='nsew')
 
-		self.explaination = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken",width=760)
-		self.explaination.grid(column=2, row=5, columnspan=1, rowspan=5, sticky='nsew')
+		self.explanation_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.explanation_frame.grid(column=2, row=5, columnspan=2, rowspan=5, sticky='nsew')
 
 
 #---------------------------table frame-----------------------------------------#
-		self.table_view = ttk.Treeview(self.table_frame,height=46)
+		self.table_view = ttk.Treeview(self.table_frame,height=47)
 		self.table_info = ttk.Label(self.table_frame, text="Database Information",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
 		self.table_info.grid(column=0, row=0,sticky='nsew')
 		self.table_view.grid(column=0, row=1)
@@ -101,13 +102,13 @@ class CAPE_UI:
 		self.query_frame.rowconfigure(2,weight=1)
 		self.query_frame.rowconfigure(3,weight=1)
 		self.query_frame.rowconfigure(4,weight=1)
-		self.query_frame.columnconfigure(0,weight=8)
+		self.query_frame.columnconfigure(0,weight=6)
 		self.query_frame.columnconfigure(1,weight=1)
 
 		self.query_info = Label(self.query_frame,text="Query Input",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
 		self.query=''
 		self.query_info.grid(column=0,row=0,sticky='nsew')
-		self.query_entry = Text(self.query_frame, height=8, width=80)
+		self.query_entry = Text(self.query_frame, height=8,width=55)
 		self.query_entry.grid(column=0,row=1,rowspan=4)
 		self.query_button = Button(self.query_frame,text="Run Query",font=('Times New Roman bold',12),command=self.run_query)
 		self.query_button.grid(column=1,row=2)
@@ -118,7 +119,7 @@ class CAPE_UI:
 		
 
 #----------------------------Query result frame --------------------------------#
-		self.query_result.columnconfigure(0,weight=8)
+		self.query_result.columnconfigure(0,weight=6)
 		self.query_result.columnconfigure(1,weight=1)
 		self.query_result.rowconfigure(0,weight=1)
 		self.query_result.rowconfigure(1,weight=10)
@@ -141,10 +142,10 @@ class CAPE_UI:
 		self.high_low_frame.rowconfigure(7,weight=1)
 
 
-		self.high_button = Button(self.high_low_frame,text='High',font=('Times New Roman bold',12))
+		self.high_button = Button(self.high_low_frame,text='High',font=('Times New Roman bold',12), command=self.handle_high)
 		self.high_button.grid(column=0,row=1)
 
-		self.low_button = Button(self.high_low_frame,text='Low',font=('Times New Roman bold',12))
+		self.low_button = Button(self.high_low_frame,text='Low',font=('Times New Roman bold',12), command=self.handle_low)
 		self.low_button.grid(column=0,row=2)
 
 		self.show_results = Frame(self.query_result)
@@ -160,7 +161,7 @@ class CAPE_UI:
 		
 		self.show_global.rowconfigure(0,weight=1)
 		self.show_global.rowconfigure(1,weight=10)
-		self.show_global.columnconfigure(0,weight=10)
+		self.show_global.columnconfigure(0,weight=1)
 
 		self.global_pattern_label = Label(self.show_global,text="Global Patterns")
 		self.global_pattern_label.grid(column=0,row=0,sticky='nsew')
@@ -174,7 +175,7 @@ class CAPE_UI:
 		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
 
-		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.crime_clean_100000_global;"
+		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.pub_large_no_domain_global;"
 
 		self.raw_global_pattern_df = pd.read_sql(raw_global_pattern_query,conn)
 
@@ -203,7 +204,7 @@ class CAPE_UI:
 		self.local_pattern_table = Table(self.local_pattern_table_frame)
 		self.local_pattern_table.show()
 
-		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.crime_clean_100000_local;"
+		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.pub_large_no_domain_local;"
 
 		self.raw_local_pattern_df = pd.read_sql(raw_local_pattern_query,conn)
 
@@ -215,10 +216,17 @@ class CAPE_UI:
 
 
 
-#---------------------------------explaination frame-----------------------------#
+#---------------------------------explanation frame-----------------------------# 
+		self.explanation_frame.rowconfigure(0,weight=1)
+		self.explanation_frame.rowconfigure(1,weight=20)
+		self.explanation_frame.columnconfigure(0,weight=10)
+		self.exp_label = Label(self.explanation_frame,text="Top Explanations",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.exp_label.grid(column=0,row=0,sticky='nsew')
+		self.exp_table_frame = Frame(self.explanation_frame)
+		self.exp_table_frame.grid(row=1,column=0,sticky='nsew')
 
-		
-
+		self.exp_table = Table(self.exp_table_frame)
+		self.exp_table.show()
 
 
 #----------------------------------Functions----------------------------------------#
@@ -233,8 +241,8 @@ class CAPE_UI:
 
 	def run_query(self):
 		
-		self.query_result_table = Table(self.show_results)
-		self.query_result_table.show()
+		# self.query_result_table = Table(self.show_results)
+		# self.query_result_table.show()
 		self.query = self.query_entry.get("1.0",END)
 		print(self.query)
 		self.query_result_df = pd.read_sql(self.query,conn)
@@ -333,7 +341,8 @@ class CAPE_UI:
 		pattern_df_lists = []
 
 		for n in self.global_pattern_table.multiplerowlist:
-			
+
+			model_name = self.global_pattern_df.iloc[int(n)]['model']
 			global_pattern_fixed = self.global_pattern_df.iloc[int(n)]['fixed']
 			if(len(global_pattern_fixed)==1):
 				global_pattern_fixed=global_pattern_fixed[0]
@@ -348,23 +357,27 @@ class CAPE_UI:
 				global_pattern_variable=','.join(global_pattern_variable)
 			print(global_pattern_variable)
 
-			pattern_tuples = [[global_pattern_fixed,global_pattern_variable]]
+			pattern_tuples = [[model_name,global_pattern_fixed,global_pattern_variable]]
 
 			print(pattern_tuples)
 
-			df = pd.DataFrame(pattern_tuples, columns=['fixed','variable'])
+			df = pd.DataFrame(pattern_tuples, columns=['model','fixed','variable'])
 			# print(df)
 			pattern_df_lists.append(df)
 
 		filtered_df = pd.DataFrame(columns=['fixed','variable'])
 		
 		for pattern_df in pattern_df_lists:
+			model=pattern_df['model'].to_string(index=False)
 			print(pattern_df)
 			g_fixed=pattern_df['fixed'].to_string(index=False)
 			print(g_fixed)
 			g_variable=pattern_df['variable'].to_string(index=False)
 			print(g_variable)
-			Q1 ="SELECT * FROM dev.crime_clean_100000_local WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
+			
+			Q1 ="WITH model_matched as (SELECT * FROM dev.pub_large_no_domain_local WHERE model=\'"+model+"\')"+\
+			"SELECT * FROM model_matched WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
+			print(Q1)
 			l_result = pd.read_sql(Q1, conn)
 			filtered_df = filtered_df.append(l_result,ignore_index=True)
 
@@ -406,28 +419,160 @@ class CAPE_UI:
 			for m in range(len(pattern_df['fixed'])):
 				fixed_col_name = pattern_fixed[m]
 				fixed_col_value = pattern_fixed_value[m]
-				q = "SELECT * FROM user_query uq where "+fixed_col_name+"=\'"+fixed_col_value+"\'"
+				if(fixed_col_name=='year'):
+					q = "SELECT * FROM user_query uq where "+fixed_col_name+"=CAST( "+fixed_col_value+" AS INT)"
+				else:		
+					q = "SELECT * FROM user_query uq where "+fixed_col_name+"=\'"+fixed_col_value+"\'"
 				query_list.append(q)
 			querybody = '\nINTERSECT\n'.join(query_list)
 			full_query = user_query_view+querybody
-			print("FULL QUERY IS:")
 			print(full_query)
 			one_df = pd.read_sql(full_query,conn)
-			print('one df here!!!!!!')
 			print(one_df)
 			filtered_result_df = filtered_result_df.append(one_df,ignore_index=True)
-		print("filtered_df here!!!!!!!!!!!!!!!!!!!!!!!")
+		
 		print(filtered_result_df)
+		self.query_result_df = filtered_result_df
 
 		model = TableModel(dataframe=filtered_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
 
+	def handle_low(self):
+
+		config=ExplConfig()
+		eg = ExplanationGenerator(config, None)
+		eg.initialize() 
+		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator"]
+		exp_df = pd.DataFrame(columns=['From_Pattern',"Drill_Down_To","Score","Distance","Outlierness","Denominator"])
+		for n in self.query_result_table.multiplerowlist:
+			question_tuple = self.query_result_df.iloc[int(n)]
+			print(question_tuple)
+			question_tuple['direction']='low'
+			question_tuple['lambda'] = 0.2
+			question = question_tuple.to_dict()
+			print(question)
+			elist = eg.do_explain_online(question)
+
+			exp_list=[]
+			for e in elist:
+				tuple_list=[]
+				e_tuple_str = ','.join(map(str, e.tuple_value.values()))
+				tuple_list.append(e_tuple_str)
+
+				score = e.score
+				tuple_list.append(score)
+
+				if e.expl_type == 1:
+					local_pattern='[' + ','.join(e.relevent_pattern[0]) + ']' +\
+						'[' + ','.join(list(map(str, e.relevent_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[2]))) + ']' +\
+						'[' + e.relevent_pattern[4] + ']' + \
+						(('[' + str(e.relevent_pattern[6].split(',')[0][1:]) + ']') if e.relevent_pattern[4] == 'const' else ('[' + str(e.relevent_pattern[7]) + ']'))
+					drill_down_To ='[' + ','.join(e.refinement_pattern[0]) + ']' + \
+						'[' + ','.join(list(map(str, e.refinement_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.refinement_pattern[2]))) + ']' + \
+						'[' + e.refinement_pattern[4] + ']' + \
+						(('[' + str(e.refinement_pattern[6].split(',')[0][1:]) + ']') if e.refinement_pattern[4] == 'const' else ('[' + str(e.refinement_pattern[7]) + ']'))
+				else:
+					local_pattern='[' + ','.join(e.relevent_pattern[0]) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[2]))) + ']' + \
+						'[' + e.relevent_pattern[4] + ']' +  \
+						(('[' + str(e.relevent_pattern[6].split(',')[0][1:]) + ']') if e.relevent_pattern[4] == 'const' else ('[' + str(e.relevent_pattern[7]) + ']'))
+					drill_down_To = ' '
+				tuple_list.append(local_pattern)
+				tuple_list.append(drill_down_To)
+				distance = e.distance
+				tuple_list.append(distance)
+				outlierness = e.deviation
+				tuple_list.append(outlierness)
+				denominator = e.denominator
+				tuple_list.append(denominator)
+				exp_list.append(tuple_list)
+
+			df_exp = pd.DataFrame(exp_list,columns=col_name)
+			exp_df = exp_df.append(df_exp,ignore_index=True)
+			
+		exp_df = exp_df[col_name]
+		model = TableModel(dataframe=exp_df)
+		self.exp_table.updateModel(model)	
+		self.exp_table.redraw()
+
+
+
+	def handle_high(self):
+
+		config=ExplConfig()
+		eg = ExplanationGenerator(config, None)
+		eg.initialize() 
+		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator"]
+		exp_df = pd.DataFrame(columns=['From_Pattern',"Drill_Down_To","Score","Distance","Outlierness","Denominator"])
+		for n in self.query_result_table.multiplerowlist:
+			question_tuple = self.query_result_df.iloc[int(n)]
+			print(question_tuple)
+			question_tuple['direction']='high'
+			question_tuple['lambda'] = 0.2
+			question = question_tuple.to_dict()
+			print(question)
+			elist = eg.do_explain_online(question)
+
+			exp_list=[]
+			for e in elist:
+				tuple_list=[]
+				e_tuple_str = ','.join(map(str, e.tuple_value.values()))
+				tuple_list.append(e_tuple_str)
+
+				score = e.score
+				tuple_list.append(score)
+
+				if e.expl_type == 1:
+					local_pattern='[' + ','.join(e.relevent_pattern[0]) + ']' +\
+						'[' + ','.join(list(map(str, e.relevent_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[2]))) + ']' +\
+						'[' + e.relevent_pattern[4] + ']' + \
+						(('[' + str(e.relevent_pattern[6].split(',')[0][1:]) + ']') if e.relevent_pattern[4] == 'const' else ('[' + str(e.relevent_pattern[7]) + ']'))
+					drill_down_To ='[' + ','.join(e.refinement_pattern[0]) + ']' + \
+						'[' + ','.join(list(map(str, e.refinement_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.refinement_pattern[2]))) + ']' + \
+						'[' + e.refinement_pattern[4] + ']' + \
+						(('[' + str(e.refinement_pattern[6].split(',')[0][1:]) + ']') if e.refinement_pattern[4] == 'const' else ('[' + str(e.refinement_pattern[7]) + ']'))
+				else:
+					local_pattern='[' + ','.join(e.relevent_pattern[0]) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[1]))) + ']' + \
+						'[' + ','.join(list(map(str, e.relevent_pattern[2]))) + ']' + \
+						'[' + e.relevent_pattern[4] + ']' +  \
+						(('[' + str(e.relevent_pattern[6].split(',')[0][1:]) + ']') if e.relevent_pattern[4] == 'const' else ('[' + str(e.relevent_pattern[7]) + ']'))
+					drill_down_To = ' '
+				tuple_list.append(local_pattern)
+				tuple_list.append(drill_down_To)
+				distance = e.distance
+				tuple_list.append(distance)
+				outlierness = e.deviation
+				tuple_list.append(outlierness)
+				denominator = e.denominator
+				tuple_list.append(denominator)
+				exp_list.append(tuple_list)
+
+			df_exp = pd.DataFrame(exp_list,columns=col_name)
+			exp_df = exp_df.append(df_exp,ignore_index=True)
+			
+		exp_df = exp_df[col_name]
+		model = TableModel(dataframe=exp_df)
+		self.exp_table.updateModel(model)	
+		self.exp_table.redraw()
+
+
+
 def main():
 	root = Tk()
 	root.title('CAPE')
+	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
+	root.geometry('%dx%d+0+0' % (width,height))
 	ui = CAPE_UI(root)
-	root.mainloop()     
+
+	root.mainloop()
+	
 
 if __name__ == '__main__':
 	main()
