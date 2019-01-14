@@ -26,7 +26,7 @@ setup(
         'geopy',
         'idna>=2.7',
         'numpy>=1.14.5',
-        'pandas>=0.23.3',
+        'pandas==0.23.4',
         'patsy>=0.5.0',
         'pkginfo>=1.4.2',
         'psycopg2-binary>=2.7.6',
@@ -42,8 +42,7 @@ setup(
         'statsmodels>=0.9.0',
         'tqdm>=4.23.4',
         'urllib3<1.24,>=1.23',
-        'pandastable',
-        'tkinter'
+        'pandastable'
     ],
     
     entry_points={
