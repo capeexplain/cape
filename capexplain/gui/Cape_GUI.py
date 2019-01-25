@@ -453,7 +453,7 @@ class CAPE_UI:
 				variable_attribute=','.join(variable_attribute)
 			Lambda = round(self.global_pattern_df.iloc[int(n)]['lambda'],2)
 
-		global_desc = "For each "+fixed_attribute+',\n the '+aggregation_function +' is '+modeltype+'\n in '+variable_attribute+'.'+\
+		global_desc = "For each "+fixed_attribute+',the '+aggregation_function +' is '+modeltype+'\n in '+variable_attribute+'.'+\
 		'This pattern holds for '+str(Lambda*100)+ ' % of the '+fixed_attribute
 		
 		desc_win = Toplevel()
@@ -471,7 +471,7 @@ class CAPE_UI:
 		desc_frame = Frame(desc_win)
 		desc_frame.pack(fill=BOTH,expand=True)
 
-		desc_label= Label(desc_frame,text=global_desc,font=('Times New Roman bold',12),borderwidth=5,relief=SOLID)
+		desc_label= Label(desc_frame,text=global_desc,font=('Times New Roman bold',12),borderwidth=5,relief=SOLID,justify=LEFT)
 		desc_label.pack(fill=BOTH,expand=True)
 
 
@@ -763,7 +763,8 @@ class CAPE_UI:
 		chosen_row = chosen_row.to_frame().T.reset_index()
 
 		if(chosen_row['model'].to_string(index=False)=='const'):
-			model_str = "\n\nConstant: "+str(round(chosen_row['stats'].values[0],2))
+			pass
+			model_str = "\n"
 		else:
 
 			Intercept_value = round((chosen_row['param'][0]['Intercept']),2)
