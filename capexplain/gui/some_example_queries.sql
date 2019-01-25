@@ -1,3 +1,3 @@
-SELECT name,venue,year,sum(pubcount) as sum_pubcount
-from pub_large_no_domain
-group by name,venue,year
+SELECT name,venue,year,sum(pubcount) AS sum_pubcount
+FROM pub_large_no_domain
+GROUP BY name,venue,year
