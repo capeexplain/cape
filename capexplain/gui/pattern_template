@@ -1,0 +1,37 @@
+Explanation for why <agg function > (<aggattr>) is <higher/lower> than expected for <G = g>:
+
+In general <V> predict<s> <aggfunction>(<attr>) for most <F>. This is also true for <F = f>.
+
+Hoever, for <V=v> the value of <aggfunction>(<attr>) is <higher/lower> than predicted.
+
+This may be explained through the <lower/higher> than expected outcome for <V=countbalance_v>. 
+
+This explanation was ranked <unlikely, plausible, highly pausible> 
+because the counterbalance is <similar, somewhat similar, not similar> to the user question 
+and it deviates  <slighlty, "" , extremly> from the predicted outcome. 
+
+Explanation for why sum(publcount) is lower 
+than expected for name=Ax,venue=KDD,year=2007:
+In general year and venue predict sum(pubcount) for most authors.
+This is also true for name=Ax.
+Hoever, for year=2007,venue=KDD
+the value of sum(publcount) is lower than predicted.
+This may be explained through the higher than expected outcome 
+for year=2007,venue=ICDE. 
+
+
+
+Conterbalance Tuple: <Explanation Tuple>
+
+Score: <Score>
+
+From Pattern: <From_Pattern>
+
+if (<Drill Down TO>!=' '):
+   We also found a Refinement Counterbalance: + <Drill Down TO>
+
+Outlierness: <Outlierness>
+
+Denominator: <Denominator>
+
+

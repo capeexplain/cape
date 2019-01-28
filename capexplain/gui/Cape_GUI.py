@@ -167,6 +167,9 @@ class CAPE_UI:
 		self.query_result_table = Table(self.show_results)
 		self.query_result_table.show()
 
+		self.parent.columnconfigure(0, weight=1)
+		self.parent.rowconfigure(0, weight=1)
+
 #---------------------------Global Pattern Frame -----------------------------------#
 		
 		self.show_global.rowconfigure(0,weight=1)
@@ -188,7 +191,7 @@ class CAPE_UI:
 		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
 
-		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.pub_large_no_domain_global;"
+		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.pub_global;"
 
 		self.raw_global_pattern_df = pd.read_sql(raw_global_pattern_query,conn)
 
@@ -231,7 +234,7 @@ class CAPE_UI:
 		self.local_pattern_table = Table(self.local_pattern_table_frame)
 		self.local_pattern_table.show()
 
-		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.pub_large_no_domain_local;"
+		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.pub_local;"
 
 		self.raw_local_pattern_df = pd.read_sql(raw_local_pattern_query,conn)
 
@@ -414,7 +417,7 @@ class CAPE_UI:
 			g_variable=pattern_df['variable'].to_string(index=False)
 			print(g_variable)
 			
-			Q1 ="WITH model_matched as (SELECT * FROM dev.pub_large_no_domain_local WHERE model=\'"+model+"\')"+\
+			Q1 ="WITH model_matched as (SELECT * FROM dev.pub_local WHERE model=\'"+model+"\')"+\
 			"SELECT * FROM model_matched WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
 			print(Q1)
 			l_result = pd.read_sql(Q1, conn)
@@ -722,7 +725,7 @@ class CAPE_UI:
 	def pop_up_pattern(self):
 		win = Toplevel()
 		win.geometry("%dx%d%+d%+d" % (1300, 600, 250, 125))
-		win.wm_title("Window")
+		win.wm_title("Pattern")
 
 		win_frame = Frame(win)
 		win_frame.pack(fill=BOTH,expand=True)
@@ -798,7 +801,7 @@ class CAPE_UI:
 		fixed_name = chosen_row['fixed_str'].to_string(index=False)
 
 		pattern_data_query = "SELECT sum(pubcount) as sum_pubcount,"+variable_name+','+fixed_name+\
-		"\nFROM pub_large_no_domain\nGROUP BY "+variable_name+','+fixed_name
+		"\nFROM pub\nGROUP BY "+variable_name+','+fixed_name
 
 		user_query_view = 'WITH pattern_query as ('+pattern_data_query+')' 
 		pattern_data_df = pd.DataFrame(columns=list(self.query_result_df))
@@ -941,13 +944,13 @@ class CAPE_UI:
 	def pop_up_explanation(self):
 
 		win = Toplevel()
-		win.geometry("%dx%d%+d%+d" % (1300, 600, 250, 125))
-		win.wm_title("Window")
+		win.geometry("%dx%d%+d%+d" % (1580, 700, 250, 125))
+		win.wm_title("Explanation")
 
 		win_frame = Frame(win)
 		win_frame.pack(fill=BOTH,expand=True)
-		win_frame.columnconfigure(0,weight=1)
-		win_frame.columnconfigure(1,weight=1)
+		win_frame.columnconfigure(0,weight=2)
+		win_frame.columnconfigure(1,weight=3)
 		win_frame.rowconfigure(0,weight=4)
 		win_frame.rowconfigure(1,weight=1)
 
@@ -998,7 +1001,7 @@ class CAPE_UI:
 		query_pattern_value = ','.join(rel_pattern_part_value_list)
 
 		Pattern_Q = "SELECT sum(pubcount) as sum_pubcount, "+rel_pattern_part+","+rel_pattern_pred+\
-		" FROM pub_large_no_domain WHERE " + "("+rel_pattern_part+") = ("+query_pattern_value+")"+\
+		" FROM pub WHERE " + "("+rel_pattern_part+") = ("+query_pattern_value+")"+\
 		" GROUP BY "+rel_pattern_pred+','+rel_pattern_part
 
 		exp_pattern_df = pd.read_sql(Pattern_Q,conn)
@@ -1181,8 +1184,8 @@ class CAPE_UI:
 		else:
 			likelihood_words = ['highly plausible','similar','extremly']
 
-		ranking_clause = "This explanation was ranked "+ likelihood_words[0] + "\nbecause the counterbalance is " + likelihood_words[1]+\
-		" to the user question\nand it deviates "+likelihood_words[2]+"from the predicted outcome.\n"
+		ranking_clause = "  This explanation was ranked "+ likelihood_words[0] + " because the counterbalance\nis " + likelihood_words[1]+\
+		" to the user question and it deviates"+likelihood_words[2]+"\nfrom the predicted outcome.\n"
 
 		print('ranking_clause:')
 		print(ranking_clause)
@@ -1265,21 +1268,20 @@ class CAPE_UI:
 			fixed_pair = ",".join(fixed_exp_pair_list)
 
 
-		comprehensive_exp = "\n\nExplanation for why sum(pubcount) is " + self.question_tuple['direction'].to_string(index=False)+"er\nthan expected for: "+user_question_clause+\
-		"\nIn general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
+		comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question_tuple['direction'].to_string(index=False)+"er than expected for:\n"+user_question_clause+\
+		"\n  In general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
 		"\nThis is also true for "+ fixed_pair+'.'\
-		"\nHowever, for "+variable_pair+",\nthe value of sum(pubcount) is "+ self.question_tuple['direction'].to_string(index=False)+"er than predicted."+\
-		"\nThis may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
+		"\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question_tuple['direction'].to_string(index=False)+"er than predicted."+\
+		"\n  This may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
 
 		comprehensive_exp = comprehensive_exp.replace('name','author')
+		comprehensive_exp = comprehensive_exp.replace('\'','')
 
 		print('comprehensive_exp:')
 		print(comprehensive_exp)
 
-		pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',13),borderwidth=5,relief=SOLID,justify=LEFT)
+		pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
-
-
 
 
 def main():
