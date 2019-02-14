@@ -25,9 +25,9 @@ TEST_ID = ''
 # Configuration for Explanation generation
 class ExplConfig(DictLike):
 
-    DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
+    DEFAULT_RESULT_TABLE = 'pub'
     # DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
-    DEFAULT_PATTERN_TABLE = 'dev.pub_large_no_domain'
+    DEFAULT_PATTERN_TABLE = 'dev.pub'
     # DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
     DEFAULT_QUESTION_PATH = './input/user_question.csv'
 
@@ -66,7 +66,7 @@ class ExplConfig(DictLike):
         self.global_patterns_dict = None
 
         try:
-            self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
+            self.conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
             self.cur = self.conn.cursor()
         except psycopg2.OperationalError:
             print('Fail to connect to the database!')
@@ -1269,8 +1269,8 @@ class ExplanationGenerator:
         self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
         log.debug("loaded patterns from database")
 
-        # self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
-        self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
+        self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        # self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         #num_dis_norm = normalize_numerical_distance(data['df'])
         self.num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)

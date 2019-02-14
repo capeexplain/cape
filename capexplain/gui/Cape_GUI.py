@@ -23,6 +23,8 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 agg_function = re.compile('.*(sum|max|avg|min|count).*')
+from_which = re.compile('from (.*)',re.IGNORECASE)
+agg_alias = re.compile('as\s+(\w+)',re.IGNORECASE) 
 group_by = re.compile("group by(.*)",re.IGNORECASE)
 float_num = re.compile('\d+\.\d+')
 
@@ -37,7 +39,8 @@ class CAPE_UI:
 
 	def __init__(self,parent):
 
-#----------------------------main frame----------------------------------------#        
+#----------------------------main frame----------------------------------------#
+
 		self.parent=parent
 		self.main_frame_style=ttk.Style()
 		self.main_frame_style.configure('Main_Frame', background='#334353')
@@ -92,18 +95,28 @@ class CAPE_UI:
 		self.df_tables = pd.read_sql(self.all_tables_query, conn)
 		
 		table_index = 0
-		for index, row in self.df_tables.iterrows(): 
-		   self.table_view.insert('', 'end','item'+str(table_index),text = row['table_name'])
+		for row in self.df_tables.itertuples(): 
+		   self.table_view.insert('', 'end','item'+str(table_index),text = row.table_name)
 		   table_index +=1
 
 		parent_index = 0
 
-		for index, row in self.df_tables.iterrows():
-			q = 'select column_name,data_type from information_schema.columns where table_name = ' + '\''+row['table_name'] +'\''
+		for row in self.df_tables.itertuples():
+			q = 'select column_name,data_type from information_schema.columns where table_name = ' + '\''+row.table_name +'\''
 			table_name_attr = pd.read_sql(q,conn)
-			for index, row in table_name_attr.iterrows():
-				self.table_view.insert('item'+str(parent_index),'end',text=row['column_name'],values=row['data_type'])
+			for row in table_name_attr.itertuples():
+				self.table_view.insert('item'+str(parent_index),'end',text=row.column_name,values=row.data_type)
 			parent_index +=1
+
+		self.pub_dict = {"dict_name":"pub",
+		"global_name":"dev.pub_global",
+		"local_name":"dev.pub_local"
+		}
+
+		self.crime_dict = {"dict_name":"crime",
+		"global_name": "dev.crime_global",
+		"local_name":"dev.crime_local"
+		}
 
 
 #----------------------------Query frame----------------------------------------#
@@ -191,15 +204,13 @@ class CAPE_UI:
 		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
 
-		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.pub_global;"
+		# create a sql function for sorting the array in order to be used for filtering
 
-		self.raw_global_pattern_df = pd.read_sql(raw_global_pattern_query,conn)
+		sort_array_function = "CREATE OR REPLACE FUNCTION array_sort(anyarray) RETURNS anyarray AS $$"+\
+		"SELECT array_agg(x order by x) FROM unnest($1) x;"+\
+		"$$ LANGUAGE sql;"
 
-		self.raw_global_pattern_df = self.raw_global_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
-		self.raw_global_pattern_df['Partition'] = self.raw_global_pattern_df['fixed'].apply(lambda x: ','.join(x))
-		self.raw_global_pattern_df['Predictor'] = self.raw_global_pattern_df['variable'].apply(lambda x: ','.join(x))
-		self.raw_global_pattern_df['Support'] = self.raw_global_pattern_df['lambda'].round(2)
-		self.raw_global_pattern_df['agg'] = 'sum(pubcount)'
+		cur.execute(sort_array_function)	
 
 
 #------------------------------- local pattern frame---------------------------------------#
@@ -234,30 +245,8 @@ class CAPE_UI:
 		self.local_pattern_table = Table(self.local_pattern_table_frame)
 		self.local_pattern_table.show()
 
-		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.pub_local;"
-
-		self.raw_local_pattern_df = pd.read_sql(raw_local_pattern_query,conn)
-
-		# self.raw_local_pattern_df = self.raw_local_pattern_df.drop(['theta','dev_pos','dev_neg'],axis=1)
-
-		self.raw_local_pattern_df['Partition'] = self.raw_local_pattern_df['fixed'].apply(lambda x: ','.join(x))
-		self.raw_local_pattern_df['Partition_Values'] = self.raw_local_pattern_df['fixed_value'].apply(lambda x: ','.join(x))
-		self.raw_local_pattern_df['Predictor'] = self.raw_local_pattern_df['variable'].apply(lambda x: ','.join(x))
-		self.raw_local_pattern_df['stats'] = self.raw_local_pattern_df['stats'].str.split(',',expand=True)[0]
-		self.raw_local_pattern_df['stats'] = self.raw_local_pattern_df['stats'].str.strip('[')
-		self.raw_local_pattern_df["stats"] = pd.to_numeric(self.raw_local_pattern_df["stats"])
-		self.raw_local_pattern_df["stats"] = self.raw_local_pattern_df["stats"].round(2)
-		self.raw_local_pattern_df["agg"] = "sum(pubcount)"
-
-
-
-		print(self.raw_local_pattern_df.dtypes)
-
-
-
-
-
 #---------------------------------explanation frame-----------------------------# 
+
 		self.explanation_frame.rowconfigure(0,weight=1)
 		self.explanation_frame.rowconfigure(1,weight=10)
 		self.explanation_frame.rowconfigure(2,weight=1)
@@ -283,30 +272,25 @@ class CAPE_UI:
 
 	def run_query(self):
 		
-		# self.query_result_table = Table(self.show_results)
-		# self.query_result_table.show()
 		self.query = self.query_entry.get("1.0",END)
 		print(self.query)
+		self.handle_view ="\nDROP VIEW IF EXISTS user_query;"+\
+		"\nCREATE VIEW user_query as "+ self.query
+		print(self.handle_view)
+		cur.execute(self.handle_view)
 		self.original_query_result_df = pd.read_sql(self.query,conn)
+
 		self.query_result_df = self.original_query_result_df
 		model = TableModel(dataframe=self.original_query_result_df)
+
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
 
-	def show_global_pattern(self):
-
 		query_list = self.query.split('\n')
-		# n=0
-		# for line in query_list:
-		#   print(n)
-		#   print(line)
-		#   n+=1
-
-
-		self.global_pattern_df = self.raw_global_pattern_df
-		self.global_pattern_df['set'] = self.global_pattern_df['set'].apply(self.delete_parenthesis)
 
 		query_agg = None
+		table_name = None
+		self.agg_name = None
 		query_group_list = []
 		query_group_set = []
 		for line in query_list:
@@ -314,61 +298,62 @@ class CAPE_UI:
 				query_agg = agg_function.search(line).group(1)
 			if(group_by.search(line) is not None):
 				query_group_list = group_by.search(line).group(1).split(',')
+		for line1 in query_list:
+			if(from_which.search(line1) is not None):
+				table_name = from_which.search(line1).group(1)
+			else:
+				continue
+		for line1 in query_list:
+			if(agg_alias.search(line1) is not None):
+				self.agg_name = agg_alias.search(line1).group(1)
+			else:
+				continue
+
+		if(table_name.lower()==self.pub_dict['dict_name']):
+			self.table_dict = self.pub_dict
+		elif(table_name.lower()==self.crime_dict['dict_name']):
+			self.table_dict = self.crime_dict
+
 		for n in query_group_list: # delete whitespaces
 			n = n.strip()
+			n = n.strip(';')
 			query_group_set.append(n)
 		query_group_set.sort()
-		query_group_str = ','.join(query_group_set)
-		print(query_group_str)
-		print('the type is :')
-		print(type(self.global_pattern_df.set.str.split(',')))
+		self.query_group_str = ','.join(query_group_set)
 
-		self.global_pattern_df = self.global_pattern_df[self.global_pattern_df.apply(lambda row: query_group_str==row.set,axis=1)]
+	def show_global_pattern(self):
 
-		# for index, row in self.global_pattern_df.iterrows():
-		# 	row_list = row['set'].split(',')
-		# 	for n in row_list:
-		# 		if n not in query_group_set:
-		# 			self.global_pattern_df = self.global_pattern_df.drop(index)
-		
-		self.global_output_pattern_df = self.global_pattern_df[['Partition','Predictor','agg','model','Support']]
+		global_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,agg,"+\
+		"round((lambda)::numeric(4,2),2) as Support,model from "+self.table_dict['global_name']+\
+		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
+		print(global_query)
+		self.global_pattern_df = pd.read_sql(global_query,conn)
+		print(self.global_pattern_df.head())
+		print(list(self.global_pattern_df))
 
-		pattern_model = TableModel(dataframe=self.global_output_pattern_df)
+		pattern_model = TableModel(dataframe=self.global_pattern_df)
 		self.global_pattern_table.updateModel(pattern_model)
 		self.global_pattern_table.redraw()
 
 	def show_local_pattern(self):
 
-		query_list = self.query.split('\n')
-		# n=0
-		# for line in query_list:
-		#   print(n)
-		#   print(line)
-		#   n+=1
 
+		local_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
+		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
+		"theta,param,stats,dev_pos,dev_neg from "+self.table_dict['local_name']+\
+		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
 
-		self.local_pattern_df = self.raw_local_pattern_df
-		self.local_pattern_df['set'] = self.local_pattern_df['set'].apply(self.delete_parenthesis)
+		for n in self.local_pattern_table.multiplerowlist:
+			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
 
-		query_agg = None
-		query_group_list = []
-		query_group_set = []
-		for line in query_list:
-			if(agg_function.search(line) is not None):
-				query_agg = agg_function.search(line).group(1)
-			if(group_by.search(line) is not None):
-				query_group_list = group_by.search(line).group(1).split(',')
-		for n in query_group_list: # delete whitespaces
-			n = n.strip()
-			query_group_set.append(n)
-		query_group_set.sort()
-		query_group_str = ','.join(query_group_set)
-		print(query_group_str)
+		self.local_output_pattern_df = pd.read_sql(local_query,conn)
+		self.local_output_pattern_df = pd.read_sql(g_filter_l_query,conn)
+		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
+		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
+		self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
+		self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
 
-		self.local_pattern_df = self.local_pattern_df[self.local_pattern_df.apply(lambda row: query_group_str==row.set,axis=1)]
-		self.local_output_pattern_df = self.local_pattern_df.drop(columns=['set'],axis=1)
-
-		local_shown = self.local_output_pattern_df[['Partition','Partition_Values','Predictor','agg']]
+		local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
 
 		pattern_model = TableModel(local_shown)
 		self.local_pattern_table.updateModel(pattern_model)
@@ -376,89 +361,47 @@ class CAPE_UI:
 
 	def use_global_filter_local(self):
 
-		original_local_df = pd.DataFrame.copy(self.raw_local_pattern_df)
-
-		print(self.global_pattern_table.multiplerowlist)
-
 		pattern_df_lists = []
 
 		for n in self.global_pattern_table.multiplerowlist:
 
 			model_name = self.global_pattern_df.iloc[int(n)]['model']
-			global_pattern_fixed = self.global_pattern_df.iloc[int(n)]['fixed']
-			if(len(global_pattern_fixed)==1):
-				global_pattern_fixed=global_pattern_fixed[0]
-			else:
-				global_pattern_fixed=','.join(global_pattern_fixed)
-			print(global_pattern_fixed)
+			print("model_name"+model_name)
+			global_partition = self.global_pattern_df.iloc[int(n)]['partition']
+			global_predictor = self.global_pattern_df.iloc[int(n)]['predictor']
 
-			global_pattern_variable = self.global_pattern_df.iloc[int(n)]['variable']
-			if(len(global_pattern_variable)==1):
-				global_pattern_variable=global_pattern_variable[0]
-			else:
-				global_pattern_variable=','.join(global_pattern_variable)
-			print(global_pattern_variable)
+			g_filter_l_query = " select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
+			"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
+			"theta,param,stats,dev_pos,dev_neg from "+self.table_dict['local_name']+\
+			" where array_to_string(fixed,',')='"+global_partition+\
+			"' and array_to_string(variable,',')='"+global_predictor+\
+			"' and model = '"+model_name+"';"
 
-			pattern_tuples = [[model_name,global_pattern_fixed,global_pattern_variable]]
+			print(g_filter_l_query)
 
-			print(pattern_tuples)
+			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,conn)
+			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
+			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
+			self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
+			self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
 
-			df = pd.DataFrame(pattern_tuples, columns=['model','fixed','variable'])
-			# print(df)
-			pattern_df_lists.append(df)
+			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
 
-		filtered_df = pd.DataFrame(columns=list(self.raw_local_pattern_df))
-		
-		for pattern_df in pattern_df_lists:
-			model=pattern_df['model'].to_string(index=False)
-			print(pattern_df)
-			g_fixed=pattern_df['fixed'].to_string(index=False)
-			print(g_fixed)
-			g_variable=pattern_df['variable'].to_string(index=False)
-			print(g_variable)
-			
-			Q1 ="WITH model_matched as (SELECT * FROM dev.pub_local WHERE model=\'"+model+"\')"+\
-			"SELECT * FROM model_matched WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
-			print(Q1)
-			l_result = pd.read_sql(Q1, conn)
-			filtered_df = filtered_df.append(l_result,ignore_index=True)
-
-		filtered_df['Partition'] = filtered_df['fixed'].apply(lambda x: ','.join(x))
-		filtered_df['Partition_Values'] = filtered_df['fixed_value'].apply(lambda x: ','.join(x))
-		filtered_df['Predictor'] = filtered_df['variable'].apply(lambda x: ','.join(x))
-		filtered_df['stats'] = filtered_df['stats'].str.split(',',expand=True)[0]
-		filtered_df['stats'] = filtered_df['stats'].str.strip('[')
-		filtered_df["stats"] = pd.to_numeric(filtered_df["stats"])
-		filtered_df["stats"] = filtered_df["stats"].round(2)
-		filtered_df["agg"] = "sum(pubcount)"
-
-		self.local_output_pattern_df  = filtered_df
-
-		model = TableModel(dataframe=filtered_df[['Partition','Partition_Values','Predictor','agg']])
+		model = TableModel(dataframe=local_shown)
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
 
 	def global_description(self):
 
 		for n in self.global_pattern_table.multiplerowlist:
-
-			fixed_attribute = self.global_pattern_df.iloc[int(n)]['fixed']
-			if(len(fixed_attribute)==1):
-				fixed_attribute=fixed_attribute[0]
-			else:
-				fixed_attribute=','.join(fixed_attribute)
+			fixed_attribute = self.global_pattern_df.iloc[int(n)]['partition']
 			aggregation_function=self.global_pattern_df.iloc[int(n)]['agg']
 			modeltype = self.global_pattern_df.iloc[int(n)]['model']
-			variable_attribute = self.global_pattern_df.iloc[int(n)]['variable']
-			if(len(variable_attribute)==1):
-				variable_attribute=variable_attribute[0]
-			else:
-				variable_attribute=','.join(variable_attribute)
-			Lambda = round(self.global_pattern_df.iloc[int(n)]['lambda'],2)
+			variable_attribute = self.global_pattern_df.iloc[int(n)]['predictor']
+			Lambda = self.global_pattern_df.iloc[int(n)]['support']
 
 		global_desc = "For each "+fixed_attribute+',the '+aggregation_function +' is '+modeltype+'\n in '+variable_attribute+'.'+\
 		'This pattern holds for '+str(Lambda*100)+ ' % of the '+fixed_attribute
-		
 		desc_win = Toplevel()
 		x = self.parent.winfo_x()
 		print("x=" +str(x))
@@ -469,66 +412,41 @@ class CAPE_UI:
 		h = 120 
 		print("h=" +str(h))
 		desc_win.geometry("%dx%d+%d+%d" % (w, h, x + 450, y + 500))
-
 		desc_win.wm_title("Global Pattern Description")
 		desc_frame = Frame(desc_win)
 		desc_frame.pack(fill=BOTH,expand=True)
-
 		desc_label= Label(desc_frame,text=global_desc,font=('Times New Roman bold',12),borderwidth=5,relief=SOLID,justify=LEFT)
 		desc_label.pack(fill=BOTH,expand=True)
 
 
 	def use_local_filter_output(self):
 
-		original_output_df = pd.DataFrame.copy(self.original_query_result_df)
-
-		print(self.local_pattern_table.multiplerowlist)
-		# print(self.pattern_table.multiplecollist)
-
-		pattern_df_lists = []
+		concat_clause = None
+		l_filter_o_query = None
+		fixed_list=[]
 		for n in self.local_pattern_table.multiplerowlist:
 
 			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
-			
-			pattern_fixed = self.local_output_pattern_df.iloc[int(n)]['fixed']
-			print(pattern_fixed)
 
-			pattern_fixed_value = self.local_output_pattern_df.iloc[int(n)]['fixed_value']
-			print(pattern_fixed_value)
-
-			pattern_tuples = list(zip(pattern_fixed, pattern_fixed_value))
-
-			df = pd.DataFrame(pattern_tuples, columns=['fixed','fixed_value'])
-			# print(df)
-			pattern_df_lists.append(df)
-
+			fixed_str = self.local_output_pattern_df.iloc[int(n)]['partition']
+			variable_str = self.local_output_pattern_df.iloc[int(n)]['predictor']
+			partitions = self.local_output_pattern_df.iloc[int(n)]['partition_values']
+			fixed_str_list = fixed_str.split(',')
+			if(len(fixed_str_list)==1):
+				concat_clause = fixed_str
+			else:
+				concat_clause = "||','||".join(fixed_str_list)
 		
-		user_query_view = 'WITH user_query as ('+self.query+')' 
-		filtered_result_df = pd.DataFrame(columns=list(self.query_result_df))
+		l_filter_o_query = "select user_query.* from user_query where "+concat_clause+"='"+partitions+"';"
 
-		for pattern_df in pattern_df_lists:
-			query_list = []
-			for m in range(len(pattern_df['fixed'])):
-				fixed_col_name = pattern_fixed[m]
-				fixed_col_value = pattern_fixed_value[m]
-				if(fixed_col_name=='year'):
-					q = "SELECT * FROM user_query uq where "+fixed_col_name+"=CAST( "+fixed_col_value+" AS INT)"
-				else:		
-					q = "SELECT * FROM user_query uq where "+fixed_col_name+"=\'"+fixed_col_value+"\'"
-				query_list.append(q)
-			querybody = '\nINTERSECT\n'.join(query_list)
-			full_query = user_query_view+querybody
-			print(full_query)
-			one_df = pd.read_sql(full_query,conn)
-			print(one_df)
-			filtered_result_df = filtered_result_df.append(one_df,ignore_index=True)
-		
-		print(filtered_result_df)
+		filtered_result_df = pd.read_sql(l_filter_o_query,conn)
+
 		self.query_result_df = filtered_result_df
 
 		model = TableModel(dataframe=filtered_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
+
 
 	def handle_low(self):
 		
@@ -536,8 +454,8 @@ class CAPE_UI:
 		config=ExplConfig()
 		eg = ExplanationGenerator(config, None)
 		eg.initialize() 
-		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator"]
-		exp_df = pd.DataFrame(columns=['From_Pattern',"Drill_Down_To","Score","Distance","Outlierness","Denominator"])
+		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_param","drill_param"]
+		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_param","drill_param"])
 		for n in self.query_result_table.multiplerowlist:
 			self.question = self.query_result_df.iloc[int(n)]
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
@@ -557,52 +475,63 @@ class CAPE_UI:
 				score = round(e.score,2)
 				tuple_list.append(score)
 
+
 				if e.expl_type == 1:
 					local_pattern=(
-						'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
-						'Model=' + e.relevent_pattern[4] + '|'+\
-						'Model Param: '
+						'[' + ','.join(e.relevent_pattern[0]) +\
+						' = ' + ','.join(list(map(str, e.relevent_pattern[1]))) +'] : '+ \
+						','.join(list(map(str, e.relevent_pattern[2])))+'>>'+\
+						e.relevent_pattern[4] + '>>'+ self.agg_name
 						)
 					if e.relevent_pattern[4] == 'const':
-						model_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
+					# 	local_pattern_full = local_pattern + model_param
 					else:
-						model_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+					# 	local_pattern_full = local_pattern + model_param
 
-					drill_down_To=(
-						'Partition=' + ','.join(e.refinement_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.refinement_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.refinement_pattern[2])))+'|'+\
-						'Model=' + e.refinement_pattern[4] + '|'+\
-						'Model Param: '
-						)
+					# drill_down_To=(
+					# 	'Partition=' + ','.join(e.refinement_pattern[0]) +'|'+\
+					# 	'Partition_Value=' + ','.join(list(map(str, e.refinement_pattern[1]))) +'|'+ \
+					# 	'Predictor=' + ','.join(list(map(str, e.refinement_pattern[2])))+'|'+\
+					# 	'Model=' + e.refinement_pattern[4] + '|'+\
+					# 	'Model Param: '
+					# 	)
+					drill_down_to = ','.join([x for x in e.refinement_pattern[0] if x not in e.relevent_pattern[0]])
 					if e.refinement_pattern[4] == 'const':
-						model_param =str(round(float(e.refinement_pattern[6].split(',')[0][1:]),2))
-						drill_down_To_full = drill_down_To + model_param
+
+						drill_param =str(round(float(e.refinement_pattern[6].split(',')[0][1:]),2))
+						# drill_down_To_full = drill_down_To + model_param
+						drill_down_To_full = drill_down_to + '>>const>>'+self.agg_name
 					else:
-						model_param = 'Intercept=' + str(round(e.refinement_pattern[7]['Intercept'],2))+', '+str(list(e.refinement_pattern[7])[1])+'='+str(round(e.refinement_pattern[7][list(e.refinement_pattern[7])[1]],2))
-						drill_down_To_full = drill_down_To + model_param
+						# model_param = 'Intercept=' + str(round(e.refinement_pattern[7]['Intercept'],2))+','+str(list(e.refinement_pattern[7])[1])+'='+str(round(e.refinement_pattern[7][list(e.refinement_pattern[7])[1]],2))
+						# drill_down_To_full = drill_down_To + model_param
+						drill_down_To_full = drill_down_to + '>>linear>>' + self.agg_name
 				else:
+					# local_pattern=(
+					# 	'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
+					# 	'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
+					# 	'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
+					# 	'Model=' + e.relevent_pattern[4] + '|'+\
+					# 	'Model Param: '
+					# 	)
 					local_pattern=(
-						'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
-						'Model=' + e.relevent_pattern[4] + '|'+\
-						'Model Param: '
+						'[' + ','.join(e.relevent_pattern[0]) +\
+						' = ' + ','.join(list(map(str, e.relevent_pattern[1]))) +'] : '+ \
+						','.join(list(map(str, e.relevent_pattern[2])))+'>>'+\
+						e.relevent_pattern[4] + '>>'+ self.agg_name
 						)
 					if e.relevent_pattern[4] == 'const':
-						model_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
+					# 	local_pattern_full = local_pattern + model_param
 					else:
-						model_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+					# local_pattern_full = local_pattern + model_param
 
-					drill_down_To_full = ' '
+					drill_down_To_full = ''
+					drill_param = ''
 
-				tuple_list.append(local_pattern_full)
+				tuple_list.append(local_pattern)
 				tuple_list.append(drill_down_To_full)
 				distance = round(e.distance,2)
 				tuple_list.append(distance)
@@ -610,11 +539,13 @@ class CAPE_UI:
 				tuple_list.append(outlierness)
 				denominator = round(e.denominator,2)
 				tuple_list.append(denominator)
+				tuple_list.append(relevent_param)
+				tuple_list.append(drill_param)
 				exp_list.append(tuple_list)
 
 			df_exp = pd.DataFrame(exp_list,columns=col_name)
 			exp_df = exp_df.append(df_exp,ignore_index=True)
-			
+		
 		self.exp_df = exp_df[col_name]
 		model = TableModel(dataframe=self.exp_df)
 		self.exp_table.updateModel(model)	
@@ -628,8 +559,8 @@ class CAPE_UI:
 		config=ExplConfig()
 		eg = ExplanationGenerator(config, None)
 		eg.initialize() 
-		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator"]
-		exp_df = pd.DataFrame(columns=['From_Pattern',"Drill_Down_To","Score","Distance","Outlierness","Denominator"])
+		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_param","drill_param"]
+		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_param","drill_param"])
 		for n in self.query_result_table.multiplerowlist:
 			self.question = self.query_result_df.iloc[int(n)]
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
@@ -652,50 +583,60 @@ class CAPE_UI:
 
 				if e.expl_type == 1:
 					local_pattern=(
-						'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
-						'Model=' + e.relevent_pattern[4] + '|'+\
-						'Model Param: '
+						'[' + ','.join(e.relevent_pattern[0]) +\
+						' = ' + ','.join(list(map(str, e.relevent_pattern[1]))) +'] : '+ \
+						','.join(list(map(str, e.relevent_pattern[2])))+'>>'+\
+						e.relevent_pattern[4] + '>>'+ self.agg_name
 						)
 					if e.relevent_pattern[4] == 'const':
-						model_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
+					# 	local_pattern_full = local_pattern + model_param
 					else:
-						model_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+					# 	local_pattern_full = local_pattern + model_param
 
-					drill_down_To=(
-						'Partition=' + ','.join(e.refinement_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.refinement_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.refinement_pattern[2])))+'|'+\
-						'Model=' + e.refinement_pattern[4] + '|'+\
-						'Model Param: '
-						)
+					# drill_down_To=(
+					# 	'Partition=' + ','.join(e.refinement_pattern[0]) +'|'+\
+					# 	'Partition_Value=' + ','.join(list(map(str, e.refinement_pattern[1]))) +'|'+ \
+					# 	'Predictor=' + ','.join(list(map(str, e.refinement_pattern[2])))+'|'+\
+					# 	'Model=' + e.refinement_pattern[4] + '|'+\
+					# 	'Model Param: '
+					# 	)
+					drill_down_to = ','.join([x for x in e.refinement_pattern[0] if x not in e.relevent_pattern[0]])
 					if e.refinement_pattern[4] == 'const':
-						model_param =str(round(float(e.refinement_pattern[6].split(',')[0][1:]),2))
-						drill_down_To_full = drill_down_To + model_param
+
+						drill_param =str(round(float(e.refinement_pattern[6].split(',')[0][1:]),2))
+						# drill_down_To_full = drill_down_To + model_param
+						drill_down_To_full = drill_down_to + '>>const>>'+self.agg_name
 					else:
-						model_param = 'Intercept=' + str(round(e.refinement_pattern[7]['Intercept'],2))+','+str(list(e.refinement_pattern[7])[1])+'='+str(round(e.refinement_pattern[7][list(e.refinement_pattern[7])[1]],2))
-						drill_down_To_full = drill_down_To + model_param
+						# model_param = 'Intercept=' + str(round(e.refinement_pattern[7]['Intercept'],2))+','+str(list(e.refinement_pattern[7])[1])+'='+str(round(e.refinement_pattern[7][list(e.refinement_pattern[7])[1]],2))
+						# drill_down_To_full = drill_down_To + model_param
+						drill_down_To_full = drill_down_to + '>>linear>>' + self.agg_name
 				else:
+					# local_pattern=(
+					# 	'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
+					# 	'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
+					# 	'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
+					# 	'Model=' + e.relevent_pattern[4] + '|'+\
+					# 	'Model Param: '
+					# 	)
 					local_pattern=(
-						'Partition=' + ','.join(e.relevent_pattern[0]) +'|'+\
-						'Partition_Value=' + ','.join(list(map(str, e.relevent_pattern[1]))) +'|'+ \
-						'Predictor=' + ','.join(list(map(str, e.relevent_pattern[2])))+'|'+\
-						'Model=' + e.relevent_pattern[4] + '|'+\
-						'Model Param: '
+						'[' + ','.join(e.relevent_pattern[0]) +\
+						' = ' + ','.join(list(map(str, e.relevent_pattern[1]))) +'] : '+ \
+						','.join(list(map(str, e.relevent_pattern[2])))+'>>'+\
+						e.relevent_pattern[4] + '>>'+ self.agg_name
 						)
 					if e.relevent_pattern[4] == 'const':
-						model_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
-						local_pattern_full = local_pattern + model_param
+						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
+					# 	local_pattern_full = local_pattern + model_param
 					else:
-						model_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]])
-						local_pattern_full = local_pattern + model_param
+						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]]),2)
+					# local_pattern_full = local_pattern + model_param
 
-					drill_down_To_full = ' '
+					drill_down_To_full = ''
+					drill_param = ''
 
-				tuple_list.append(local_pattern_full)
+				tuple_list.append(local_pattern)
 				tuple_list.append(drill_down_To_full)
 				distance = round(e.distance,2)
 				tuple_list.append(distance)
@@ -703,6 +644,8 @@ class CAPE_UI:
 				tuple_list.append(outlierness)
 				denominator = round(e.denominator,2)
 				tuple_list.append(denominator)
+				tuple_list.append(relevent_param)
+				tuple_list.append(drill_param)
 				exp_list.append(tuple_list)
 
 			df_exp = pd.DataFrame(exp_list,columns=col_name)
@@ -734,10 +677,30 @@ class CAPE_UI:
 		win_frame.rowconfigure(0,weight=4)
 		win_frame.rowconfigure(1,weight=1)
 
+		concat_clause = None
+		l_filter_o_query = None
+		fixed_list=[]
 		for n in self.local_pattern_table.multiplerowlist:
 
 			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
 
+			fixed_str = self.local_output_pattern_df.iloc[int(n)]['partition']
+			variable_str = self.local_output_pattern_df.iloc[int(n)]['predictor']
+			partitions = self.local_output_pattern_df.iloc[int(n)]['partition_values']
+			fixed_str_list = fixed_str.split(',')
+			if(len(fixed_str_list)==1):
+				concat_clause = fixed_str
+			else:
+				concat_clause = "||','||".join(fixed_str_list)
+
+		chosen_row = self.chosen_local_pattern
+
+		print("chosen_row:")
+		print(chosen_row)
+		print("\n")
+		
+		l_filter_o_query = "select user_query.* from user_query where "+concat_clause+"='"+partitions+"';"
+		
 		fixed_attribute = self.chosen_local_pattern['fixed']
 		fixed_value = self.chosen_local_pattern['fixed_value']
 		
@@ -753,32 +716,27 @@ class CAPE_UI:
 		aggregation_function=self.chosen_local_pattern['agg']
 		modeltype = self.chosen_local_pattern['model']
 		variable_attribute = self.chosen_local_pattern['variable']
+
 		if(len(variable_attribute)==1):
 			variable_attribute=variable_attribute[0]
 		else:
 			variable_attribute=','.join(variable_attribute)
 
-		local_desc = "For "+fixed_clause+',\n\nthe '+aggregation_function +' is '+modeltype+' in '+variable_attribute+'.'
-		local_desc = local_desc.replace('const','constant')
-
-		n=self.local_pattern_table.multiplerowlist[0]
-		chosen_row = self.local_output_pattern_df.iloc[int(n)]
-		chosen_row = chosen_row.to_frame().T.reset_index()
-
-		if(chosen_row['model'].to_string(index=False)=='const'):
+		if(chosen_row['model']=='const'):
 			pass
 			model_str = "\n"
 		else:
 
-			Intercept_value = round((chosen_row['param'][0]['Intercept']),2)
-			slope_name = list(chosen_row['param'][0])[1]
-			slope_value = round((chosen_row['param'][0][slope_name]),2)
+			Intercept_value = round((chosen_row['param']['Intercept']),2)
+			slope_name = list(chosen_row['param'])[1]
+			slope_value = round((chosen_row['param'][slope_name]),2)
 
 			model_str = "\n\nIntercept: "+str(Intercept_value)+', '+str(slope_name)+" as Coefficient: "+str(slope_value)
 
-		# dev_neg = "\n\nMax Dev_Neg: "+str(round(chosen_row['dev_neg'].values[0],2))
-		# dev_pos = "\n\nMax Dev_Pos: "+str(round(chosen_row['dev_pos'].values[0],2))
-		theta = "\n\nThe goodness of fit of the model is "+str(round(chosen_row['theta'].values[0],2))
+		theta = "\n\nThe goodness of fit of the model is "+str(round(chosen_row['theta'],2))
+
+		local_desc = "For "+fixed_clause+',\n\nthe '+aggregation_function +' is '+modeltype+' in '+variable_attribute+'.'
+		local_desc = local_desc.replace('const','constant')
 
 		pattern_attr = model_str+theta
 
@@ -795,55 +753,34 @@ class CAPE_UI:
 		f = Figure(figsize=(10,10),dpi=130)
 		a = f.add_subplot(111)
 
-		chosen_row['variable_str'] = chosen_row['variable'].apply(lambda x: ','.join(x))
-		chosen_row['fixed_str'] = chosen_row['fixed'].apply(lambda x: ','.join(x))
-		variable_name = chosen_row["variable_str"].to_string(index=False)
-		fixed_name = chosen_row['fixed_str'].to_string(index=False)
+		pattern_data_df = pd.read_sql(l_filter_o_query,conn)
 
-		pattern_data_query = "SELECT sum(pubcount) as sum_pubcount,"+variable_name+','+fixed_name+\
-		"\nFROM pub\nGROUP BY "+variable_name+','+fixed_name
+		print("pattern_data_df")
+		print(pattern_data_df)
+		print("len(chosen_row['variable']) is ")
+		print(len(chosen_row['variable']))
 
-		user_query_view = 'WITH pattern_query as ('+pattern_data_query+')' 
-		pattern_data_df = pd.DataFrame(columns=list(self.query_result_df))
+		if(chosen_row['model']=='const'):
 
-		query_list = []
-		for m in range(len(chosen_row['fixed'][0])):
-			fixed_col_name = chosen_row['fixed'][0][m]
-			fixed_col_value = chosen_row['fixed_value'][0][m]
-			if(fixed_col_name=='year'):
-				q = "SELECT * FROM pattern_query uq where "+fixed_col_name+"=CAST( "+fixed_col_value+" AS INT)"
-			else:		
-				q = "SELECT * FROM pattern_query uq where "+fixed_col_name+"=\'"+fixed_col_value+"\'"
-			query_list.append(q)
-		querybody = '\nINTERSECT\n'.join(query_list)
-		full_query = user_query_view+querybody
-		print(full_query)
-		one_df = pd.read_sql(full_query,conn)
-		print(one_df)
-		pattern_data_df = pattern_data_df.append(one_df,ignore_index=True)
-
-		if(chosen_row['model'].to_string(index=False)=='const'):
-
-			if(len(chosen_row['variable'][0])==1):
+			if(len(chosen_row['variable'])==1):
 
 				f = Figure(figsize=(5,5),dpi=130)
 				a = f.add_subplot(111)
-				a.axhline(y=round(chosen_row['stats'].values[0],2),c="red",linewidth=2,label='Model'+str(round(chosen_row['stats'].values[0],2)))
-				print(round(chosen_row['stats'].values[0],2))
+				a.axhline(y=round(chosen_row['stats'],2),c="red",linewidth=2,label='Model: '+str(round(chosen_row['stats'],2)))
+				print(round(chosen_row['stats'],2))
 				a.set_title("pattern graph")
 				a.set_xlabel('Variable')
-				a.set_ylabel('sum(pubcount)')
+				a.set_ylabel(self.agg_name)
 				a.legend(loc='best')
-				chosen_row['variable'] = chosen_row['variable'].apply(lambda x: ','.join(x))
-				variable_name = chosen_row["variable"].to_string(index=False)
+				variable_name= chosen_row['variable'][0]
 				print('variable_name is ')
 				print(variable_name)
 				print("variable type is:")
 				print(str(pattern_data_df[variable_name].dtype))
 
 				Xuniques, X = np.unique(pattern_data_df[variable_name], return_inverse=True)
-				Y = pattern_data_df['sum_pubcount']
-				a.scatter(X, Y, s=60, c='b',label='sum(pubcount)')
+				Y = pattern_data_df[self.agg_name]
+				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
 				a.legend(loc='best')
 				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
 
@@ -852,8 +789,8 @@ class CAPE_UI:
 				a = f.gca(projection='3d')
 				a.set_title("pattern graph")
 
-				x_name = chosen_row['variable'][0][0]
-				y_name = chosen_row['variable'][0][1]
+				x_name = chosen_row['variable'][0]
+				y_name = chosen_row['variable'][1]
 
 				Xuniques, X = np.unique(pattern_data_df[x_name], return_inverse=True)
 				print("X:")
@@ -872,38 +809,32 @@ class CAPE_UI:
 				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
 				a.set(yticks=range(len(Yuniques)), yticklabels=Yuniques) 
 
-				a.scatter(X, Y, pattern_data_df['sum_pubcount'],s=20, c='b',label='sum(pubcount)')
+				a.scatter(X, Y, pattern_data_df[self.agg_name],s=20, c='b',label=self.agg_name)
 				a.set_xlabel(x_name)
 				a.set_ylabel(y_name)
-				a.set_zlabel('sum(pubcount)')
-				# a.legend(loc='best')
+				a.set_zlabel(self.agg_name)
 
 			canvas = FigureCanvasTkAgg(f,graph_frame)
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 			canvas.draw()
 
-			# toolbar = NavigationToolbar2Tk(canvas,graph_frame)
-			# toolbar.update()
-			# canvas._tkcanvas.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+		elif(chosen_row['model']=='linear'):
 
-		elif(chosen_row['model'].to_string(index=False)=='linear'):
-
-			if(len(chosen_row['variable'][0])==1):
+			if(len(chosen_row['variable'])==1):
 
 				f = Figure(figsize=(5,5),dpi=130)
 				a = f.add_subplot(111)
 				a.set_title("pattern graph")
 				a.set_xlabel('Variable')
-				a.set_ylabel('sum(pubcount)')
+				a.set_ylabel(self.agg_name)
 				a.legend(loc='best')
-				chosen_row['variable'] = chosen_row['variable'].apply(lambda x: ','.join(x))
-				variable_name = chosen_row["variable"].to_string(index=False)
+				variable_name = chosen_row['variable'][0]
 				print('variable_name is ')
 				print(variable_name)
 
-				Intercept_value = round((chosen_row['param'][0]['Intercept']),2)
-				slope_name = list(chosen_row['param'][0])[1]
-				slope_value = float(chosen_row['param'][0][slope_name])
+				Intercept_value = round((chosen_row['param']['Intercept']),2)
+				slope_name = list(chosen_row['param'])[1]
+				slope_value = float(chosen_row['param'][slope_name])
 				print("slope_value is :")
 				print(slope_value)
 
@@ -913,8 +844,8 @@ class CAPE_UI:
 				print('pattern_data_df variable_name max value is:')
 				print(pattern_data_df[variable_name].max())
 
-				var_min = pd.to_numeric(pattern_data_df[variable_name].min())
-				var_max = pd.to_numeric(pattern_data_df[variable_name].max())
+				var_min = pd.to_numeric(pattern_data_df[variable_name].min()).item()
+				var_max = pd.to_numeric(pattern_data_df[variable_name].max()).item()
 				print("var_min is: ")
 				print(var_min)
 				print("var_max is: ")
@@ -924,17 +855,21 @@ class CAPE_UI:
 				dot_max = max(X1)
 				print('X1 is:')
 				print(X1)
-				X = pattern_data_df[variable_name]
-				Y = pattern_data_df['sum_pubcount']
+				X = pattern_data_df[variable_name].astype('int64')
+				print("X values:")
+				print(X)
+				Y = pattern_data_df[self.agg_name]
+				print("Y values:")
+				print(Y)
 				y_vals = slope_value * X1 + Intercept_value
 				print("y_vals are:")
 				print(y_vals)
 				a.plot(X1, y_vals, c='r',linewidth=2,label='Model')
-				a.scatter(X, Y, s=20, c='b',label='sum(pubcount)')
+				a.scatter(X, Y, s=20, c='b')
 				a.legend(loc='best')
 				a.set_xlim([min(var_min,dot_min)-1,max(var_max,dot_max)+1])
 				a.set_xlabel(variable_name)
-				a.set_ylabel("sum(pubcount)")
+				a.set_ylabel(self.agg_name)
 
 			canvas = FigureCanvasTkAgg(f,graph_frame)
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
@@ -964,15 +899,15 @@ class CAPE_UI:
 		a = f.add_subplot(111)
 		
 		for n in self.exp_table.multiplerowlist:	
-			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern'].split('|')
-			rel_pattern_part = relevent_pattern[0].split("=")[1]
-			rel_pattern_part_value = relevent_pattern[1].split("=")[1]
-			rel_pattern_pred = relevent_pattern[2].split("=")[1]
-			rel_pattern_model = relevent_pattern[3].split("=")[1]
-			rel_param = relevent_pattern[4].split(":")[1]
+			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern']
+			rel_pattern_part = relevent_pattern.split(' : ')[0].split(' = ')[0].strip('[')
+			rel_pattern_part_value = relevent_pattern.split(' : ')[0].split(' = ')[1].split(']')
+			rel_pattern_pred = relevent_pattern.split(' : ')[1].split('>>')[0]
+			rel_pattern_model = relevent_pattern.split(' : ')[1].split('>>')[1]
+			rel_param = self.exp_df.iloc[int(n)]['relevent_param']
 			rel_pattern_part_list = rel_pattern_part.split(',')
 			rel_pattern_pred_list = rel_pattern_pred.split(',')
-			rel_pattern_part_value_list = rel_pattern_part_value.split(',')
+			rel_pattern_part_value_list = rel_pattern_part_value[0].split(',')
 			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
 			exp_tuple_list = exp_tuple.split(',')
 			exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
@@ -1016,7 +951,7 @@ class CAPE_UI:
 				a.axhline(y=float(rel_param),c="red",linewidth=2,label='constant = '+str(rel_param))
 				a.set_title("Explanation Graph")
 				a.set_xlabel('Predictor')
-				a.set_ylabel('sum(pubcount)')
+				a.set_ylabel(self.agg_name)
 				a.legend(loc='best')
 
 				Xuniques, X = np.unique(exp_pattern_df[variable_name], return_inverse=True)
@@ -1027,7 +962,7 @@ class CAPE_UI:
 				Y = exp_pattern_df['sum_pubcount']
 				print('Y:')
 				print(Y)
-				a.scatter(X, Y, s=60, c='b',label='sum(pubcount)')
+				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
 
 				x_variable_list = exp_pattern_df[variable_name].tolist()
 				print('x_variable_list:')
@@ -1106,21 +1041,17 @@ class CAPE_UI:
 					Y1 = y_variable_list.index(str(self.question_tuple[y_name]))
 					Y2 = y_variable_list.index(str(exp_tuple_df[y_name]))
 
-				a.scatter(X, Y, exp_pattern_df['sum_pubcount'],s=60, c='b',label='sum(pubcount)')
+				a.scatter(X, Y, exp_pattern_df['sum_pubcount'],s=60, c='b',label=self.agg_name)
 				a.scatter(X1,Y1,self.question_tuple['sum_pubcount'],s=150,marker='p',c='r',label='User Question')
 				a.scatter(X2,Y2,exp_tuple_df['pred_value'],s=150,marker='X',c='g',label='Explanation')
 				a.legend(loc='best')
 				a.set_xlabel(x_name)
 				a.set_ylabel(y_name)
-				a.set_zlabel('sum(pubcount)')
+				a.set_zlabel(self.agg_name)
 
 			canvas = FigureCanvasTkAgg(f,graph_frame)
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 			canvas.draw()
-
-			# toolbar = NavigationToolbar2Tk(canvas,graph_frame)
-			# toolbar.update()
-			# canvas._tkcanvas.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
 		elif(rel_pattern_model=='linear'):
 
@@ -1131,7 +1062,7 @@ class CAPE_UI:
 				a = f.add_subplot(111)
 				a.set_title("Explanation Graph")
 				a.set_xlabel('Variable')
-				a.set_ylabel('sum(pubcount)')
+				a.set_ylabel(self.agg_name)
 				a.legend(loc='best')
 
 				Intercept_value = float(rel_param.split(",")[0].split("=")[1])
@@ -1162,20 +1093,19 @@ class CAPE_UI:
 				print("y_vals are:")
 				print(y_vals)
 				a.plot(X1, y_vals, c='r',linewidth=2,label="Model")
-				a.scatter(X, Y, s=60, c='b',label='sum(pubcount)')
+				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
 				a.scatter(X2,Y2,s=150,marker='p',c='r',label='User Question')
 				a.scatter(X3,exp_tuple_df['pred_value'],s=150,marker='X',c='g',label='Explanation')
 				a.legend(loc='best')
 				a.set_xlim([min(var_min,dot_min)-1,max(var_max,dot_max)+1])
 				a.set_xlabel(variable_name)
-				a.set_ylabel("sum(pubcount)")
+				a.set_ylabel(self.agg_name)
 
 			canvas = FigureCanvasTkAgg(f,graph_frame)
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 			canvas.draw()
 
 		likelihood_words = []
-		self.question_tuple['direction']='high'
 
 		if(exp_tuple_score<=0):
 			likelihood_words = ['unlikely','not similar','slighlty']
@@ -1212,8 +1142,8 @@ class CAPE_UI:
 			predict = 'predicts'	
 
 		fixed_pair_list=[]
-		fixed_attr_list = str(self.chosen_local_pattern['Partition']).split(',')
-		fixed_value_list = str(self.chosen_local_pattern['Partition_Values']).split(',')
+		fixed_attr_list = str(self.chosen_local_pattern['partition']).split(',')
+		fixed_value_list = str(self.chosen_local_pattern['partition_values']).split(',')
 
 		for n in range(len(fixed_attr_list)):
 			eq = (fixed_attr_list[n]+"="+fixed_value_list[n])
@@ -1224,7 +1154,7 @@ class CAPE_UI:
 			fixed_pair = ",".join(fixed_pair_list)
 
 		variable_pair_list=[]
-		variable_attr_list = str(self.chosen_local_pattern['Predictor']).split(',')
+		variable_attr_list = str(self.chosen_local_pattern['predictor']).split(',')
 
 		for n in range(len(variable_attr_list)):
 			eq = (str(variable_attr_list[n])+"="+str(self.question_tuple[variable_attr_list[n]].to_string(index=False)))
@@ -1236,7 +1166,7 @@ class CAPE_UI:
 
 		counter_dir = ''
 
-		if(str(self.question_tuple['direction'].to_string(index=False))=='high'):
+		if(str(self.question['direction'])=='high'):
 			counter_dir='low'
 		else:
 			counter_dir='high'
@@ -1268,10 +1198,10 @@ class CAPE_UI:
 			fixed_pair = ",".join(fixed_exp_pair_list)
 
 
-		comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question_tuple['direction'].to_string(index=False)+"er than expected for:\n"+user_question_clause+\
+		comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question['direction']+"er than expected for:\n"+user_question_clause+\
 		"\n  In general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
 		"\nThis is also true for "+ fixed_pair+'.'\
-		"\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question_tuple['direction'].to_string(index=False)+"er than predicted."+\
+		"\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question['direction']+"er than predicted."+\
 		"\n  This may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
 
 		comprehensive_exp = comprehensive_exp.replace('name','author')

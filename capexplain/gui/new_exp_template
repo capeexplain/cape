@@ -1,0 +1,17 @@
+  This explanation was ranked <unlikely, plausible, highly pausible> 
+because the counterbalance is <similar, somewhat similar, not similar> to the user question 
+and it deviates  <slighlty, "" , extremly> from the predicted outcome. 
+
+If only_relevent:
+	Explanation for why sum(publcount) is lower 
+	than expected for name=Ax,venue=ICDE,year=2009:
+	In general year predicts sum(pubcount) for most authors.
+	This is also true for name=Ax.
+	However, for year=2009
+	the value of sum(publcount) is lower than predicted.
+	This may be explained through the higher than expected outcome 
+	for year=2010. 
+else:
+    Even though like many other authors, year predicts sum(pubcount), Ax's publication
+    in venue=icde, year=2009 is low which maybe explained by his higher than usual
+    number of publications in year = 2008, venue = icde
