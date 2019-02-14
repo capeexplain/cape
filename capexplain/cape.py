@@ -12,9 +12,10 @@ import psycopg2
 from inspect import currentframe, getframeinfo
 from capexplain.pattern_miner.PatternMiner import PatternFinder, MinerConfig
 from capexplain.database.dbaccess import DBConnection
-from capexplain.cl.cfgoption import ConfigOpt, OptionType
+from capexplain.cl.cfgoption import ConfigOpt, OptionType, DictLike
 from capexplain.cl.command import CmdTypes, Command, CmdOptions
 from capexplain.explain.explanation import ExplanationGenerator, ExplConfig
+from capexplain.gui.Cape_GUI import startCapeGUI 
 import colorful
 
 # ********************************************************************************
@@ -104,6 +105,29 @@ def explainCommand(command,log):
     e.doExplain()
     log.debug("explanation generation finished")
     config.conn.close()
+
+# ********************************************************************************
+def guiCommand(command,log):
+    """
+    Command for printing stats and patterns of previous executions of miner or explainer.
+    """
+    # create configuration based on options
+    config=DictLike()
+    dbconn=DBConnection()
+
+    log.debug("executing GUI command")
+
+    command.options.setupConfigAndConnection(dbconn, config)
+    
+    config.validateConfiguration()
+    conn=dbconn.pgconnect()
+    log.debug("connected to database")
+    #TODO gui=Cape_UI() # (config, dbconn)
+    # start the gui gui.start()
+    startCapeGUI(conn,config)
+    config.conn.close()
+    log.debug("closed database connection ... DONE")
+
     
 
 # ********************************************************************************
@@ -154,6 +178,10 @@ STATS_OPTIONS = COMMON_OPTIONS + [
 HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="ERROR"),
 ]
 
+GUI_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
+    ConfigOpt(longopt='maximize_window', shortopt='m', desc='maximize window at start')
+    ]
+
 # mapping strings to log levels
 LOGLEVELS_MAP = { "DEBUG": logging.DEBUG,
                   "INFO": logging.INFO,
@@ -166,6 +194,7 @@ COMMANDS = [ Command(cmd=CmdTypes.Mine,cmdstr='mine',options=CmdOptions(MINE_OPT
              Command(cmd=CmdTypes.Explain,cmdstr='explain',options=CmdOptions(EXPLAIN_OPTIONS),helpMessage='Generate explanations for an aggregation result (patterns should have been mined upfront using mine).', execute=explainCommand),
              Command(cmd=CmdTypes.Stats,cmdstr='stats',options=CmdOptions(STATS_OPTIONS),helpMessage='Extracting statistics from database collected during previous mining executions.',execute=statsCommand),
              Command(cmd=CmdTypes.Help,cmdstr='help',options=CmdOptions(HELP_OPTIONS),helpMessage='Show general or command specific help.', execute=helpCommand),
+             Command(cmd=CmdTypes.GUI,cmdstr='gui',options=CmdOptions(GUI_OPTIONS),helpMessage='Open the Cape graphical explanation explorer.', execute=guiCommand) 
 ]
 
 # maps command names to Command objects

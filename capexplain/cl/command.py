@@ -12,7 +12,8 @@ class CmdTypes(Enum):
     Mine = 1,
     Explain = 2,
     Stats = 3,
-    Help = 4
+    Help = 4,
+    GUI = 5
 
 # ********************************************************************************
 # Information about a command for capexplain

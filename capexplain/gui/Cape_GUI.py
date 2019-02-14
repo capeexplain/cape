@@ -29,16 +29,18 @@ group_by = re.compile("group by(.*)",re.IGNORECASE)
 float_num = re.compile('\d+\.\d+')
 
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
-conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
+# conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
 
-cur = conn.cursor() # activate cursor
+#cur = conn.cursor() # activate cursor
 
 
 
 class CAPE_UI:
 
-	def __init__(self,parent):
-
+	def __init__(self,parent,conn,config=None):
+		self.conn=conn
+		self.config=config
+		self.cur=conn.cursor()
 #----------------------------main frame----------------------------------------#
 
 		self.parent=parent
@@ -245,6 +247,7 @@ class CAPE_UI:
 		self.local_pattern_table = Table(self.local_pattern_table_frame)
 		self.local_pattern_table.show()
 
+
 #---------------------------------explanation frame-----------------------------# 
 
 		self.explanation_frame.rowconfigure(0,weight=1)
@@ -387,7 +390,7 @@ class CAPE_UI:
 
 			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
 
-		model = TableModel(dataframe=local_shown)
+
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
 
@@ -875,7 +878,7 @@ class CAPE_UI:
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 			canvas.draw()
 
-		
+
 	def pop_up_explanation(self):
 
 		win = Toplevel()
@@ -1213,16 +1216,18 @@ class CAPE_UI:
 		pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
 
-
-def main():
+def startCapeGUI(conn,config):
 	root = Tk()
 	root.title('CAPE')
 	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
 	root.geometry('%dx%d+0+0' % (width,height))
-	ui = CAPE_UI(root)
-
+	ui = CAPE_UI(root,conn,config)
 	root.mainloop()
-	
+
+
+def main():
+	conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
+	start(conn)
 
 if __name__ == '__main__':
 	main()
