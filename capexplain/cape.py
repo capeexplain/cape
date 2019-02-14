@@ -15,6 +15,7 @@ from capexplain.database.dbaccess import DBConnection
 from capexplain.cl.cfgoption import ConfigOpt, OptionType, DictLike
 from capexplain.cl.command import CmdTypes, Command, CmdOptions
 from capexplain.explain.explanation import ExplanationGenerator, ExplConfig
+from capexplain.gui.Cape_GUI import startCapeGUI 
 import colorful
 
 # ********************************************************************************
@@ -114,15 +115,16 @@ def guiCommand(command,log):
     config=DictLike()
     dbconn=DBConnection()
 
-    log.debug("executing mine command")
+    log.debug("executing GUI command")
 
     command.options.setupConfigAndConnection(dbconn, config)
     
     config.validateConfiguration()
-    config.conn = dbconn.connect()
+    conn=dbconn.pgconnect()
     log.debug("connected to database")
     #TODO gui=Cape_UI() # (config, dbconn)
     # start the gui gui.start()
+    startCapeGUI(conn,config)
     config.conn.close()
     log.debug("closed database connection ... DONE")
 

@@ -27,17 +27,19 @@ group_by = re.compile("group by(.*)",re.IGNORECASE)
 float_num = re.compile('\d+\.\d+')
 
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
-conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
+# conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
 
-cur = conn.cursor() # activate cursor
+#cur = conn.cursor() # activate cursor
 
 
 
 class CAPE_UI:
 
-	def __init__(self,parent):
-
-#----------------------------main frame----------------------------------------#        
+	def __init__(self,parent,conn,config=None):
+		self.conn=conn
+		self.config=config
+		self.cur=conn.cursor()
+#----------------------------main frame----------------------------------------#
 		self.parent=parent
 		self.main_frame_style=ttk.Style()
 		self.main_frame_style.configure('Main_Frame', background='#334353')
@@ -191,7 +193,7 @@ class CAPE_UI:
 		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
 
-		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from dev.pub_global;"
+		raw_global_pattern_query = "select CONCAT(fixed,',',variable) as set,* from publication_global;"
 
 		self.raw_global_pattern_df = pd.read_sql(raw_global_pattern_query,conn)
 
@@ -234,7 +236,7 @@ class CAPE_UI:
 		self.local_pattern_table = Table(self.local_pattern_table_frame)
 		self.local_pattern_table.show()
 
-		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from dev.pub_local;"
+		raw_local_pattern_query = "select CONCAT(fixed,',',variable) as set, * from publication_local;"
 
 		self.raw_local_pattern_df = pd.read_sql(raw_local_pattern_query,conn)
 
@@ -417,7 +419,7 @@ class CAPE_UI:
 			g_variable=pattern_df['variable'].to_string(index=False)
 			print(g_variable)
 			
-			Q1 ="WITH model_matched as (SELECT * FROM dev.pub_local WHERE model=\'"+model+"\')"+\
+			Q1 ="WITH model_matched as (SELECT * FROM publication_local WHERE model=\'"+model+"\')"+\
 			"SELECT * FROM model_matched WHERE array_to_string(fixed, ',')=\'"+g_fixed+"\'AND array_to_string(variable, ',')=\'"+g_variable+'\';'
 			print(Q1)
 			l_result = pd.read_sql(Q1, conn)
@@ -940,7 +942,7 @@ class CAPE_UI:
 			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 			canvas.draw()
 
-		
+
 	def pop_up_explanation(self):
 
 		win = Toplevel()
@@ -1283,16 +1285,18 @@ class CAPE_UI:
 		pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
 
-
-def main():
+def startCapeGUI(conn,config):
 	root = Tk()
 	root.title('CAPE')
 	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
 	root.geometry('%dx%d+0+0' % (width,height))
-	ui = CAPE_UI(root)
-
+	ui = CAPE_UI(root,conn,config)
 	root.mainloop()
-	
+
+
+def main():
+	conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
+	start(conn)
 
 if __name__ == '__main__':
 	main()
