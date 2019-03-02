@@ -39,8 +39,8 @@ class Exp_Frame:
 		self.win_frame.rowconfigure(0,weight=4)
 		self.win_frame.rowconfigure(1,weight=1)
 
-		b = ttk.Button(self.win_frame, text="Quit", command=self.win.destroy)
-		b.grid(column=0,row=1,sticky='nsew')
+		b = ttk.Button(self.win_frame, text="Quit",width=10, height=6, command=self.win.destroy)
+		b.grid(column=0,row=1)
 
 		graph_frame = Frame(self.win_frame)
 		graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')

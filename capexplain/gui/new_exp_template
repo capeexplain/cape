@@ -12,6 +12,8 @@ If only_relevent:
 	This may be explained through the higher than expected outcome 
 	for year=2010. 
 else:
-    Even though like many other authors, year predicts sum(pubcount), Ax's publication
+    Explanation for why sum(publcount) is lower 
+	than expected for name=Ax,venue=ICDE,year=2009:
+    Even though like many other authors, year predicts sum(pubcount) for author = Ax , Ax's publication
     in venue=icde, year=2009 is low which maybe explained by his higher than usual
     number of publications in year = 2008, venue = icde
