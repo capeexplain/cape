@@ -73,26 +73,30 @@ class DBinfo:
 		data_type_query = "SELECT column_name, data_type FROM information_schema.columns"+\
 		                  " WHERE table_name = \'"+table_name+"\';"
 		data_type_df = pd.read_sql(data_type_query,self.conn)
+		logger.debug(data_type_df)
 		data_type_list = data_type_df.values.tolist()
-		table_attr_int_list = []
-		table_attr_float_list = []
-		table_attr_str_list = []
+		column_name_list = data_type_df.column_name.values.tolist()
+
+		query_data_convert_dict = dict.fromkeys(column_name_list,None)
+		plot_data_convert_dict = dict.fromkeys(column_name_list, None)
+
+
 		for n in data_type_list:
 			if(n[1] in pg_numeric_list):
+				plot_data_convert_dict[n[0]] = 'numeric'
 				if(n[1] in pg_int_list):
-					table_attr_int_list.append(n[0])
+					query_data_convert_dict[n[0]]='int'
 				else:
-					table_attr_float_list.append(n[0])
+					query_data_convert_dict[n[0]]='float'
 			else:
-				table_attr_str_list.append(n[0])
+				query_data_convert_dict[n[0]] = 'str'
+				plot_data_convert_dict[n[0]]='str'
 
-		logger.debug(data_type_list)
-		logger.debug(table_attr_int_list)
-		logger.debug(table_attr_float_list)
-		logger.debug(table_attr_str_list)
+		logger.debug(plot_data_convert_dict)
+		logger.debug(query_data_convert_dict)
 
 
-		return table_attr_int_list,table_attr_float_list,table_attr_str_list
+		return plot_data_convert_dict,query_data_convert_dict
 
 
 if __name__ == "__main__":

@@ -182,7 +182,7 @@ class User_Query_Frame:
 		"\nFROM " + table_name+\
 		"\nGROUP BY " + query_group_str+";"
 
-		return query,sorted_query_group,user_agg,alias_name,table_name
+		return query,sorted_query_group,agg_function,user_agg,alias_name,table_name
 
 
 

@@ -1,62 +1,33 @@
 import re
 import pandas as pd
-
-# class test:
-
-# 	def __init__(self,size):
-# 		self.size = size
-
-# 	def __getitem__(self, key):
-# 	    if key not in self.__dict__:
-# 	        raise AttributeError("No such attribute: " + key)
-# 	    return self.__dict__[key]
-
-# 	# overwrite __setitem__ to allow dictory style setting of options
-# 	def __setitem__(self,key,value):
-# 	    if key not in self.__dict__:
-# 	        raise AttributeError("No such attribute: " + key)
-# 	    self.__dict__[key] = value
-
-# 	def print_dict(self):
-# 		print(self.__dict__)
-
-
-# if __name__ == '__main__':
-
-# 	test1 = test(4)
-
-# 	test1.print_dict();
-
-# 	print(test1['size'])
-
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D # This import has side effects required for the kwarg projection='3d' in the call to fig.add_subplot
 import matplotlib.pyplot as plt
-import random
+import numpy as np
+from mpl_toolkits.mplot3d import axes3d
+from matplotlib.figure import Figure
+from math import floor,ceil
 
-def fun(x, y):
-  return x**2 + y
 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-x = y = np.arange(-3.0, 3.0, 0.05)
-X, Y = np.meshgrid(x, y)
-print("X")
-print(X)
-print("Y")
-print(Y)
-zs = np.array([fun(x,y) for x,y in zip(np.ravel(X), np.ravel(Y))])
-print("zs")
-print(zs)
+# test_df = pd.DataFrame({'name':['sigmod','sigmod','bbb','ccc'],'year':['2012','2014','2016','2018'],'sum':['5.2','3.7','10','20.3']})
 
-Z = zs.reshape(X.shape)
-print("Z")
-print(Z)
+# test_df[['year','sum']] = test_df[['year','sum']].apply(lambda x : pd.to_numeric(x))
+# print(test_df['year'])
+# print(test_df['sum'])
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
+# var= 'name'
+# test_df['coded_'+var] = test_df['name'].astype('category').cat.codes
+# print(test_df)
+# ax.scatter(test_df['year'],test_df['coded_'+var],test_df['sum'],c='g',label='sum',s=60)
+# ax.set_yticks(test_df['coded_'+var].values)
+# ax.set_yticklabels(test_df[var])
+# question_df = test_df.loc[test_df['name']=='bbb']
+# print(question_df)
+# ax.scatter(question_df['year'],question_df['coded_'+var],question_df['sum'],c='black',label='explanation',s=200,marker='P')
 
-ax.plot_surface(X, Y, Z)
+# plt.show()
+test_df = pd.DataFrame({'name':['sigmod','sigmod','bbb','ccc'],'year':[2013,2014,2016,2018],'pubcount':[5.1,3.2,10.4,4.1]})
 
-ax.set_xlabel('X Label')
-ax.set_ylabel('Y Label')
-ax.set_zlabel('Z Label')
+print(list(range(floor(test_df['pubcount'].values.min()),ceil(test_df['pubcount'].values.max()))))
 
-plt.show()
+# list_1 = list(range(0,10))
+# print(list_1)

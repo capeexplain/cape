@@ -15,7 +15,8 @@ from capexplain.explain.explanation import ExplanationGenerator
 from capexplain.explain.explanation import ExplConfig
 import matplotlib
 matplotlib.use("TkAgg")
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,11 +34,6 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-agg_function = re.compile('.*(sum|max|avg|min|count).*')
-from_which = re.compile('from (.*)',re.IGNORECASE)
-agg_alias = re.compile('as\s+(\w+)',re.IGNORECASE) 
-group_by = re.compile("group by(.*)",re.IGNORECASE)
-float_num = re.compile('\d+\.\d+')
 
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 class CAPE_UI:
@@ -49,8 +45,6 @@ class CAPE_UI:
 #----------------------------main frame----------------------------------------#
 
 		self.parent=parent
-		self.main_frame_style=ttk.Style()
-		self.main_frame_style.configure('Main_Frame', background='#334353')
 		self.main_frame=ttk.Frame(self.parent,padding=(3,3,12,12))
 
 		self.main_frame.columnconfigure(0,weight=1)
@@ -184,7 +178,7 @@ class CAPE_UI:
 		self.show_global.rowconfigure(1,weight=10)
 		self.show_global.columnconfigure(0,weight=1)
 
-		self.global_pattern_label = Label(self.show_global,text="Global Patterns")
+		self.global_pattern_label = Label(self.show_global,text="Global Patterns",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
 		self.global_pattern_label.grid(column=0,row=0,sticky='nsew')
 
 		self.show_global_patterns = Frame(self.show_global)
@@ -226,7 +220,7 @@ class CAPE_UI:
 		self.local_pattern_label.grid(column=0,row=0,columnspan=5,sticky='nsew')
 		self.local_pattern_filter_button = Button(self.local_pattern,text='Reset Query Output',font=('Times New Roman bold',12),command=self.reset_output)
 		self.local_pattern_filter_button.grid(column=0,row=2)
-		self.local_pattern_filter_button = Button(self.local_pattern,text='Filter Output',font=('Times New Roman bold',12),command=self.use_local_filter_output)
+		self.local_pattern_filter_button = Button(self.local_pattern,text='Filter Output',font=('Times New Roman bold',12),command=self.show_updated_output)
 		self.local_pattern_filter_button.grid(column=2,row=2)
 		self.draw_pattern_button = Button(self.local_pattern,text='Draw Pattern',font=('Times New Roman bold',12),command=self.pop_up_pattern)
 		self.draw_pattern_button.grid(column=4,row=2)
@@ -256,7 +250,7 @@ class CAPE_UI:
 
 	def run_query(self):
 		
-		self.user_query,self.query_group_str,self.user_agg,self.agg_name,self.cur_table_name=self.query_temp.get_query()
+		self.user_query,self.query_group_str,self.agg_function,self.user_agg,self.agg_name,self.cur_table_name=self.query_temp.get_query()
 		logger.debug(self.user_query)
 		self.handle_view ="\nDROP VIEW IF EXISTS user_query;"+\
 		"\nCREATE VIEW user_query as "+ self.user_query
@@ -264,6 +258,11 @@ class CAPE_UI:
 		self.cur.execute(self.handle_view)
 		self.original_query_result_df = pd.read_sql(self.user_query,self.conn)
 		self.query_result_df = self.original_query_result_df
+
+		self.plot_data_convert_dict,self.query_data_convert_dict = self.db_info.get_db_data_type(self.cur_table_name)
+		self.plot_data_convert_dict[self.agg_name] = 'numeric'
+		self.query_data_convert_dict[self.agg_name] = 'float'
+
 		model = TableModel(dataframe=self.original_query_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
@@ -272,6 +271,7 @@ class CAPE_UI:
 			self.table_dict = self.pub_dict
 		elif(self.cur_table_name.lower()==self.crime_dict['dict_name']):
 			self.table_dict = self.crime_dict
+
 
 	def show_global_pattern(self):
 
@@ -287,8 +287,8 @@ class CAPE_UI:
 		self.global_pattern_table.updateModel(pattern_model)
 		self.global_pattern_table.redraw()
 
-	def show_local_pattern(self):
 
+	def show_local_pattern(self):
 
 		local_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
 		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
@@ -310,6 +310,7 @@ class CAPE_UI:
 		pattern_model = TableModel(local_shown)
 		self.local_pattern_table.updateModel(pattern_model)
 		self.local_pattern_table.redraw()
+
 
 	def use_global_filter_local(self):
 
@@ -343,6 +344,7 @@ class CAPE_UI:
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
 
+
 	def global_description(self):
 
 		for n in self.global_pattern_table.multiplerowlist:
@@ -366,54 +368,50 @@ class CAPE_UI:
 		desc_label= Label(desc_frame,text=global_desc,font=('Times New Roman bold',12),borderwidth=5,relief=SOLID,justify=LEFT)
 		desc_label.pack(fill=BOTH,expand=True)
 
-	def use_local_filter_output(self):
 
-		concat_clause = None
+	def use_local_filter_output(self):
 		l_filter_o_query = None
-		fixed_list=[]
+
 		for n in self.local_pattern_table.multiplerowlist:
 
-			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
+			chosen_row = self.local_output_pattern_df.iloc[int(n)]
+			partition_attr_list = self.local_output_pattern_df.iloc[int(n)]['partition'].split(',')
+			partition_value_list = self.local_output_pattern_df.iloc[int(n)]['partition_values'].split(',')
 
-			fixed_str = self.local_output_pattern_df.iloc[int(n)]['partition']
-			variable_str = self.local_output_pattern_df.iloc[int(n)]['predictor']
-			partitions = self.local_output_pattern_df.iloc[int(n)]['partition_values']
-			fixed_str_list = fixed_str.split(',')
-			partitions_list = partitions.split(',')
+		where_clause_list = []
+		where_clause = None
 
-			cur_table_int_attr,cur_table_float_attr,cur_table_str_attr = self.db_info.get_db_data_type(self.cur_table_name)
-			logger.debug("cur_table_int_attr")
-			logger.debug(cur_table_int_attr)
-			logger.debug("cur_table_float_attr")
-			logger.debug(cur_table_float_attr)
-			logger.debug("cur_table_str_attr")
-			logger.debug(cur_table_str_attr)
-
-			where_clause_list = []
-			where_clause = None
-
-			for n in range(len(fixed_str_list)):
-				if fixed_str_list[n] in cur_table_str_attr:
-					condition = "{} =\'{}\'".format(fixed_str_list[n],partitions_list[n])
-				elif fixed_str_list[n] in cur_table_float_attr:
-					condition = "{} = {}::float".format(fixed_str_list[n],partitions_list[n])
-				else:
-					condition = "{} = {}::int".format(fixed_str_list[n],partitions_list[n])
-
-				where_clause_list.append(condition)
-
-			if(len(where_clause_list)==1):
-				where_clause = where_clause_list[0]
+		for n in range(len(partition_attr_list)):
+			if(self.query_data_convert_dict[partition_attr_list[n]]=='str'):
+					condition = "{} =\'{}\'".format(partition_attr_list[n],partition_value_list[n])
+			elif(self.query_data_convert_dict[partition_attr_list[n]]=='float'):
+				condition = "{} = {}::float".format(partition_attr_list[n],partition_value_list[n])
 			else:
-				where_clause = " and ".join(where_clause_list)
+				condition = "{} = {}::int".format(partition_attr_list[n],partition_value_list[n])
+
+			where_clause_list.append(condition)
+
+		if(len(where_clause_list)==1):
+			where_clause = where_clause_list[0]
+		else:
+			where_clause = " and ".join(where_clause_list)
+				
 		l_filter_o_query = "select user_query.* from user_query where "+where_clause+";"
 		logger.debug("filter_output_query:")
 		logger.debug(l_filter_o_query)
 		filtered_result_df = pd.read_sql(l_filter_o_query,self.conn)
+
+		return chosen_row,filtered_result_df
+
+
+	def show_updated_output(self):
+
+		filtered_result_df = self.use_local_filter_output()[1]
 		self.query_result_df = filtered_result_df
 		model = TableModel(dataframe=filtered_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
+
 
 	def handle_question(self,direction):
 
@@ -443,7 +441,6 @@ class CAPE_UI:
 				score = round(e.score,2)
 				tuple_list.append(score)
 
-
 				if e.expl_type == 1:
 					local_pattern=(
 						'[' + ','.join(e.relevent_pattern[0]) +\
@@ -454,7 +451,7 @@ class CAPE_UI:
 					if e.relevent_pattern[4] == 'const':						
 						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
 					else:
-						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+						relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
 
 					drill_down_to = ','.join([x for x in e.refinement_pattern[0] if x not in e.relevent_pattern[0]])
 					refinement_model = e.refinement_pattern[4]
@@ -473,7 +470,7 @@ class CAPE_UI:
 					if e.relevent_pattern[4] == 'const':
 						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
 					else:
-						relevent_param = 'Intercept=' + str(round(e.relevent_pattern[7]['Intercept'],2))+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+						relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]])
 
 					refinement_model = ''
 					drill_down_to = ''
@@ -520,63 +517,24 @@ class CAPE_UI:
 
 	def pop_up_pattern(self):
 
-		for n in self.local_pattern_table.multiplerowlist:
-			chosen_row = self.local_output_pattern_df.iloc[int(n)]
-			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
-			fixed_str = self.local_output_pattern_df.iloc[int(n)]['partition']
-			variable_str = self.local_output_pattern_df.iloc[int(n)]['predictor']
-			partitions = self.local_output_pattern_df.iloc[int(n)]['partition_values']
-			fixed_str_list = fixed_str.split(',')
-			partitions_list = partitions.split(',')
-
-		cur_table_int_attr,cur_table_float_attr,cur_table_str_attr = self.db_info.get_db_data_type(self.cur_table_name)
-		logger.debug("cur_table_int_attr")
-		logger.debug(cur_table_int_attr)
-		logger.debug("cur_table_float_attr")
-		logger.debug(cur_table_float_attr)
-		logger.debug("cur_table_str_attr")
-		logger.debug(cur_table_str_attr)
-
-		where_clause_list = []
-		where_clause = None
-
-		for n in range(len(fixed_str_list)):
-			if fixed_str_list[n] in cur_table_str_attr:
-				condition = "{} =\'{}\'".format(fixed_str_list[n],partitions_list[n])
-			elif fixed_str_list[n] in cur_table_float_attr:
-				condition = "{} = {}::float".format(fixed_str_list[n],partitions_list[n])
-			else:
-				condition = "{} = {}::int".format(fixed_str_list[n],partitions_list[n])
-
-			where_clause_list.append(condition)
-
-		if(len(where_clause_list)==1):
-			where_clause = where_clause_list[0]
-		else:
-			where_clause = " and ".join(where_clause_list)
-
-		l_filter_o_query = "select user_query.* from user_query where "+where_clause+";"
-		pattern_data_df = pd.read_sql(l_filter_o_query,self.conn)
+		chosen_row,pattern_data_df = self.use_local_filter_output()
 		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=chosen_row,pattern_data_df=pattern_data_df,agg_alias=self.agg_name)
 		self.local_pattern_detail.load_pattern_description()
-		self.local_pattern_detail.load_pattern_graph()
+		self.local_pattern_detail.load_pattern_graph(self.plot_data_convert_dict)
 
 	def pop_up_explanation(self):
 
 		win = Toplevel()
 		win.geometry("%dx%d%+d%+d" % (1580, 700, 250, 125))
 		win.wm_title("Explanation")
-
 		win_frame = Frame(win)
 		win_frame.pack(fill=BOTH,expand=True)
-		win_frame.columnconfigure(0,weight=2)
+		win_frame.columnconfigure(0,weight=3)
 		win_frame.columnconfigure(1,weight=3)
 		win_frame.rowconfigure(0,weight=4)
 		win_frame.rowconfigure(1,weight=1)
-
 		b = ttk.Button(win_frame, text="Quit", command=win.destroy)
 		b.grid(column=0,row=1,sticky='nsew')
-
 		graph_frame = Frame(win_frame)
 		graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')
 
@@ -596,14 +554,29 @@ class CAPE_UI:
 			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
 			exp_tuple_list = exp_tuple.split(',')
 			exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
-			exp_tuple_col.append('pred_value')
+			exp_tuple_col.append('exp_value')
 			exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
 
-			for n in range(len(exp_tuple_col)):
-				if(exp_tuple_col[n]=='year' or exp_tuple_col[n]=='pred_value'):
-					exp_tuple_list[n] = int(exp_tuple_list[n])
+			where_clause_list = []
+			where_clause = None
+
+			logger.debug("rel_pattern_part_list")
+			logger.debug(rel_pattern_part_list)
+
+			for n in range(len(rel_pattern_part_list)):
+				if rel_pattern_part_list[n] in cur_table_str_attr:
+					condition = "{} =\'{}\'".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
+				elif rel_pattern_part_list[n] in cur_table_float_attr:
+					condition = "{} = {}::float".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
 				else:
-					continue
+					condition = "{} = {}::int".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
+
+			where_clause_list.append(condition)
+
+			if(len(where_clause_list)==1):
+				where_clause = where_clause_list[0]
+			else:
+				where_clause = " and ".join(where_clause_list)
 
 			exp_tuple_list = [exp_tuple_list]
 			exp_tuple_df = pd.DataFrame(exp_tuple_list)
@@ -611,183 +584,160 @@ class CAPE_UI:
 			exp_tuple_df.columns = exp_tuple_col
 			logger.debug(exp_tuple_df)
 
-		for n in range(len(rel_pattern_part_list)):
-			if(rel_pattern_part_list[n]=='year'):
-				continue
-			else:
-				rel_pattern_part_value_list[n]=('\''+rel_pattern_part_value_list[n]+'\'')
-
-		query_pattern_value = ','.join(rel_pattern_part_value_list)
-
-		Pattern_Q = "SELECT sum(pubcount) as sum_pubcount, "+rel_pattern_part+","+rel_pattern_pred+\
-		" FROM pub WHERE " + "("+rel_pattern_part+") = ("+query_pattern_value+")"+\
+		Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+rel_pattern_part+","+rel_pattern_pred+\
+		" FROM pub WHERE " + where_clause+\
 		" GROUP BY "+rel_pattern_pred+','+rel_pattern_part
+
+		logger.debug("Pattern_Q")
+		logger.debug(Pattern_Q)
 
 		exp_pattern_df = pd.read_sql(Pattern_Q,self.conn)
 
+		logger.debug('exp_pattern_df is :')
+		logger.debug(exp_pattern_df)
+
+
+		canvas = FigureCanvasTkAgg(f,graph_frame)
+		canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+		toolbar = NavigationToolbar2Tk(canvas,graph_frame)
+		toolbar.update()
+		canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
+
 		if(rel_pattern_model=='const'):
-
 			if(len(rel_pattern_pred.split(','))==1):
-
 				variable_name = rel_pattern_pred.split(',')[0]
-				f = Figure(figsize=(5,5),dpi=130)
-				a = f.add_subplot(111)
 				a.axhline(y=float(rel_param),c="red",linewidth=2,label='constant = '+str(rel_param))
 				a.set_title("Explanation Graph")
 				a.set_xlabel('Predictor')
 				a.set_ylabel(self.agg_name)
-				a.legend(loc='best')
 
 				Xuniques, X = np.unique(exp_pattern_df[variable_name], return_inverse=True)
-				logger.debug('Xuniques:')
-				logger.debug(Xuniques)
-				logger.debug('X values:')
-				logger.debug(X)
-				Y = exp_pattern_df['sum_pubcount']
-				logger.debug('Y:')
-				logger.debug(Y)
+				Y = exp_pattern_df[self.agg_name]
+
 				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
+				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
 
 				x_variable_list = exp_pattern_df[variable_name].tolist()
-				logger.debug('x_variable_list:')
-				logger.debug(x_variable_list)
-				x_variable_list.sort()
-				logger.debug("sorted x_variable_list:")
-				logger.debug(x_variable_list)
-				logger.debug("type in x_variable_list:")
-				logger.debug(type(x_variable_list[0]))
-				logger.debug("self.question_tuple[variable] is:")
-				logger.debug(self.question_tuple[variable_name])
 
-				if variable_name=='year':
-					X1 = x_variable_list.index(int(self.question_tuple[variable_name]))
-					X2 = x_variable_list.index(int(exp_tuple_df[variable_name]))
+				if(variable_name in cur_table_int_attr):
+					X_q = x_variable_list.index(int(self.question_tuple[variable_name].to_string(index=False)))
+					X_exp = x_variable_list.index(int(exp_tuple_df[variable_name].to_string(index=False)))
+					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
+
+				elif(variable_name in cur_table_float_attr):
+					X_q = x_variable_list.index(float(self.question_tuple[variable_name].to_string(index=False)))
+					X_exp = x_variable_list.index(float(exp_tuple_df[variable_name].to_string(index=False)))
+					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
 				else:
-					X1 = x_variable_list.index(str(self.question_tuple[variable_name]))
-					X2 = x_variable_list.index(str(exp_tuple_df[variable_name]))
+					X_q = x_variable_list.index(str(self.question_tuple[variable_name].to_string(index=False)))
+					X_exp = x_variable_list.index(str(exp_tuple_df[variable_name].to_string(index=False)))
+					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
 
-				x=self.question_tuple[variable_name]
+				a.scatter(X_q,Y_q, s=150,marker='p',c='r',label="User Question")
+				a.scatter(X_exp,Y_exp,s=150,marker='X',c='g',label='Explanation')
+				a.legend(loc='best')				
+				canvas.draw()
 
-				if(variable_name=='year'):
-					Y1 = int(exp_pattern_df.loc[exp_pattern_df[variable_name] == int(x.to_string(index=False))]['sum_pubcount'])
-				else:
-					Y1 = int(exp_pattern_df.loc[exp_pattern_df[variable_name] == str(x.to_string(index=False))]['sum_pubcount'])
 
-				a.scatter(X1,Y1, s=150,marker='p',c='r',label="User Question")
-				Y2 = exp_tuple_df['pred_value']
-				a.scatter(X2,Y2,s=150,marker='X',c='g',label='Explanation')
-				a.legend(loc='best')
-				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
 
 			else:
+				pass
+				# f = Figure(figsize=(5,5),dpi=130)
+				# a = f.gca(projection='3d')
+				# a.set_title("Explanation Graph")
 
-				f = Figure(figsize=(5,5),dpi=130)
-				a = f.gca(projection='3d')
-				a.set_title("Explanation Graph")
+				# x_name = rel_pattern_pred.split(',')[0]
+				# y_name = rel_pattern_pred.split(',')[1]
 
-				x_name = rel_pattern_pred.split(',')[0]
-				y_name = rel_pattern_pred.split(',')[1]
+				# Xuniques, X = np.unique(exp_pattern_df[x_name], return_inverse=True)
+				# Yuniques, Y = np.unique(exp_pattern_df[y_name], return_inverse=True)
+				# x=np.arange(X.min(),X.max()+1)
+				# y=np.arange(Y.min(),Y.max()+1)
+				# X_surf, Y_surf = np.meshgrid(x, y)
+				# zs = np.array([float(rel_param) for x,y in zip(np.ravel(X1), np.ravel(Y1))])
+				# Z = zs.reshape(X_surf.shape)
+				# a.plot_surface(X_surf, Y_surf, Z,color='r')
 
-				Xuniques, X = np.unique(exp_pattern_df[x_name], return_inverse=True)
-				logger.debug("X:")
-				logger.debug(X)
-				Yuniques, Y = np.unique(exp_pattern_df[y_name], return_inverse=True)
-				logger.debug("Y:")
-				logger.debug(Y)
-				# variable_1 = chosen_row["variable"][0].to_string(index=False)
-				x=np.arange(X.min(),X.max()+1)
-				y=np.arange(Y.min(),Y.max()+1)
-				X1, Y1 = np.meshgrid(x, y)
-				zs = np.array([float(rel_param) for x,y in zip(np.ravel(X1), np.ravel(Y1))])
-				Z = zs.reshape(X1.shape)
-				a.plot_surface(X1, Y1, Z,color='r')
+				# a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
+				# a.set(yticks=range(len(Yuniques)), yticklabels=Yuniques)
 
-				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
-				a.set(yticks=range(len(Yuniques)), yticklabels=Yuniques)
+				# x_variable_list = exp_pattern_df[x_name].tolist()
+				# x_variable_list.sort()
+				# y_variable_list = exp_pattern_df[y_name].tolist()
+				# y_variable_list.sort()
 
-				x_variable_list = exp_pattern_df[x_name].tolist()
-				x_variable_list.sort()
-				y_variable_list = exp_pattern_df[y_name].tolist()
-				y_variable_list.sort()
+				# if(x_name=='year'):
+				# 	X1 = x_variable_list.index(int(self.question_tuple[x_name]))
+				# 	X2 = x_variable_list.index(int(exp_tuple_df[x_name]))
+				# else:
+				# 	X1 = x_variable_list.index(str(self.question_tuple[x_name]))
+				# 	X2 = x_variable_list.index(str(exp_tuple_df[x_name]))
 
+				# if(y_name=='year'):
+				# 	Y1 = y_variable_list.index(int(self.question_tuple[y_name]))
+				# 	Y2 = y_variable_list.index(int(exp_tuple_df[y_name]))
+				# else:
+				# 	Y1 = y_variable_list.index(str(self.question_tuple[y_name]))
+				# 	Y2 = y_variable_list.index(str(exp_tuple_df[y_name]))
 
-				if(x_name=='year'):
-					X1 = x_variable_list.index(int(self.question_tuple[x_name]))
-					X2 = x_variable_list.index(int(exp_tuple_df[x_name]))
-				else:
-					X1 = x_variable_list.index(str(self.question_tuple[x_name]))
-					X2 = x_variable_list.index(str(exp_tuple_df[x_name]))
+				# if(variable_name in cur_table_int_attr):
+				# 	X_q = x_variable_list.index(int(self.question_tuple[x_name]))
+				# 	X_q = x_variable_list.index(int(self.question_tuple[y_name]))
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
 
-				if(y_name=='year'):
-					Y1 = y_variable_list.index(int(self.question_tuple[y_name]))
-					Y2 = y_variable_list.index(int(exp_tuple_df[y_name]))
-				else:
-					Y1 = y_variable_list.index(str(self.question_tuple[y_name]))
-					Y2 = y_variable_list.index(str(exp_tuple_df[y_name]))
+				# elif(variable_name in cur_table_float_attr):
+				# 	X_q = x_variable_list.index(float(self.question_tuple[variable_name]))
+				# 	X_q = x_variable_list.index(float(exp_tuple_df[variable_name]))
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
+				# else:
+				# 	X_q = x_variable_list.index(str(self.question_tuple[variable_name]))
+				# 	X_q = x_variable_list.index(str(exp_tuple_df[variable_name]))
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
+				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
 
-				a.scatter(X, Y, exp_pattern_df['sum_pubcount'],s=60, c='b',label=self.agg_name)
-				a.scatter(X1,Y1,self.question_tuple['sum_pubcount'],s=150,marker='p',c='r',label='User Question')
-				a.scatter(X2,Y2,exp_tuple_df['pred_value'],s=150,marker='X',c='g',label='Explanation')
-				a.legend(loc='best')
-				a.set_xlabel(x_name)
-				a.set_ylabel(y_name)
-				a.set_zlabel(self.agg_name)
-
-			canvas = FigureCanvasTkAgg(f,graph_frame)
-			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-			canvas.draw()
+				# a.scatter(X, Y, exp_pattern_df[self.agg_name],s=60, c='b',label=self.agg_name)
+				# a.scatter(X1,Y1,self.question_tuple[self.agg_name],s=150,marker='p',c='r',label='User Question')
+				# a.scatter(X2,Y2,exp_tuple_df['exp_value'],s=150,marker='X',c='g',label='Explanation')
+				# a.legend(loc='best')
+				# a.set_xlabel(x_name)
+				# a.set_ylabel(y_name)
+				# a.set_zlabel(self.agg_name)
 
 		elif(rel_pattern_model=='linear'):
-
 			if(len(rel_pattern_pred.split(','))==1):
-
 				variable_name = rel_pattern_pred.split(',')[0]
-				f = Figure(figsize=(5,5),dpi=130)
-				a = f.add_subplot(111)
 				a.set_title("Explanation Graph")
 				a.set_xlabel('Variable')
 				a.set_ylabel(self.agg_name)
-				a.legend(loc='best')
 
 				Intercept_value = float(rel_param.split(",")[0].split("=")[1])
 				slope_name = rel_param.split(',')[1].split('=')[0].strip()
 				slope_value = float(rel_param.split(',')[1].split('=')[1].strip())
-				logger.debug("slope_value is :")
-				logger.debug(slope_value)
 
 				var_min = pd.to_numeric(exp_pattern_df[variable_name].min())
 				var_max = pd.to_numeric(exp_pattern_df[variable_name].max())
-				logger.debug("var_min is: ")
-				logger.debug(var_min)
-				logger.debug("var_max is: ")
-				logger.debug(var_max)
-				X1 = np.linspace(var_min-2,var_max+2,100)
-				dot_min = min(X1)
-				dot_max = max(X1)
-				logger.debug('X1 is:')
-				logger.debug(X1)
-				X = exp_pattern_df[variable_name]
-				Y = exp_pattern_df['sum_pubcount']
-				X2 = self.question_tuple[variable_name]
-				logger.debug('X2:')
-				logger.debug(X2)
-				Y2 = int(exp_pattern_df.loc[exp_pattern_df[variable_name] == int(X2.to_string(index=False))]['sum_pubcount'])
-				X3 = exp_tuple_df[variable_name]
-				y_vals = slope_value * X1 + Intercept_value
-				logger.debug("y_vals are:")
-				logger.debug(y_vals)
-				a.plot(X1, y_vals, c='r',linewidth=2,label="Model")
-				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
-				a.scatter(X2,Y2,s=150,marker='p',c='r',label='User Question')
-				a.scatter(X3,exp_tuple_df['pred_value'],s=150,marker='X',c='g',label='Explanation')
-				a.legend(loc='best')
-				a.set_xlim([min(var_min,dot_min)-1,max(var_max,dot_max)+1])
-				a.set_xlabel(variable_name)
-				a.set_ylabel(self.agg_name)
+				X_range = np.linspace(var_min-2,var_max+2,100)
 
-			canvas = FigureCanvasTkAgg(f,graph_frame)
-			canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-			canvas.draw()
+				Y_model = slope_value * X_range + Intercept_value
+
+				a.plot(X_range, Y_model, c='r',linewidth=2,label="Model")
+
+				exp_pattern_df[[variable_name, self.agg_name]] = exp_pattern_df[[variable_name, self.agg_name]].apply(pd.to_numeric)
+				exp_pattern_df.plot.scatter(x=variable_name,y=self.agg_name,c='b',s=60,label=self.agg_name,ax=a)
+
+				self.question_tuple[[variable_name, self.agg_name]] = self.question_tuple[[variable_name, self.agg_name]].apply(pd.to_numeric)
+				self.question_tuple.plot.scatter(x=variable_name,y=self.agg_name,c='r',s=200,marker='p',label='User Question',ax=a)
+
+				exp_tuple_df[[variable_name, 'exp_value']] = exp_tuple_df[[variable_name, 'exp_value']].apply(pd.to_numeric)
+				exp_tuple_df.plot.scatter(x=variable_name,y='exp_value',c='g',marker='X',s=200,label='Explanation',ax=a)
+				a.legend(loc='best')				
+				canvas.draw()
+
 
 		likelihood_words = []
 
@@ -806,15 +756,16 @@ class CAPE_UI:
 
 		logger.debug('self.question_tuple is:')
 		logger.debug(self.question_tuple)
-		user_question_dict = self.question_tuple.to_dict('records')[0]
-		logger.debug('user_question_dict:')
-		logger.debug(user_question_dict)
+
 		user_question_list = []
-		for k,v in user_question_dict.items():
-			if(k=='sum_pubcount' or k=='direction'):
+		logger.debug('question_tuple.items()')
+		logger.debug(self.question_tuple.items())
+
+		for k,v in self.question_tuple.items():
+			if(k==self.agg_name or k=='direction'):
 				continue
 			else:
-				user_question_list.append(str(k)+"="+str(v))
+				user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
 		user_question_clause = ','.join(user_question_list)
 		logger.debug("user_question_list")
 		logger.debug(user_question_clause)
@@ -867,7 +818,7 @@ class CAPE_UI:
 
 		exp_list = []
 		for k,v in exp_tuple_dict.items():
-			if(k=='pred_value' or k in rel_pattern_part.split(',')):
+			if(k=='exp_value' or k in rel_pattern_part.split(',')):
 				continue
 			else:
 				exp_list.append(str(k)+"="+str(v))
@@ -906,6 +857,8 @@ def startCapeGUI(conn):
 	default_font.configure(size=12)
 	bigfont = Font(family="Helvetica",size=12)
 	root.option_add('*TCombobox*Listbox.font',bigfont)
+	root.option_add('*TCombobox*Listbox.selectBackground', 'wheat1')
+
 	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
 	root.geometry('%dx%d+0+0' % (width,height))
 	ui = CAPE_UI(root,conn)
