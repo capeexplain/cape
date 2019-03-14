@@ -31,13 +31,19 @@ question_df = pd.DataFrame({'name':['ccc'],'year':['2018'],'sum':['20.3']})
 # print(test_df)
 # pattern_only_df = pd.concat([test_df,question_df, question_df]).drop_duplicates(keep=False)
 
-# ax.scatter(pattern_only_df['year'],pattern_only_df['coded_'+var],pattern_only_df['sum'],c='g',label='sum',s=60,alpha=0.8,zorder=0)
+# ax.scatter(pattern_only_df['year'],pattern_only_df['coded_'+var],pattern_only_df['sum'],c='g',s=60,alpha=0.8,zorder=0,label="Pattern")
 # ax.set_yticks(test_df['coded_'+var].values)
 # ax.set_yticklabels(test_df[var])
+# green_proxy = plt.Rectangle((0, 0), 1, 1, fc="g")
+
+# ax.legend([green_proxy],['cars'])
+
 
 # print(question_df)
-# ax.scatter(question_df['year'],question_df['coded_'+var],question_df['sum'],c='red',s=200,alpha=1,zorder=10,label=None)
+# ax.scatter(question_df['year'],question_df['coded_'+var],question_df['sum'],c='red',s=200,alpha=1,zorder=10,label="Question")
 
+# red_proxy = plt.Rectangle((0, 0), 1, 1, fc="r")
+# ax.legend([green_proxy],['cars'])
 # plt.show()
 
 
@@ -45,14 +51,24 @@ question_df = pd.DataFrame({'name':['ccc'],'year':['2018'],'sum':['20.3']})
 
 # print(result)
 
-df1 = pd.DataFrame({'name':['Abraham Bernstein','Abraham Bernstein','Abraham Bernstein','Abraham Bernstein'],'venue':['esws','esws','esws','esws'],'year':[2007,2008,2009,2012],'sum':[10,10,10,10]})
 
-df1 = df1.astype(object)
+# print(test_df.items())
+# user_question_list=[]
+
+# for k,v in question_df.items():
+# 	user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
+# user_question_clause = ','.join(user_question_list)
+
+# print(user_question_clause)
 
 
-df2 = pd.DataFrame({'name':['Abraham Bernstein'],'venue':['esws'],'year':[2012],'sum':[100]})
-df2 = df2.astype(object)
+def encrypt(string, length):
+    return '\n'.join(string[i:i+length] for i in range(0,len(string),length))
 
-df3 = pd.merge(df1,df2,on=['name', 'venue', 'year'])
+string = """
+  Explanation for why sum(pubcount) is higher than expected for:author=Aaron B. Wagner,venue=corr,year=2010.  In general, year predicts sum(pubcount) for most author.This is also true for author=Aaron B. Wagner.
+"""
 
-print(df3)
+str1 = encrypt(string,50)
+
+print(str1)

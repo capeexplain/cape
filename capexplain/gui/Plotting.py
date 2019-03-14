@@ -19,6 +19,8 @@ class Plotter:
 		
 		self.data_convert_dict = data_convert_dict
 		self.figure = figure
+		self.legend_proxies_shape= []  # for 3d legend specifically
+		self.legend_proxies_name = [] # for 3d legend specifically
 
 		if(mode=='2D'):
 			self.a = self.figure.add_subplot(111)
@@ -124,15 +126,22 @@ class Plotter:
 		else:
 			self.a.set(yticks=list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1))))
 
+		plane_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc="r")
+		plane_proxy_name = label
+		self.legend_proxies_shape.append(plane_proxy_shape)
+		self.legend_proxies_name.append(plane_proxy_name)
+		self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
+
 
 	def plot_2D_linear(self,x,slope,intercept,label=None):  # x:df column; slope,intercept:numeric values
-		self.a.legend(loc='best')
 		var_min = pd.to_numeric(x.min()).item()
 		var_max = pd.to_numeric(x.max()).item()
-		X1 = np.linspace(var_min-3,var_max+3,100)
+		X1 = np.linspace(var_min-1,var_max+1,100)
 		X = x.astype('float64')
 		y_vals = slope * X1 + intercept
 		self.a.plot(X1, y_vals, c='r',linewidth=2,label=label)
+		self.a.legend(loc='best')
+
 
 
 	def plot_3D_linear(self,x,y,x_weight,y_weight):
@@ -154,6 +163,8 @@ class Plotter:
 			Y=df[y]
 
 		self.a.scatter(X, Y, s=size, c=color,marker=marker,zorder=zorder,alpha=1,label=label)
+		self.a.legend(loc='best')
+
 
 		if ('coded_'+x) in df.columns:
 
@@ -243,6 +254,13 @@ class Plotter:
 			if(len(z_ticks)>len(self.cur_z_range)):
 				self.a.set(zticks=z_ticks)
 				self.cur_z_range = z_ticks
+
+		scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
+		scatter_proxy_name = label
+		self.legend_proxies_shape.append(scatter_proxy_shape)
+		self.legend_proxies_name.append(scatter_proxy_name)
+		self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
+
 
 
 def main():

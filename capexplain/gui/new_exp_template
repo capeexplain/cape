@@ -10,10 +10,11 @@ If only_relevent:
 	However, for year=2009
 	the value of sum(publcount) is lower than predicted.
 	This may be explained through the higher than expected outcome 
-	for year=2010. 
+	for year=2010.
 else:
     Explanation for why sum(publcount) is lower 
 	than expected for name=Ax,venue=ICDE,year=2009:
-    Even though like many other authors, year predicts sum(pubcount) for author = Ax , Ax's publication
+    Even though like many other authors, year predicts sum(pubcount) 
+    for author = Ax (left graph), Ax's publication
     in venue=icde, year=2009 is low which maybe explained by his higher than usual
-    number of publications in year = 2008, venue = icde
+    number of publications in year = 2008, venue = icde(right graph)

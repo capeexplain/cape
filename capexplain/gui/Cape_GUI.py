@@ -501,12 +501,12 @@ class CAPE_UI:
 		self.exp_table.redraw()
 
 	def handle_low(self):
-		direction = 'low'
-		self.handle_question(direction)
+		self.user_direction='low'
+		self.handle_question(self.user_direction)
 
 	def handle_high(self):
-		direction='high'
-		self.handle_question(direction)
+		self.user_direction='high'
+		self.handle_question(self.user_direction)
 
 
 	def reset_output(self):
@@ -554,9 +554,16 @@ class CAPE_UI:
 		else:
 			where_clause = " and ".join(where_clause_list)
 
-		Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+","+','.join(pred_attr_list)+\
-		" FROM pub WHERE " + where_clause+\
-		" GROUP BY "+','.join(partition_attr_list)+","+','.join(pred_attr_list)
+		if (pred_attr_list is not None):
+
+			Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+","+','.join(pred_attr_list)+\
+			" FROM pub WHERE " + where_clause+\
+			" GROUP BY "+','.join(partition_attr_list)+","+','.join(pred_attr_list)
+		else:
+			Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+\
+			" FROM pub WHERE " + where_clause+\
+			" GROUP BY "+','.join(partition_attr_list)
+
 
 		logger.debug("Pattern_Q")
 		logger.debug(Pattern_Q)
@@ -585,7 +592,7 @@ class CAPE_UI:
 			rel_pattern_pred_list = rel_pattern_pred.split(',')
 			rel_pattern_part_value_list = rel_pattern_part_value[0].split(',')
 			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
-			exp_tuple_list = exp_tuple.split(',')
+			exp_tuple_list = exp_tuple.split(',')[:-1]
 			exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
 			drill_attr = self.exp_df.iloc[int(n)]['Drill_Down_To']
 
@@ -599,13 +606,16 @@ class CAPE_UI:
 		logger.debug('drill_attr is:')
 		logger.debug(drill_attr)
 
-		exp_tuple_col.append(agg_name)
 
 		logger.debug('exp_tuple_col is:')
 		logger.debug(exp_tuple_col)
 
-		exp_tuple_list = [exp_tuple_list]
-		exp_tuple_df = pd.DataFrame(exp_tuple_list)
+		logger.debug('exp_tuple_list is:')
+		logger.debug(exp_tuple_list)
+
+
+		exp_tuple_df_list = [exp_tuple_list]
+		exp_tuple_df = pd.DataFrame(exp_tuple_df_list)
 		logger.debug("exp_tuple_df:")
 		exp_tuple_df.columns = exp_tuple_col
 		logger.debug(exp_tuple_df)
@@ -633,16 +643,18 @@ class CAPE_UI:
 
 			question_df = self.original_question
 
-			explanation_df = exp_tuple_df
+			explanation_df = self.get_pattern_result(partition_attr_list=exp_tuple_col,
+				                                     partition_value_list=exp_tuple_list,pred_attr_list=None)
 
 			exp_selected = exp_chosen_row
 
 			data_convert_dict = self.plot_data_convert_dict
 
 			self.Explainer = Exp_Frame(question_df=question_df, explanation_df=explanation_df, exp_chosen_row=exp_selected, none_drill_down_df=rel_pattern_df,
-		drill_down_df=drill_pattern_df, data_convert_dict=data_convert_dict)
+				drill_down_df=drill_pattern_df, data_convert_dict=data_convert_dict)
 
 			self.Explainer.load_exp_graph()
+			self.Explainer.load_exp_description(user_direction=self.user_direction)
 
 		else:
 			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
@@ -650,8 +662,8 @@ class CAPE_UI:
 
 			question_df = self.original_question
 
-			explanation_df = exp_tuple_df
-
+			explanation_df = self.get_pattern_result(partition_attr_list=exp_tuple_col,
+				                                     partition_value_list=exp_tuple_list,pred_attr_list=None)
 			exp_selected = exp_chosen_row
 
 			data_convert_dict = self.plot_data_convert_dict
@@ -660,6 +672,7 @@ class CAPE_UI:
 				drill_down_df=None, data_convert_dict=data_convert_dict)
 
 			self.Explainer.load_exp_graph()
+			self.Explainer.load_exp_description(user_direction=self.user_direction)
 
 
 
