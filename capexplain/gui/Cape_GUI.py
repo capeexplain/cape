@@ -16,7 +16,7 @@ from capexplain.explain.explanation import ExplConfig
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
+	FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +25,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from User_Query_Frame import User_Query_Frame
 from DBinfo import DBinfo
 from Pattern_Frame import Local_Pattern_Frame
-	
+from Exp_Frame import Exp_Frame
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -202,7 +202,6 @@ class CAPE_UI:
 		logger.debug(sort_array_function)
 		self.cur.execute(sort_array_function)	
 
-
 #------------------------------- local pattern frame---------------------------------------#
 		self.local_pattern.rowconfigure(0,weight=1)
 		self.local_pattern.rowconfigure(1,weight=20)
@@ -369,7 +368,7 @@ class CAPE_UI:
 		desc_label.pack(fill=BOTH,expand=True)
 
 
-	def use_local_filter_output(self):
+	def use_local_filter_output(self):  # given partition attributes and partition values, get explanation(query on user query)
 		l_filter_o_query = None
 
 		for n in self.local_pattern_table.multiplerowlist:
@@ -423,6 +422,8 @@ class CAPE_UI:
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
 		for n in self.query_result_table.multiplerowlist:
 			self.question = self.query_result_df.iloc[[int(n)]]
+			self.original_question = self.question.copy(deep=True)
+
 			self.question.rename(columns={self.agg_name:self.user_agg}, inplace=True)
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
 			logger.debug(self.question)
@@ -451,7 +452,8 @@ class CAPE_UI:
 					if e.relevent_pattern[4] == 'const':						
 						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
 					else:
-						relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+						# relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(round(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]],2))
+						relevent_param = e.relevent_pattern[7]
 
 					drill_down_to = ','.join([x for x in e.refinement_pattern[0] if x not in e.relevent_pattern[0]])
 					refinement_model = e.refinement_pattern[4]
@@ -459,7 +461,7 @@ class CAPE_UI:
 
 						drill_param =str(round(float(e.refinement_pattern[6].split(',')[0][1:]),2))
 					else:
-						drill_param =str(e.refinement_pattern[7])
+						drill_param =e.refinement_pattern[7]
 				else:
 					relevent_model = e.relevent_pattern[4]
 					local_pattern=(
@@ -470,7 +472,8 @@ class CAPE_UI:
 					if e.relevent_pattern[4] == 'const':
 						relevent_param = str(round(float(e.relevent_pattern[6].split(',')[0][1:]),2))
 					else:
-						relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]])
+						# relevent_param = 'Intercept=' + str(e.relevent_pattern[7]['Intercept'])+', '+str(list(e.relevent_pattern[7])[1])+'='+str(e.relevent_pattern[7][list(e.relevent_pattern[7])[1]])
+						relevent_param = e.relevent_pattern[7]
 
 					refinement_model = ''
 					drill_down_to = ''
@@ -518,75 +521,42 @@ class CAPE_UI:
 	def pop_up_pattern(self):
 
 		chosen_row,pattern_data_df = self.use_local_filter_output()
-		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=chosen_row,pattern_data_df=pattern_data_df,agg_alias=self.agg_name)
-		self.local_pattern_detail.load_pattern_description()
-		self.local_pattern_detail.load_pattern_graph(self.plot_data_convert_dict)
-
-	def pop_up_explanation(self):
-
-		win = Toplevel()
-		win.geometry("%dx%d%+d%+d" % (1580, 700, 250, 125))
-		win.wm_title("Explanation")
-		win_frame = Frame(win)
-		win_frame.pack(fill=BOTH,expand=True)
-		win_frame.columnconfigure(0,weight=3)
-		win_frame.columnconfigure(1,weight=3)
-		win_frame.rowconfigure(0,weight=4)
-		win_frame.rowconfigure(1,weight=1)
-		b = ttk.Button(win_frame, text="Quit", command=win.destroy)
-		b.grid(column=0,row=1,sticky='nsew')
-		graph_frame = Frame(win_frame)
-		graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')
-
-		f = Figure(figsize=(10,10),dpi=130)
-		a = f.add_subplot(111)
+		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=chosen_row,pattern_data_df=pattern_data_df,
+			agg_alias=self.agg_name,data_convert_dict=self.plot_data_convert_dict)
 		
-		for n in self.exp_table.multiplerowlist:	
-			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern']
-			rel_pattern_part = relevent_pattern.split(':')[0].split('=')[0].strip('[')
-			rel_pattern_part_value = relevent_pattern.split(':')[0].split('=')[1].split(']')
-			rel_pattern_pred = relevent_pattern.split(':')[1].split(' \u2933 ')[0]
-			rel_pattern_model = self.exp_df.iloc[int(n)]['relevent_model']
-			rel_param = self.exp_df.iloc[int(n)]['relevent_param']
-			rel_pattern_part_list = rel_pattern_part.split(',')
-			rel_pattern_pred_list = rel_pattern_pred.split(',')
-			rel_pattern_part_value_list = rel_pattern_part_value[0].split(',')
-			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
-			exp_tuple_list = exp_tuple.split(',')
-			exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
-			exp_tuple_col.append('exp_value')
-			exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
+		self.local_pattern_detail.load_pattern_description()
+		self.local_pattern_detail.load_pattern_graph()
 
-			where_clause_list = []
-			where_clause = None
 
-			logger.debug("rel_pattern_part_list")
-			logger.debug(rel_pattern_part_list)
+	def get_pattern_result(self,partition_attr_list=None,partition_value_list=None,pred_attr_list=None):  # given partition attributes and partition values, get explanation(query on table)
 
-			for n in range(len(rel_pattern_part_list)):
-				if rel_pattern_part_list[n] in cur_table_str_attr:
-					condition = "{} =\'{}\'".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
-				elif rel_pattern_part_list[n] in cur_table_float_attr:
-					condition = "{} = {}::float".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
-				else:
-					condition = "{} = {}::int".format(rel_pattern_part_list[n],rel_pattern_part_value_list[n])
+		where_clause_list = []
+		where_clause = None
 
+		logger.debug("partition_attr_list is ")
+		logger.debug(partition_attr_list)
+
+		logger.debug("partition_value_list is ")
+		logger.debug(partition_value_list)
+
+
+		for n in range(len(partition_attr_list)):
+			if(self.query_data_convert_dict[partition_attr_list[n]]=='str'):
+					condition = "{} =\'{}\'".format(partition_attr_list[n],partition_value_list[n])
+			elif(self.query_data_convert_dict[partition_attr_list[n]]=='float'):
+				condition = "{} = {}::float".format(partition_attr_list[n],partition_value_list[n])
+			else:
+				condition = "{} = {}::int".format(partition_attr_list[n],partition_value_list[n])
 			where_clause_list.append(condition)
 
-			if(len(where_clause_list)==1):
-				where_clause = where_clause_list[0]
-			else:
-				where_clause = " and ".join(where_clause_list)
+		if(len(where_clause_list)==1):
+			where_clause = where_clause_list[0]
+		else:
+			where_clause = " and ".join(where_clause_list)
 
-			exp_tuple_list = [exp_tuple_list]
-			exp_tuple_df = pd.DataFrame(exp_tuple_list)
-			logger.debug("exp_tuple_df:")
-			exp_tuple_df.columns = exp_tuple_col
-			logger.debug(exp_tuple_df)
-
-		Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+rel_pattern_part+","+rel_pattern_pred+\
+		Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+","+','.join(pred_attr_list)+\
 		" FROM pub WHERE " + where_clause+\
-		" GROUP BY "+rel_pattern_pred+','+rel_pattern_part
+		" GROUP BY "+','.join(partition_attr_list)+","+','.join(pred_attr_list)
 
 		logger.debug("Pattern_Q")
 		logger.debug(Pattern_Q)
@@ -596,259 +566,221 @@ class CAPE_UI:
 		logger.debug('exp_pattern_df is :')
 		logger.debug(exp_pattern_df)
 
-
-		canvas = FigureCanvasTkAgg(f,graph_frame)
-		canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-		toolbar = NavigationToolbar2Tk(canvas,graph_frame)
-		toolbar.update()
-		canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=1)
-
-		if(rel_pattern_model=='const'):
-			if(len(rel_pattern_pred.split(','))==1):
-				variable_name = rel_pattern_pred.split(',')[0]
-				a.axhline(y=float(rel_param),c="red",linewidth=2,label='constant = '+str(rel_param))
-				a.set_title("Explanation Graph")
-				a.set_xlabel('Predictor')
-				a.set_ylabel(self.agg_name)
-
-				Xuniques, X = np.unique(exp_pattern_df[variable_name], return_inverse=True)
-				Y = exp_pattern_df[self.agg_name]
-
-				a.scatter(X, Y, s=60, c='b',label=self.agg_name)
-				a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
-
-				x_variable_list = exp_pattern_df[variable_name].tolist()
-
-				if(variable_name in cur_table_int_attr):
-					X_q = x_variable_list.index(int(self.question_tuple[variable_name].to_string(index=False)))
-					X_exp = x_variable_list.index(int(exp_tuple_df[variable_name].to_string(index=False)))
-					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-
-				elif(variable_name in cur_table_float_attr):
-					X_q = x_variable_list.index(float(self.question_tuple[variable_name].to_string(index=False)))
-					X_exp = x_variable_list.index(float(exp_tuple_df[variable_name].to_string(index=False)))
-					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-				else:
-					X_q = x_variable_list.index(str(self.question_tuple[variable_name].to_string(index=False)))
-					X_exp = x_variable_list.index(str(exp_tuple_df[variable_name].to_string(index=False)))
-					Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-					Y_exp = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-
-				a.scatter(X_q,Y_q, s=150,marker='p',c='r',label="User Question")
-				a.scatter(X_exp,Y_exp,s=150,marker='X',c='g',label='Explanation')
-				a.legend(loc='best')				
-				canvas.draw()
+		return exp_pattern_df
 
 
 
+	def pop_up_explanation(self):
+
+		for n in self.exp_table.multiplerowlist:
+			exp_chosen_row = self.exp_df.iloc[int(n)]
+			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern']
+			rel_pattern_part = relevent_pattern.split(':')[0].split('=')[0].strip('[')
+			rel_pattern_part_value = relevent_pattern.split(':')[0].split('=')[1].split(']')
+			rel_pattern_pred = relevent_pattern.split(':')[1].split(' \u2933 ')[0]
+			agg_name = relevent_pattern.split(':')[1].split(' \u2933 ')[1]
+			rel_pattern_model = self.exp_df.iloc[int(n)]['relevent_model']
+			rel_param = self.exp_df.iloc[int(n)]['relevent_param']
+			rel_pattern_part_list = rel_pattern_part.split(',')
+			rel_pattern_pred_list = rel_pattern_pred.split(',')
+			rel_pattern_part_value_list = rel_pattern_part_value[0].split(',')
+			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
+			exp_tuple_list = exp_tuple.split(',')
+			exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
+			drill_attr = self.exp_df.iloc[int(n)]['Drill_Down_To']
+
+			if(drill_attr!=''):
+				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list + [drill_attr]
+				exp_tuple_col.sort()
 			else:
-				pass
-				# f = Figure(figsize=(5,5),dpi=130)
-				# a = f.gca(projection='3d')
-				# a.set_title("Explanation Graph")
+				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
+				exp_tuple_col.sort()
 
-				# x_name = rel_pattern_pred.split(',')[0]
-				# y_name = rel_pattern_pred.split(',')[1]
+		logger.debug('drill_attr is:')
+		logger.debug(drill_attr)
 
-				# Xuniques, X = np.unique(exp_pattern_df[x_name], return_inverse=True)
-				# Yuniques, Y = np.unique(exp_pattern_df[y_name], return_inverse=True)
-				# x=np.arange(X.min(),X.max()+1)
-				# y=np.arange(Y.min(),Y.max()+1)
-				# X_surf, Y_surf = np.meshgrid(x, y)
-				# zs = np.array([float(rel_param) for x,y in zip(np.ravel(X1), np.ravel(Y1))])
-				# Z = zs.reshape(X_surf.shape)
-				# a.plot_surface(X_surf, Y_surf, Z,color='r')
+		exp_tuple_col.append(agg_name)
 
-				# a.set(xticks=range(len(Xuniques)), xticklabels=Xuniques)
-				# a.set(yticks=range(len(Yuniques)), yticklabels=Yuniques)
+		logger.debug('exp_tuple_col is:')
+		logger.debug(exp_tuple_col)
 
-				# x_variable_list = exp_pattern_df[x_name].tolist()
-				# x_variable_list.sort()
-				# y_variable_list = exp_pattern_df[y_name].tolist()
-				# y_variable_list.sort()
-
-				# if(x_name=='year'):
-				# 	X1 = x_variable_list.index(int(self.question_tuple[x_name]))
-				# 	X2 = x_variable_list.index(int(exp_tuple_df[x_name]))
-				# else:
-				# 	X1 = x_variable_list.index(str(self.question_tuple[x_name]))
-				# 	X2 = x_variable_list.index(str(exp_tuple_df[x_name]))
-
-				# if(y_name=='year'):
-				# 	Y1 = y_variable_list.index(int(self.question_tuple[y_name]))
-				# 	Y2 = y_variable_list.index(int(exp_tuple_df[y_name]))
-				# else:
-				# 	Y1 = y_variable_list.index(str(self.question_tuple[y_name]))
-				# 	Y2 = y_variable_list.index(str(exp_tuple_df[y_name]))
-
-				# if(variable_name in cur_table_int_attr):
-				# 	X_q = x_variable_list.index(int(self.question_tuple[x_name]))
-				# 	X_q = x_variable_list.index(int(self.question_tuple[y_name]))
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == int(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-
-				# elif(variable_name in cur_table_float_attr):
-				# 	X_q = x_variable_list.index(float(self.question_tuple[variable_name]))
-				# 	X_q = x_variable_list.index(float(exp_tuple_df[variable_name]))
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == float(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-				# else:
-				# 	X_q = x_variable_list.index(str(self.question_tuple[variable_name]))
-				# 	X_q = x_variable_list.index(str(exp_tuple_df[variable_name]))
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(self.question_tuple[variable_name].to_string(index=False))][self.agg_name]
-				# 	Y_q = exp_pattern_df.loc[exp_pattern_df[variable_name] == str(exp_tuple_df[variable_name].to_string(index=False))][self.agg_name]
-
-				# a.scatter(X, Y, exp_pattern_df[self.agg_name],s=60, c='b',label=self.agg_name)
-				# a.scatter(X1,Y1,self.question_tuple[self.agg_name],s=150,marker='p',c='r',label='User Question')
-				# a.scatter(X2,Y2,exp_tuple_df['exp_value'],s=150,marker='X',c='g',label='Explanation')
-				# a.legend(loc='best')
-				# a.set_xlabel(x_name)
-				# a.set_ylabel(y_name)
-				# a.set_zlabel(self.agg_name)
-
-		elif(rel_pattern_model=='linear'):
-			if(len(rel_pattern_pred.split(','))==1):
-				variable_name = rel_pattern_pred.split(',')[0]
-				a.set_title("Explanation Graph")
-				a.set_xlabel('Variable')
-				a.set_ylabel(self.agg_name)
-
-				Intercept_value = float(rel_param.split(",")[0].split("=")[1])
-				slope_name = rel_param.split(',')[1].split('=')[0].strip()
-				slope_value = float(rel_param.split(',')[1].split('=')[1].strip())
-
-				var_min = pd.to_numeric(exp_pattern_df[variable_name].min())
-				var_max = pd.to_numeric(exp_pattern_df[variable_name].max())
-				X_range = np.linspace(var_min-2,var_max+2,100)
-
-				Y_model = slope_value * X_range + Intercept_value
-
-				a.plot(X_range, Y_model, c='r',linewidth=2,label="Model")
-
-				exp_pattern_df[[variable_name, self.agg_name]] = exp_pattern_df[[variable_name, self.agg_name]].apply(pd.to_numeric)
-				exp_pattern_df.plot.scatter(x=variable_name,y=self.agg_name,c='b',s=60,label=self.agg_name,ax=a)
-
-				self.question_tuple[[variable_name, self.agg_name]] = self.question_tuple[[variable_name, self.agg_name]].apply(pd.to_numeric)
-				self.question_tuple.plot.scatter(x=variable_name,y=self.agg_name,c='r',s=200,marker='p',label='User Question',ax=a)
-
-				exp_tuple_df[[variable_name, 'exp_value']] = exp_tuple_df[[variable_name, 'exp_value']].apply(pd.to_numeric)
-				exp_tuple_df.plot.scatter(x=variable_name,y='exp_value',c='g',marker='X',s=200,label='Explanation',ax=a)
-				a.legend(loc='best')				
-				canvas.draw()
-
-
-		likelihood_words = []
-
-		if(exp_tuple_score<=0):
-			likelihood_words = ['unlikely','not similar','slighlty']
-		elif(exp_tuple_score<=10):
-			likelihood_words = ['plausible','somewhat similar','']
-		else:
-			likelihood_words = ['highly plausible','similar','extremly']
-
-		ranking_clause = "  This explanation was ranked "+ likelihood_words[0] + " because the counterbalance\nis " + likelihood_words[1]+\
-		" to the user question and it deviates"+likelihood_words[2]+"\nfrom the predicted outcome.\n"
-
-		logger.debug('ranking_clause:')
-		logger.debug(ranking_clause)
-
-		logger.debug('self.question_tuple is:')
-		logger.debug(self.question_tuple)
-
-		user_question_list = []
-		logger.debug('question_tuple.items()')
-		logger.debug(self.question_tuple.items())
-
-		for k,v in self.question_tuple.items():
-			if(k==self.agg_name or k=='direction'):
-				continue
-			else:
-				user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
-		user_question_clause = ','.join(user_question_list)
-		logger.debug("user_question_list")
-		logger.debug(user_question_clause)
-
-		predict = '' 
-		if(len(rel_pattern_pred.split(','))>1):
-			predict = 'predict'
-		else:
-			predict = 'predicts'	
-
-		fixed_pair_list=[]
-		fixed_attr_list = str(self.chosen_local_pattern['partition']).split(',')
-		fixed_value_list = str(self.chosen_local_pattern['partition_values']).split(',')
-
-		for n in range(len(fixed_attr_list)):
-			eq = (fixed_attr_list[n]+"="+fixed_value_list[n])
-			fixed_pair_list.append(eq)
-		if(len(fixed_pair_list)==1):
-			fixed_pair = fixed_pair_list[0]
-		else:
-			fixed_pair = ",".join(fixed_pair_list)
-
-		variable_pair_list=[]
-		variable_attr_list = str(self.chosen_local_pattern['predictor']).split(',')
-
-		for n in range(len(variable_attr_list)):
-			eq = (str(variable_attr_list[n])+"="+str(self.question_tuple[variable_attr_list[n]].to_string(index=False)))
-			variable_pair_list.append(eq)
-		if(len(variable_pair_list)==1):
-			variable_pair = variable_pair_list[0]
-		else:
-			variable_pair = ",".join(variable_pair_list)
-
-		counter_dir = ''
-
-		logger.debug("str(self.question['direction']):")
-		logger.debug(str(self.question['direction']))
-		if(self.question['direction'].to_string(index=False)=='high'):
-			counter_dir='low'
-		else:
-			counter_dir='high'
-
-		exp_pair = ''
-
-		logger.debug('exp_tuple_df:')
+		exp_tuple_list = [exp_tuple_list]
+		exp_tuple_df = pd.DataFrame(exp_tuple_list)
+		logger.debug("exp_tuple_df:")
+		exp_tuple_df.columns = exp_tuple_col
 		logger.debug(exp_tuple_df)
 
 
-		exp_tuple_dict = exp_tuple_df.to_dict('records')[0]
+		if(drill_attr != ''):
 
-		exp_list = []
-		for k,v in exp_tuple_dict.items():
-			if(k=='exp_value' or k in rel_pattern_part.split(',')):
-				continue
-			else:
-				exp_list.append(str(k)+"="+str(v))
-		exp_clause = ','.join(exp_list)
+			drill_value = exp_tuple_df[drill_attr].to_string(index=False)
+
+			logger.debug('rel_pattern_part_list')
+			logger.debug(rel_pattern_part_list)
+
+			logger.debug('rel_pattern_part_value_list')
+			logger.debug(rel_pattern_part_value_list)
 
 
-		fixed_exp_pair_list = []
-		for n in range(len(rel_pattern_part_list)):
-			eq = (rel_pattern_part_list[n]+"="+rel_pattern_part_value_list[n])
-			fixed_exp_pair_list.append(eq)
-		if(len(fixed_exp_pair_list)==1):
-			fixed_pair = fixed_exp_pair_list[0]
+			drill_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list+[drill_attr],
+			                                         partition_value_list=rel_pattern_part_value_list+[drill_value],pred_attr_list=rel_pattern_pred_list)
+
+			logger.debug("drill_pattern_df is")
+			logger.debug(drill_pattern_df)
+
+			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
+			                                         partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
+
+			question_df = self.original_question
+
+			explanation_df = exp_tuple_df
+
+			exp_selected = exp_chosen_row
+
+			data_convert_dict = self.plot_data_convert_dict
+
+			self.Explainer = Exp_Frame(question_df=question_df, explanation_df=explanation_df, exp_chosen_row=exp_selected, none_drill_down_df=rel_pattern_df,
+		drill_down_df=drill_pattern_df, data_convert_dict=data_convert_dict)
+
+			self.Explainer.load_exp_graph()
+
 		else:
-			fixed_pair = ",".join(fixed_exp_pair_list)
+			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
+				                                         partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
+
+			question_df = self.original_question
+
+			explanation_df = exp_tuple_df
+
+			exp_selected = exp_chosen_row
+
+			data_convert_dict = self.plot_data_convert_dict
+
+			self.Explainer = Exp_Frame(question_df=question_df, explanation_df=explanation_df, exp_chosen_row=exp_selected, none_drill_down_df=rel_pattern_df,
+				drill_down_df=None, data_convert_dict=data_convert_dict)
+
+			self.Explainer.load_exp_graph()
 
 
-		comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question['direction'].to_string(index=False)+"er than expected for:\n"+user_question_clause+\
-		"\n  In general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
-		"\nThis is also true for "+ fixed_pair+'.'\
-		"\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question['direction'].to_string(index=False)+"er than predicted."+\
-		"\n  This may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
 
-		comprehensive_exp = comprehensive_exp.replace('name','author')
-		comprehensive_exp = comprehensive_exp.replace('\'','')
 
-		logger.debug('comprehensive_exp:')
-		logger.debug(comprehensive_exp)
 
-		pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
-		pattern_description.grid(column=0,row=0,sticky='nsew')
+
+
+
+
+
+
+		# likelihood_words = []
+
+		# if(exp_tuple_score<=0):
+		# 	likelihood_words = ['unlikely','not similar','slighlty']
+		# elif(exp_tuple_score<=10):
+		# 	likelihood_words = ['plausible','somewhat similar','']
+		# else:
+		# 	likelihood_words = ['highly plausible','similar','extremly']
+
+		# ranking_clause = "  This explanation was ranked "+ likelihood_words[0] + " because the counterbalance\nis " + likelihood_words[1]+\
+		# " to the user question and it deviates"+likelihood_words[2]+"\nfrom the predicted outcome.\n"
+
+		# logger.debug('ranking_clause:')
+		# logger.debug(ranking_clause)
+
+		# logger.debug('self.question_tuple is:')
+		# logger.debug(self.question_tuple)
+
+		# user_question_list = []
+		# logger.debug('question_tuple.items()')
+		# logger.debug(self.question_tuple.items())
+
+		# for k,v in self.question_tuple.items():
+		# 	if(k==self.agg_name or k=='direction'):
+		# 		continue
+		# 	else:
+		# 		user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
+		# user_question_clause = ','.join(user_question_list)
+		# logger.debug("user_question_list")
+		# logger.debug(user_question_clause)
+
+		# predict = '' 
+		# if(len(rel_pattern_pred.split(','))>1):
+		# 	predict = 'predict'
+		# else:
+		# 	predict = 'predicts'	
+
+		# fixed_pair_list=[]
+		# fixed_attr_list = str(self.chosen_local_pattern['partition']).split(',')
+		# fixed_value_list = str(self.chosen_local_pattern['partition_values']).split(',')
+
+		# for n in range(len(fixed_attr_list)):
+		# 	eq = (fixed_attr_list[n]+"="+fixed_value_list[n])
+		# 	fixed_pair_list.append(eq)
+		# if(len(fixed_pair_list)==1):
+		# 	fixed_pair = fixed_pair_list[0]
+		# else:
+		# 	fixed_pair = ",".join(fixed_pair_list)
+
+		# variable_pair_list=[]
+		# variable_attr_list = str(self.chosen_local_pattern['predictor']).split(',')
+
+		# for n in range(len(variable_attr_list)):
+		# 	eq = (str(variable_attr_list[n])+"="+str(self.question_tuple[variable_attr_list[n]].to_string(index=False)))
+		# 	variable_pair_list.append(eq)
+		# if(len(variable_pair_list)==1):
+		# 	variable_pair = variable_pair_list[0]
+		# else:
+		# 	variable_pair = ",".join(variable_pair_list)
+
+		# counter_dir = ''
+
+		# logger.debug("str(self.question['direction']):")
+		# logger.debug(str(self.question['direction']))
+		# if(self.question['direction'].to_string(index=False)=='high'):
+		# 	counter_dir='low'
+		# else:
+		# 	counter_dir='high'
+
+		# exp_pair = ''
+
+		# logger.debug('exp_tuple_df:')
+		# logger.debug(exp_tuple_df)
+
+
+		# exp_tuple_dict = exp_tuple_df.to_dict('records')[0]
+
+		# exp_list = []
+		# for k,v in exp_tuple_dict.items():
+		# 	if(k=='exp_value' or k in rel_pattern_part.split(',')):
+		# 		continue
+		# 	else:
+		# 		exp_list.append(str(k)+"="+str(v))
+		# exp_clause = ','.join(exp_list)
+
+
+		# fixed_exp_pair_list = []
+		# for n in range(len(rel_pattern_part_list)):
+		# 	eq = (rel_pattern_part_list[n]+"="+rel_pattern_part_value_list[n])
+		# 	fixed_exp_pair_list.append(eq)
+		# if(len(fixed_exp_pair_list)==1):
+		# 	fixed_pair = fixed_exp_pair_list[0]
+		# else:
+		# 	fixed_pair = ",".join(fixed_exp_pair_list)
+
+
+		# comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question['direction'].to_string(index=False)+"er than expected for:\n"+user_question_clause+\
+		# "\n  In general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
+		# "\nThis is also true for "+ fixed_pair+'.'\
+		# "\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question['direction'].to_string(index=False)+"er than predicted."+\
+		# "\n  This may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
+
+		# comprehensive_exp = comprehensive_exp.replace('name','author')
+		# comprehensive_exp = comprehensive_exp.replace('\'','')
+
+		# logger.debug('comprehensive_exp:')
+		# logger.debug(comprehensive_exp)
+
+		# pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
+		# pattern_description.grid(column=0,row=0,sticky='nsew')
 
 def startCapeGUI(conn):
 	root = Tk()

@@ -15,9 +15,6 @@ stream_handler.setFormatter(formatter)
 
 logger.addHandler(stream_handler)
 
-
-
-
 # logging.basicConfig(level=logging.DEBUG,
 # 	format='%(asctime)s %(levelname)s line %(lineno)d: %(message)s')
 

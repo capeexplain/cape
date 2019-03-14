@@ -23,11 +23,12 @@ logger.addHandler(stream_handler)
 
 class Local_Pattern_Frame:
 
-	def __init__(self,chosen_row,pattern_data_df,agg_alias):
+	def __init__(self,chosen_row=None,pattern_data_df=None,agg_alias=None,data_convert_dict=None):
 
 		self.chosen_row = chosen_row
 		self.pattern_data_df = pattern_data_df
 		self.agg_alias = agg_alias
+		self.data_convert_dict = data_convert_dict
 
 		self.pop_up_frame = Toplevel()
 		self.pop_up_frame.geometry("%dx%d%+d%+d" % (1300, 800, 250, 125))
@@ -36,7 +37,7 @@ class Local_Pattern_Frame:
 		self.win_frame = Frame(self.pop_up_frame)
 		self.win_frame.pack(fill=BOTH,expand=True)
 		self.win_frame.columnconfigure(0,weight=1)
-		self.win_frame.columnconfigure(1,weight=1)
+		self.win_frame.columnconfigure(1,weight=3)
 		self.win_frame.rowconfigure(0,weight=5)
 		self.win_frame.rowconfigure(1,weight=1)
 
@@ -44,9 +45,8 @@ class Local_Pattern_Frame:
 		b.grid(column=0,row=1)
 
 
-	def load_pattern_graph(self,data_convert_dict=None):
+	def load_pattern_graph(self):
 
-		self.data_convert_dict = data_convert_dict
 		graph_frame = Frame(self.win_frame)
 		graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')
 		self.figure = Figure(figsize=(5,5),dpi=130)
@@ -93,11 +93,9 @@ class Local_Pattern_Frame:
 
 				self.plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
 				variable_name = self.chosen_row['variable'][0]
-				intercept_value = round((self.chosen_row['param']['Intercept']),2)
+				intercept_value = self.chosen_row['param']['Intercept']
 				slope_name = list(self.chosen_row['param'])[1]
 				slope_value = float(self.chosen_row['param'][slope_name])
-				# x = self.pattern_data_df[variable_name]
-				# y = self.pattern_data_df[self.agg_alias]
 
 				draw_line_df = self.pattern_data_df[[variable_name]]
 				draw_scatter_df = self.pattern_data_df[[variable_name,self.agg_alias]]
