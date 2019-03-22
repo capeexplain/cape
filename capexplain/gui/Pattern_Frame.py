@@ -11,6 +11,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from Plotting import Plotter
 import logging
+import textwrap
 
 
 logger = logging.getLogger(__name__)
@@ -31,21 +32,21 @@ class Local_Pattern_Frame:
 		self.data_convert_dict = data_convert_dict
 
 		self.pop_up_frame = Toplevel()
-		self.pop_up_frame.geometry("%dx%d%+d%+d" % (1300, 800, 250, 125))
+		self.pop_up_frame.geometry("%dx%d%+d%+d" % (1200, 800, 250, 125))
 		self.pop_up_frame.wm_title("Pattern Detail")
 
 		self.win_frame = Frame(self.pop_up_frame)
 		self.win_frame.pack(fill=BOTH,expand=True)
 		self.win_frame.columnconfigure(0,weight=1)
-		self.win_frame.columnconfigure(1,weight=4)
+		self.win_frame.columnconfigure(1,weight=3)
 		self.win_frame.rowconfigure(0,weight=1)
 
 
 	def load_pattern_graph(self):
 
 		graph_frame = Frame(self.win_frame)
-		graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')
-		self.figure = Figure(figsize=(7,7),dpi=130)
+		graph_frame.grid(column=1,row=0,sticky='nesw')
+		self.figure = Figure(figsize=(5,5),dpi=130)
 		canvas = FigureCanvasTkAgg(self.figure,graph_frame)
 		canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
 		toolbar = NavigationToolbar2Tk(canvas,graph_frame)
@@ -57,10 +58,7 @@ class Local_Pattern_Frame:
 				self.plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
 				variable_name= self.chosen_row['variable'][0]
 				const=round(self.chosen_row['stats'],2)
-				# x = self.pattern_data_df[variable_name]
-				# y = self.pattern_data_df[self.agg_alias]
 				self.plotter.plot_2D_const(const,label="Pattern Model")
-				# self.plotter.plot_categorical_scatter_2D(x,y)
 				draw_df = self.pattern_data_df[[variable_name,self.agg_alias]]
 				logger.debug(draw_df)
 
@@ -130,12 +128,16 @@ class Local_Pattern_Frame:
 			Intercept_value = round((self.chosen_row['param']['Intercept']),2)
 			slope_name = list(self.chosen_row['param'])[1]
 			slope_value = round((self.chosen_row['param'][slope_name]),2)
-			model_str = "\n\nIntercept: "+str(Intercept_value)+',\n '+str(slope_name)+" as Coefficient: "+str(slope_value)
-		theta = "\nThe goodness of fit \nof the model is "+str(round(self.chosen_row['theta'],2))
-		local_desc = "For\n "+fixed_clause+',\nthe '+aggregation_function +' is\n '+modeltype+' in '+variable_attribute+'.'
+			model_str = "\nIntercept: "+str(Intercept_value)+',\n '+str(slope_name)+" as Coefficient: "+str(slope_value)
+		theta = "The goodness of fit of the model is "+str(round(self.chosen_row['theta'],2))
+		local_desc = "For "+fixed_clause+',the '+self.agg_alias +' is '+modeltype+' in '+variable_attribute+'.'
 		local_desc = local_desc.replace('const','constant')
 		pattern_attr = model_str+theta
-		pattern_description = Label(self.win_frame,text=local_desc+pattern_attr,font=('Times New Roman bold',18),borderwidth=5,bg='white',relief=SOLID,justify=LEFT)
+		raw_pattern_description = local_desc+pattern_attr
+		raw_pattern_description_lists = textwrap.wrap(raw_pattern_description,width=35)
+		final_pattern_description = '\n'.join(raw_pattern_description_lists)
+
+		pattern_description = Label(self.win_frame,text=final_pattern_description,font=('Times New Roman bold',18),borderwidth=5,bg='white',relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
 
 

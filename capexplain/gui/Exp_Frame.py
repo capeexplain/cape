@@ -21,6 +21,7 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 from Plotting import Plotter
 import logging
+import textwrap
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -191,8 +192,8 @@ class Exp_Frame:
 				explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
 				explanation_df = explanation_df[[x,y]]
 
-				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='P',size=150,zorder=10,label="User Question")
-				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='D',size=150,zorder=5,label="Explanation")
+				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
+				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=5,label="Explanation")
 				self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
@@ -238,8 +239,8 @@ class Exp_Frame:
 				self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model")
 				self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
 				self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
-				self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='P',size=150,label="User Question")
-				self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='b',marker='D',size=150,label="Explanation")
+				self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
+				self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='b',marker='^',size=250,label="Explanation")
 
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
@@ -285,8 +286,8 @@ class Exp_Frame:
 
 				self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Explanation Model")
 				self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,label=self.rel_pattern_agg)
-				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='P',size=150,zorder=1,label="User Question")
-				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='D',size=150,zorder=2,label="Explanation")
+				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=1,label="User Question")
+				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=2,label="Explanation")
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
 				self.rel_plotter.set_title("Pattern Graph")
@@ -331,9 +332,9 @@ class Exp_Frame:
 
 				logger.debug(question_df)
 
-				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='P',size=150,zorder=10,label="User Question")
+				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
 				self.rel_plotter.plot_2D_scatter(self.none_drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
-				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='D',size=150,zorder=0,label="Explanation")
+				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=0,label="Explanation")
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
 				self.rel_plotter.set_title("User Question Graph")
@@ -400,8 +401,8 @@ class Exp_Frame:
 
 				self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Relevent Model")
 				self.rel_plotter.plot_2D_scatter(self.none_drill_down_df,x=x,y=y,label=self.rel_pattern_agg)
-				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='P',size=150,zorder=1,label="User Question")
-				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='D',size=150,zorder=0,label="Explanation")
+				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=150,zorder=1,label="User Question")
+				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=150,zorder=0,label="Explanation")
 
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
@@ -426,7 +427,7 @@ class Exp_Frame:
 				common_cols = self.rel_pattern_part_list+ self.drill_attr+self.rel_pattern_pred_list
 
 
-				self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,color='b',marker='D',size=150,zorder=10,label="Explanation")
+				self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=10,label="Explanation")
 				self.drill_plotter.plot_2D_scatter(self.drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
 				self.drill_plotter.set_x_label(x)
 				self.drill_plotter.set_y_label(y)
@@ -509,7 +510,7 @@ class Exp_Frame:
 		else:
 			likelihood_words = ['highly plausible','similar','extremly']
 
-		ranking_clause = "  This explanation was ranked \n"+likelihood_words[0] + " because the counterbalance\n is " + likelihood_words[1]+"to the user question and\nit deviates "+likelihood_words[2]+"from the predicted outcome.\n"
+		ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question andit deviates "+likelihood_words[2]+" from the predicted outcome."
 
 		logger.debug('ranking_clause:')
 		logger.debug(ranking_clause)
@@ -588,11 +589,11 @@ class Exp_Frame:
 		logger.debug(exp_tuple_dict.items())
 
 		if(self.drill_down_df is None):
-			comprehensive_exp = "\n  Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er\n than expected for:\n"+user_question_clause+"\n  In general, "+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for most "+str(self.rel_pattern_part)+"."+"\nThis is also true for "+ fixed_pair+'.'+"\n  However, for "+variable_pair+" ," + self.rel_pattern_agg+"\n is "+ user_direction+"er than predicted."+"\n  This may be explained through the "+counter_dir+"er than\n expected outcome for "+ exp_clause+"."
+			comprehensive_exp = "  Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+"  In general, "+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for most "+str(self.rel_pattern_part)+"."+"This is also true for "+ fixed_pair+'.'+"  However, for "+variable_pair+" ," + self.rel_pattern_agg+" is "+ user_direction+"er than predicted."+"  This may be explained through the "+counter_dir+"er than expected outcome for "+ exp_clause+"."
 
 		else:
 
-			ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question and\nit deviates "+likelihood_words[2]+"from the predicted outcome.\n"
+			ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question andit deviates "+likelihood_words[2]+" from the predicted outcome."
 
 			drill_pair_list=[]
 			for n in range(len(self.drill_attr)):
@@ -605,16 +606,18 @@ class Exp_Frame:
 
 			user_question_clause = ','.join(user_question_list)
 
-			comprehensive_exp = "Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:\n"+user_question_clause+"\n Even though like many other "+str(self.rel_pattern_part)+', '+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+"for "+ fixed_pair+'(Left Graph), the fact that \n'+user_question_clause + "\nis low can also be explained by\n "+counter_dir+"er than usual number of "+self.rel_pattern_agg+ " in "+drill_pair+','+variable_pair+"(Right Graph)."
+			comprehensive_exp = "Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+" Even though like many other "+str(self.rel_pattern_part)+', '+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for "+ fixed_pair+'(Left Graph), the fact that '+user_question_clause + " is "+user_direction+" can also be explained by "+counter_dir+"er than usual number of "+self.rel_pattern_agg+ " in "+drill_pair+','+variable_pair+"(Right Graph)."
 
 
 		comprehensive_exp = comprehensive_exp.replace('name','author')
 		comprehensive_exp = comprehensive_exp.replace('\'','')
 
-		logger.debug('comprehensive_exp:')
-		logger.debug(comprehensive_exp)
+		raw_exp = ranking_clause+comprehensive_exp
 
-		pattern_description = Label(self.exp_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',19),bg='white',relief=SOLID,justify=LEFT)
+		raw_exp_lists = textwrap.wrap(raw_exp,width=90)
+		final_exp_lists = '\n'.join(raw_exp_lists)
+
+		pattern_description = Label(self.exp_frame,text=final_exp_lists,font=('Times New Roman bold',19),bg='white',relief=SOLID,justify=LEFT)
 		pattern_description.pack(expand=True)
 
 

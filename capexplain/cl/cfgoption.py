@@ -69,7 +69,7 @@ class DictLike:
             raise AttributeError("No such attribute: " + key)
         return self.__dict__[key]
 
-    # overwrite __getitem__ to allow dictory style setting of options
+    # overwrite __setitem__ to allow dictory style setting of options
     def __setitem__(self,key,value):
         if key not in self.__dict__:
             raise AttributeError("No such attribute: " + key)

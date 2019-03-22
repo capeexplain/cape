@@ -22,7 +22,6 @@ import colorful
 # format for logging
 LOGFORMAT='{c.white_on_black}%(levelname)s{c.reset} {c.red}%(asctime)s{c.reset} {c.blue}[%(filename)s:%(funcName)s:%(lineno)d]{c.reset} %(message)s'.format(c=colorful)
 
-
 # ********************************************************************************
 def mineCommand(c,log):
     """

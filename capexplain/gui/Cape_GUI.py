@@ -353,7 +353,9 @@ class CAPE_UI:
 			variable_attribute = self.global_pattern_df.iloc[int(n)]['predictor']
 			Lambda = self.global_pattern_df.iloc[int(n)]['support']
 
-		global_desc = "For each "+fixed_attribute+',the '+aggregation_function +' is '+modeltype+'\n in '+variable_attribute+'.'+\
+		fixed_attribute=fixed_attribute.replace(",",", ")
+
+		global_desc = "For each ("+fixed_attribute+'), the '+aggregation_function +' is '+modeltype+'\n in '+variable_attribute+'.'+\
 		'This pattern holds for '+str(Lambda*100)+ ' % of the '+fixed_attribute
 		desc_win = Toplevel()
 		x = self.parent.winfo_x()

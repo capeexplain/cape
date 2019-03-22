@@ -7,4 +7,4 @@ capexplain.egg-info/
 .mypy_cache
 gui/Exp_Frame.py
 gui/*_template
-gui/test.py
+gui/test.*.py

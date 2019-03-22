@@ -24,10 +24,8 @@ class Plotter:
 
 		if(mode=='2D'):
 			self.a = self.figure.add_subplot(111)
-			self.a.set_facecolor('#D6DBDF')
 		elif(mode=='3D'):
 			self.a= self.figure.gca(projection='3d')
-			self.a.set_facecolor('#D6DBDF')
 
 
 		self.cur_x_range = [0]
@@ -119,12 +117,12 @@ class Plotter:
 			self.a.set(xticks=df['coded_'+x].values, xticklabels=df[x])
 
 		else:
-			self.a.set(xticks=list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1))))
+			self.a.set(xticks=list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1)),3))
 
 		if ('coded_'+y) in df.columns:
 			self.a.set(yticks=df['coded_'+y].values, yticklabels=df[y])
 		else:
-			self.a.set(yticks=list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1))))
+			self.a.set(yticks=list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5)))
 
 		plane_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc="r")
 		plane_proxy_name = label
@@ -175,7 +173,7 @@ class Plotter:
 
 
 		else:
-			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1)))
+			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1),3))
 			if(len(x_ticks)>len(self.cur_x_range)):
 				self.a.set(xticks=x_ticks)
 				self.cur_x_range = x_ticks
@@ -188,7 +186,7 @@ class Plotter:
 				self.cur_y_range = y_ticks
 
 		else:
-			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1)))
+			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5))
 			if(len(y_ticks)>len(self.cur_y_range)):
 				self.a.set(yticks=y_ticks)
 				self.cur_y_range = y_ticks
@@ -223,7 +221,7 @@ class Plotter:
 
 
 		else:
-			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1)))
+			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1),3))
 			if(len(x_ticks)>len(self.cur_x_range)):
 				self.a.set(xticks=x_ticks)
 				self.cur_x_range = x_ticks
@@ -236,7 +234,7 @@ class Plotter:
 				self.cur_y_range = y_ticks
 
 		else:
-			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1)))
+			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5))
 			if(len(y_ticks)>len(self.cur_y_range)):
 				self.a.set(yticks=y_ticks)
 				self.cur_y_range = y_ticks
