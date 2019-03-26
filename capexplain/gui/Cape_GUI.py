@@ -571,11 +571,11 @@ class CAPE_UI:
 		if (pred_attr_list is not None):
 
 			Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+","+','.join(pred_attr_list)+\
-			" FROM pub WHERE " + where_clause+\
+			" FROM " +self.cur_table_name+" WHERE " + where_clause+\
 			" GROUP BY "+','.join(partition_attr_list)+","+','.join(pred_attr_list)
 		else:
 			Pattern_Q = "SELECT "+self.agg_function+" as "+self.agg_name+","+','.join(partition_attr_list)+\
-			" FROM pub WHERE " + where_clause+\
+			" FROM " +self.cur_table_name + " WHERE " + where_clause+\
 			" GROUP BY "+','.join(partition_attr_list)
 
 

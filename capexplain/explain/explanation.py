@@ -1327,7 +1327,7 @@ class ExplanationGenerator:
 
         ecf = self.config
         query_result_table = ecf.DEFAULT_RESULT_TABLE
-        pattern_table = ecf.DEFAULT_PATTERN_TABLE
+        pattern_table = ecf.pattern_table
         outputfile = ''
         aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
         conn = ecf.conn

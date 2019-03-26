@@ -618,11 +618,13 @@ class Exp_Frame:
 		logger.debug(exp_tuple_dict.items())
 
 		if(self.drill_down_df is None):
+
 			comprehensive_exp = "  Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+"  In general, "+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for most "+str(self.rel_pattern_part)+"."+"This is also true for "+ fixed_pair+'.'+"  However, for "+variable_pair+" ," + self.rel_pattern_agg+" is "+ user_direction+"er than predicted."+"  This may be explained through the "+counter_dir+"er than expected outcome for "+ exp_clause+"."
+			raw_exp = ranking_clause+comprehensive_exp
+			raw_exp_lists = textwrap.wrap(raw_exp,width=50)
+			final_exp_lists = '\n'.join(raw_exp_lists)
 
 		else:
-
-			ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question andit deviates "+likelihood_words[2]+" from the predicted outcome."
 
 			drill_pair_list=[]
 			for n in range(len(self.drill_attr)):
@@ -635,16 +637,15 @@ class Exp_Frame:
 
 			user_question_clause = ','.join(user_question_list)
 
-			comprehensive_exp = "Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+" Even though like many other "+str(self.rel_pattern_part)+', '+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for "+ fixed_pair+'(Left Graph), the fact that '+user_question_clause + " is "+user_direction+" can also be explained by "+counter_dir+"er than usual number of "+self.rel_pattern_agg+ " in "+drill_pair+','+variable_pair+"(Right Graph)."
+			comprehensive_exp = " Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+" Even though like many other "+str(self.rel_pattern_part)+', '+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for "+ fixed_pair+'(Left Graph), the fact that '+user_question_clause + " is "+user_direction+" can also be explained by "+counter_dir+"er than usual number of "+self.rel_pattern_agg+ " in "+drill_pair+','+variable_pair+"(Right Graph)."
+			raw_exp = ranking_clause+comprehensive_exp
+			raw_exp_lists = textwrap.wrap(raw_exp,width=90)
+			final_exp_lists = '\n'.join(raw_exp_lists)
+
+		final_exp_lists = final_exp_lists.replace('name','author')
+		final_exp_lists = final_exp_lists.replace('\'','')
 
 
-		comprehensive_exp = comprehensive_exp.replace('name','author')
-		comprehensive_exp = comprehensive_exp.replace('\'','')
-
-		raw_exp = ranking_clause+comprehensive_exp
-
-		raw_exp_lists = textwrap.wrap(raw_exp,width=90)
-		final_exp_lists = '\n'.join(raw_exp_lists)
 
 		pattern_description = Label(self.exp_frame,text=final_exp_lists,font=('Times New Roman bold',19),bg='white',relief=SOLID,justify=LEFT)
 		pattern_description.pack(expand=True)
