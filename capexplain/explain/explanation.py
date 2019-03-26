@@ -17,6 +17,7 @@ from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
 from capexplain.cl.cfgoption import DictLike
 from capexplain.explanation_model.explanation_model import *
+#from build.lib.capexplain.database.dbaccess import DBConnection
 # setup logging
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ TEST_ID = ''
 # Configuration for Explanation generation
 class ExplConfig(DictLike):
 
-    DEFAULT_RESULT_TABLE = 'pub'
+    DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
     # DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
     DEFAULT_PATTERN_TABLE = 'dev.pub'
     # DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
@@ -64,17 +65,21 @@ class ExplConfig(DictLike):
         self.global_patterns =None
         self.schema = None
         self.global_patterns_dict = None
-
-        try:
-            self.conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
-            self.cur = self.conn.cursor()
-        except psycopg2.OperationalError:
-            print('Fail to connect to the database!')
+        self.conn = self.cur = None
+#         try:
+#             self.conn = psycopg2.connect(dbname=DBConn.db,
+#                                          user=DBConn.user,
+#                                          host=DBConn.host,
+#                                          port=DBConn.port,
+#                                          password=DBConn.password)
+#             self.pattern_table = DBConn.local_table[:-6]
+#             self.cur = self.conn.cursor()
+#         except psycopg2.OperationalError:
+#             print('Fail to connect to the database!')
 
 
     def __str__(self):
         return self.__dict__.__str__()
-
 
 class TopkHeap(object):
     def __init__(self, k):
@@ -1256,7 +1261,7 @@ class ExplanationGenerator:
     def initialize(self):
         ecf = self.config
         query_result_table = ecf.DEFAULT_RESULT_TABLE
-        pattern_table = ecf.DEFAULT_PATTERN_TABLE
+        pattern_table = ecf.pattern_table
         user_question_file = ecf.DEFAULT_QUESTION_PATH
         outputfile = ''
         aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN

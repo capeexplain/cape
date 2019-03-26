@@ -95,6 +95,7 @@ def explainCommand(command,log):
     # create connection
     config.conn = dbconn.pgconnect()
     config.cur = config.conn.cursor()
+    config.pattern_table = dbconn.local_table[:-6]
     log.debug("connected to database")
         
     # do explaining
@@ -120,6 +121,9 @@ def guiCommand(command,log):
     
     config.validateConfiguration()
     conn=dbconn.pgconnect()
+    config.conn = conn
+    config.cur = config.conn.cursor()
+    config.pattern_table = dbconn.local_table[:-6]
     log.debug("connected to database")
     #TODO gui=Cape_UI() # (config, dbconn)
     # start the gui gui.start()
@@ -178,8 +182,8 @@ HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {
 ]
 
 GUI_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
-    ConfigOpt(longopt='local', shortopt='L', desc='local pattern table name', hasarg=True),
-    ConfigOpt(longopt='global', shortopt='G', desc='global pattern table name', hasarg=True),
+    ConfigOpt(longopt='local_table', shortopt='L', desc='local pattern table name', hasarg=True),
+    ConfigOpt(longopt='global_table', shortopt='G', desc='global pattern table name', hasarg=True),
     ConfigOpt(longopt='maximize_window', shortopt='m', desc='maximize window at start')
     ]
 

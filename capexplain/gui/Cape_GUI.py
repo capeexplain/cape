@@ -428,7 +428,9 @@ class CAPE_UI:
 
 		self.question_tuple = ''
 		config=ExplConfig()
-		eg = ExplanationGenerator(config, None)
+		config.conn = self.config.conn
+		config.cur = self.config.cur
+		eg = ExplanationGenerator(config, {'pattern_table':self.config.pattern_table})
 		eg.initialize() 
 		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
