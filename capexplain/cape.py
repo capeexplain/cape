@@ -123,14 +123,14 @@ def guiCommand(command,log):
     log.debug("connected to database")
     #TODO gui=Cape_UI() # (config, dbconn)
     # start the gui gui.start()
-    startCapeGUI(conn,config)
-    config.conn.close()
+    startCapeGUI(conn=conn,config=config,local_table=dbconn['local_table'],global_table=dbconn['global_table'])
+    conn.close()
     log.debug("closed database connection ... DONE")
 
     
 
 # ********************************************************************************
-# options for difference commands using ConfigOpt
+# options for different commands using ConfigOpt
 COMMON_OPTIONS =  [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="ERROR"),
                     ConfigOpt(longopt='help', desc='show this help message'),
 ]
@@ -139,7 +139,7 @@ DB_OPTIONS = [ ConfigOpt(longopt='host', shortopt='h', desc='database connection
             ConfigOpt(longopt='user', shortopt='u', desc='database connection user', hasarg=True),
             ConfigOpt(longopt='password', shortopt='p', desc='database connection password', hasarg=True),
             ConfigOpt(longopt='db', shortopt='d', desc='database name', hasarg=True),
-            ConfigOpt(longopt='port', shortopt='P', desc='database connection port', otype=OptionType.Int, hasarg=True)   
+            ConfigOpt(longopt='port', shortopt='P', desc='database connection port', otype=OptionType.Int, hasarg=True)
 ]
 
 MINE_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
@@ -178,6 +178,8 @@ HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {
 ]
 
 GUI_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
+    ConfigOpt(longopt='local', shortopt='L', desc='local pattern table name', hasarg=True),
+    ConfigOpt(longopt='global', shortopt='G', desc='global pattern table name', hasarg=True),
     ConfigOpt(longopt='maximize_window', shortopt='m', desc='maximize window at start')
     ]
 

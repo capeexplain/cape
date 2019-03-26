@@ -9,7 +9,7 @@ from matplotlib.backends.backend_tkagg import (
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from Plotting import Plotter
+from capexplain.gui.Plotting import Plotter
 import logging
 import textwrap
 
@@ -53,7 +53,15 @@ class Local_Pattern_Frame:
 		toolbar.update()
 		canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 
-		if(self.chosen_row['model']=='const'):
+		if(len(self.pattern_data_df)>=50):
+			self.text_plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.text_plotter.add_text("Cannot plot because the size of the data is so large!")
+
+		elif(len(self.chosen_row['variable'])>2):
+			self.text_plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.text_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
+
+		elif(self.chosen_row['model']=='const'):
 			if(len(self.chosen_row['variable'])==1):
 				self.plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
 				variable_name= self.chosen_row['variable'][0]

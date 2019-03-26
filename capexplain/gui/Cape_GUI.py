@@ -22,10 +22,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 from mpl_toolkits.mplot3d import Axes3D
-from User_Query_Frame import User_Query_Frame
-from DBinfo import DBinfo
-from Pattern_Frame import Local_Pattern_Frame
-from Exp_Frame import Exp_Frame
+from capexplain.gui.User_Query_Frame import User_Query_Frame
+from capexplain.gui.DBinfo import DBinfo
+from capexplain.gui.Pattern_Frame import Local_Pattern_Frame
+from capexplain.gui.Exp_Frame import Exp_Frame
+from capexplain.cl.cfgoption import DictLike
+from capexplain.database.dbaccess import DBConnection
+
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -38,10 +42,16 @@ logger.addHandler(stream_handler)
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 class CAPE_UI:
 
-	def __init__(self,parent,conn):
+	def __init__(self,parent,conn,config,assigned_local_table,assigned_global_table):
 		self.conn=conn
-		# self.config=config
+		self.config=config
 		self.cur=self.conn.cursor()
+		self.assigned_local_table = assigned_local_table
+		self.assigned_global_table = assigned_global_table
+
+		logger.debug('self.assigned_local_table is:' + str(self.assigned_local_table))
+		logger.debug('self.assigned_global_table is:' + str(self.assigned_global_table))
+
 #----------------------------main frame----------------------------------------#
 
 		self.parent=parent
@@ -108,15 +118,15 @@ class CAPE_UI:
 			   self.table_view.insert('item'+str(table_index),'end',text=n)
 		   table_index +=1
 
-		self.pub_dict = {"dict_name":"pub",
-		"global_name":"dev.pub_global",
-		"local_name":"dev.pub_local"
-		}
+		# self.pub_dict = {"dict_name":"pub",
+		# "global_name":"dev.pub_global",
+		# "local_name":"dev.pub_local"
+		# }
 
-		self.crime_dict = {"dict_name":"crime",
-		"global_name": "dev.crime_global",
-		"local_name":"dev.crime_local"
-		}
+		# self.crime_dict = {"dict_name":"crime",
+		# "global_name": "dev.crime_global",
+		# "local_name":"dev.crime_local"
+		# }
 
 
 #----------------------------Query frame----------------------------------------#
@@ -266,16 +276,16 @@ class CAPE_UI:
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
 
-		if(self.cur_table_name.lower()==self.pub_dict['dict_name']):
-			self.table_dict = self.pub_dict
-		elif(self.cur_table_name.lower()==self.crime_dict['dict_name']):
-			self.table_dict = self.crime_dict
+		# if(self.cur_table_name.lower()==self.pub_dict['dict_name']):
+		# 	self.table_dict = self.pub_dict
+		# elif(self.cur_table_name.lower()==self.crime_dict['dict_name']):
+		# 	self.table_dict = self.crime_dict
 
 
 	def show_global_pattern(self):
 
 		global_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,agg,"+\
-		"round((lambda)::numeric(4,2),2) as Support,model from "+self.table_dict['global_name']+\
+		"round((lambda)::numeric(4,2),2) as Support,model from "+self.assigned_global_table+\
 		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
 		logger.debug(global_query)
 		self.global_pattern_df = pd.read_sql(global_query,self.conn)
@@ -291,7 +301,7 @@ class CAPE_UI:
 
 		local_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
 		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
-		"theta,param,stats,dev_pos,dev_neg from "+self.table_dict['local_name']+\
+		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
 		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
 
 		for n in self.local_pattern_table.multiplerowlist:
@@ -324,7 +334,7 @@ class CAPE_UI:
 
 			g_filter_l_query = " select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
 			"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
-			"theta,param,stats,dev_pos,dev_neg from "+self.table_dict['local_name']+\
+			"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
 			" where array_to_string(fixed,',')='"+global_partition+\
 			"' and array_to_string(variable,',')='"+global_predictor+\
 			"' and model = '"+model_name+"';"
@@ -676,128 +686,7 @@ class CAPE_UI:
 			self.Explainer.load_exp_graph()
 			self.Explainer.load_exp_description(user_direction=self.user_direction)
 
-
-
-
-
-
-
-
-
-
-
-		# likelihood_words = []
-
-		# if(exp_tuple_score<=0):
-		# 	likelihood_words = ['unlikely','not similar','slighlty']
-		# elif(exp_tuple_score<=10):
-		# 	likelihood_words = ['plausible','somewhat similar','']
-		# else:
-		# 	likelihood_words = ['highly plausible','similar','extremly']
-
-		# ranking_clause = "  This explanation was ranked "+ likelihood_words[0] + " because the counterbalance\nis " + likelihood_words[1]+\
-		# " to the user question and it deviates"+likelihood_words[2]+"\nfrom the predicted outcome.\n"
-
-		# logger.debug('ranking_clause:')
-		# logger.debug(ranking_clause)
-
-		# logger.debug('self.question_tuple is:')
-		# logger.debug(self.question_tuple)
-
-		# user_question_list = []
-		# logger.debug('question_tuple.items()')
-		# logger.debug(self.question_tuple.items())
-
-		# for k,v in self.question_tuple.items():
-		# 	if(k==self.agg_name or k=='direction'):
-		# 		continue
-		# 	else:
-		# 		user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
-		# user_question_clause = ','.join(user_question_list)
-		# logger.debug("user_question_list")
-		# logger.debug(user_question_clause)
-
-		# predict = '' 
-		# if(len(rel_pattern_pred.split(','))>1):
-		# 	predict = 'predict'
-		# else:
-		# 	predict = 'predicts'	
-
-		# fixed_pair_list=[]
-		# fixed_attr_list = str(self.chosen_local_pattern['partition']).split(',')
-		# fixed_value_list = str(self.chosen_local_pattern['partition_values']).split(',')
-
-		# for n in range(len(fixed_attr_list)):
-		# 	eq = (fixed_attr_list[n]+"="+fixed_value_list[n])
-		# 	fixed_pair_list.append(eq)
-		# if(len(fixed_pair_list)==1):
-		# 	fixed_pair = fixed_pair_list[0]
-		# else:
-		# 	fixed_pair = ",".join(fixed_pair_list)
-
-		# variable_pair_list=[]
-		# variable_attr_list = str(self.chosen_local_pattern['predictor']).split(',')
-
-		# for n in range(len(variable_attr_list)):
-		# 	eq = (str(variable_attr_list[n])+"="+str(self.question_tuple[variable_attr_list[n]].to_string(index=False)))
-		# 	variable_pair_list.append(eq)
-		# if(len(variable_pair_list)==1):
-		# 	variable_pair = variable_pair_list[0]
-		# else:
-		# 	variable_pair = ",".join(variable_pair_list)
-
-		# counter_dir = ''
-
-		# logger.debug("str(self.question['direction']):")
-		# logger.debug(str(self.question['direction']))
-		# if(self.question['direction'].to_string(index=False)=='high'):
-		# 	counter_dir='low'
-		# else:
-		# 	counter_dir='high'
-
-		# exp_pair = ''
-
-		# logger.debug('exp_tuple_df:')
-		# logger.debug(exp_tuple_df)
-
-
-		# exp_tuple_dict = exp_tuple_df.to_dict('records')[0]
-
-		# exp_list = []
-		# for k,v in exp_tuple_dict.items():
-		# 	if(k=='exp_value' or k in rel_pattern_part.split(',')):
-		# 		continue
-		# 	else:
-		# 		exp_list.append(str(k)+"="+str(v))
-		# exp_clause = ','.join(exp_list)
-
-
-		# fixed_exp_pair_list = []
-		# for n in range(len(rel_pattern_part_list)):
-		# 	eq = (rel_pattern_part_list[n]+"="+rel_pattern_part_value_list[n])
-		# 	fixed_exp_pair_list.append(eq)
-		# if(len(fixed_exp_pair_list)==1):
-		# 	fixed_pair = fixed_exp_pair_list[0]
-		# else:
-		# 	fixed_pair = ",".join(fixed_exp_pair_list)
-
-
-		# comprehensive_exp = "\n\n  Explanation for why sum(pubcount) is " + self.question['direction'].to_string(index=False)+"er than expected for:\n"+user_question_clause+\
-		# "\n  In general, "+str(rel_pattern_pred)+" "+predict+" sum(pubcount) for most "+str(rel_pattern_part)+"."+\
-		# "\nThis is also true for "+ fixed_pair+'.'\
-		# "\n  However, for "+variable_pair+",the value of sum(pubcount) is \n"+ self.question['direction'].to_string(index=False)+"er than predicted."+\
-		# "\n  This may be explained through the "+counter_dir+"er than expected outcome \nfor "+ exp_clause+"."
-
-		# comprehensive_exp = comprehensive_exp.replace('name','author')
-		# comprehensive_exp = comprehensive_exp.replace('\'','')
-
-		# logger.debug('comprehensive_exp:')
-		# logger.debug(comprehensive_exp)
-
-		# pattern_description = Label(win_frame,text=ranking_clause+comprehensive_exp,font=('Times New Roman bold',18),borderwidth=5,relief=SOLID,justify=LEFT)
-		# pattern_description.grid(column=0,row=0,sticky='nsew')
-
-def startCapeGUI(conn):
+def startCapeGUI(conn,config,local_table,global_table):
 	root = Tk()
 	root.title('CAPE')
 	default_font = nametofont("TkTextFont")
@@ -805,17 +694,20 @@ def startCapeGUI(conn):
 	bigfont = Font(family="Helvetica",size=12)
 	root.option_add('*TCombobox*Listbox.font',bigfont)
 	root.option_add('*TCombobox*Listbox.selectBackground', 'wheat1')
-
 	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
 	root.geometry('%dx%d+0+0' % (width,height))
-	ui = CAPE_UI(root,conn)
+	ui = CAPE_UI(root,conn=conn,config=config,assigned_local_table=local_table,assigned_global_table=global_table)
 	root.mainloop()
 
 
 def main():
 
-	conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
-	startCapeGUI(conn)
+	config=DictLike()
+	dbconn=DBConnection(host="127.0.0.1",user="antiprov",db="antiprov",password='1234',port="5432")
+	local_table = dbconn['local_table']
+	global_table = dbconn['global_table']
+	conn=dbconn.pgconnect()
+	startCapeGUI(conn=conn,config=config,assigned_local_table=local_table,assigned_global_table=global_table)
 
 if __name__ == '__main__':
 	main()

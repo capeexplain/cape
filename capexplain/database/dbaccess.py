@@ -32,7 +32,9 @@ class DBConnection:
                   user='postgres',
                   port=5432,
                   db='postgres',
-                  password=None):
+                  password=None,
+                  local_table=None,
+                  global_table=None):
         self.host=host
         self.user=user
         self.port=port
@@ -41,6 +43,9 @@ class DBConnection:
         self.engine = None
         self.conn=None
         log.debug("create DBconnection info: %s", self.__dict__)
+        self.local_table = local_table
+        self.global_table = global_table
+
 
     # overwrite __getitem__ to allow dictory style access to options
     def __getitem__(self, key):
@@ -111,3 +116,9 @@ class DBConnection:
             raise SQLException("cannot create table: no database connection")
         stmtStr = CREATE_TABLE_TEMP.format(tableName, ",".join(attrs + constraints))
         conn.execute(stmtStr)
+
+
+if __name__ =='__main__':
+    dbc = DBConnection()
+    dbc['local_table'] = 'pub_large_no_domain_local'
+    print(dbc['local_table'])

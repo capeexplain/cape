@@ -19,7 +19,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from Plotting import Plotter
+from capexplain.gui.Plotting import Plotter
 import logging
 import textwrap
 
@@ -155,9 +155,20 @@ class Exp_Frame:
 
 	def load_rel_exp_graph(self):
 
-		# self.rel_pattern_model, self.rel_param, self.question_df, self.explanation_df, 
+		if(len(self.none_drill_down_df)>=50):
 
-		if(self.rel_pattern_model=='const'):
+			self.text_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.rel_plotter.add_text("Cannot plot because the size of the data is so large!")
+
+
+		elif(len(self.rel_pattern_pred_list)>2):
+
+			self.text_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.rel_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
+
+
+		elif(self.rel_pattern_model=='const'):
+
 			if(len(self.rel_pattern_pred_list)==1):
 				self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
 				const=round(float(self.rel_param),2)
@@ -297,7 +308,19 @@ class Exp_Frame:
 
 	def load_rel_question_graph(self):
 
-		if(self.rel_pattern_model=='const'):
+		if(len(self.none_drill_down_df)>=50):
+
+			self.text_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.rel_plotter.add_text("Cannot plot because the size of the data is so large!")
+
+
+		elif(len(self.rel_pattern_pred_list)>2):
+			
+			self.text_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+			self.rel_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
+
+
+		elif(self.rel_pattern_model=='const'):
 			if(len(self.rel_pattern_pred_list)==1):
 				self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
 				const=round(float(self.rel_param),2)
@@ -411,6 +434,12 @@ class Exp_Frame:
 		self.rel_canvas.draw()
 
 	def load_drill_exp_graph(self):
+
+		if(len(self.none_drill_down_df)>=50):
+			self.drill_plotter.add_text("Cannot plot because the size of the data is so large!")
+
+		elif(len(self.rel_pattern_pred_list)>2):
+			self.drill_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
 
 		if(self.drill_model=='const'):
 

@@ -117,7 +117,7 @@ class Plotter:
 			self.a.set(xticks=df['coded_'+x].values, xticklabels=df[x])
 
 		else:
-			self.a.set(xticks=list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1)),3))
+			self.a.set(xticks=list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1,3))))
 
 		if ('coded_'+y) in df.columns:
 			self.a.set(yticks=df['coded_'+y].values, yticklabels=df[y])
@@ -139,8 +139,6 @@ class Plotter:
 		y_vals = slope * X1 + intercept
 		self.a.plot(X1, y_vals, c='r',linewidth=2,label=label)
 		self.a.legend(loc='best')
-
-
 
 	def plot_3D_linear(self,x,y,x_weight,y_weight):
 		pass 
@@ -258,6 +256,12 @@ class Plotter:
 		self.legend_proxies_shape.append(scatter_proxy_shape)
 		self.legend_proxies_name.append(scatter_proxy_name)
 		self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
+
+
+	def add_text(self,text_content=None):
+
+		self.a.text(0.5, 0.5, text_content, horizontalalignment='center',
+			verticalalignment='center', transform=self.a.transAxes)
 
 
 
