@@ -42,13 +42,14 @@ logger.addHandler(stream_handler)
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 class CAPE_UI:
 
-	def __init__(self,parent,conn,config,assigned_local_table,assigned_global_table):
+	def __init__(self,parent,conn,config,pattern_schema='dev',assigned_local_table='_local',assigned_global_table='_global'):
 		self.conn=conn
 		self.config=config
 		self.cur=self.conn.cursor()
 		self.assigned_local_table = assigned_local_table
 		self.assigned_global_table = assigned_global_table
-
+                self.pattern_schema = pattern_schema
+                
 		logger.debug('self.assigned_local_table is:' + str(self.assigned_local_table))
 		logger.debug('self.assigned_global_table is:' + str(self.assigned_global_table))
 

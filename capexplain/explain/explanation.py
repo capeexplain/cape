@@ -1260,11 +1260,11 @@ class ExplanationGenerator:
 
     def initialize(self):
         ecf = self.config
-        query_result_table = ecf.DEFAULT_RESULT_TABLE
+        query_result_table = ecf.query_table_name
         pattern_table = ecf.pattern_table
         user_question_file = ecf.DEFAULT_QUESTION_PATH
         outputfile = ''
-        aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
         
@@ -1326,10 +1326,10 @@ class ExplanationGenerator:
     def do_explain_online(self, uq_tuple):
 
         ecf = self.config
-        query_result_table = ecf.DEFAULT_RESULT_TABLE
+        query_result_table = ecf.query_table_name
         pattern_table = ecf.pattern_table
         outputfile = ''
-        aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
         
