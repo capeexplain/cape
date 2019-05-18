@@ -42,16 +42,12 @@ logger.addHandler(stream_handler)
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
 class CAPE_UI:
 
-	def __init__(self,parent,conn,config,pattern_schema='dev',assigned_local_table='_local',assigned_global_table='_global'):
+	def __init__(self,parent,conn,config):
 		self.conn=conn
 		self.config=config
 		self.cur=self.conn.cursor()
-		self.assigned_local_table = assigned_local_table
-		self.assigned_global_table = assigned_global_table
-                self.pattern_schema = pattern_schema
-                
-		logger.debug('self.assigned_local_table is:' + str(self.assigned_local_table))
-		logger.debug('self.assigned_global_table is:' + str(self.assigned_global_table))
+		# self.assigned_local_table = assigned_local_table
+		# self.assigned_global_table = assigned_global_table
 
 #----------------------------main frame----------------------------------------#
 
@@ -273,6 +269,9 @@ class CAPE_UI:
 		self.plot_data_convert_dict[self.agg_name] = 'numeric'
 		self.query_data_convert_dict[self.agg_name] = 'float'
 
+		self.assigned_global_table = 'dev.{}_global'.format(self.cur_table_name)
+		self.assigned_local_table = 'dev.{}_local'.format(self.cur_table_name)
+
 		model = TableModel(dataframe=self.original_query_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
@@ -431,7 +430,8 @@ class CAPE_UI:
 		config=ExplConfig()
 		config.conn = self.config.conn
 		config.cur = self.config.cur
-		eg = ExplanationGenerator(config, {'pattern_table':self.config.pattern_table})
+		config.query_table_name = self.cur_table_name
+		eg = ExplanationGenerator(config, {'pattern_table':'dev.{}'.format(self.cur_table_name),'query_result_table':self.cur_table_name})
 		eg.initialize() 
 		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
@@ -648,18 +648,18 @@ class CAPE_UI:
 
 
 			drill_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list+[drill_attr],
-			                                         partition_value_list=rel_pattern_part_value_list+[drill_value],pred_attr_list=rel_pattern_pred_list)
+													 partition_value_list=rel_pattern_part_value_list+[drill_value],pred_attr_list=rel_pattern_pred_list)
 
 			logger.debug("drill_pattern_df is")
 			logger.debug(drill_pattern_df)
 
 			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
-			                                         partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
+													 partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
 
 			question_df = self.original_question
 
 			explanation_df = self.get_pattern_result(partition_attr_list=exp_tuple_col,
-				                                     partition_value_list=exp_tuple_list,pred_attr_list=None)
+													 partition_value_list=exp_tuple_list,pred_attr_list=None)
 
 			exp_selected = exp_chosen_row
 
@@ -673,12 +673,12 @@ class CAPE_UI:
 
 		else:
 			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
-				                                         partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
+														 partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
 
 			question_df = self.original_question
 
 			explanation_df = self.get_pattern_result(partition_attr_list=exp_tuple_col,
-				                                     partition_value_list=exp_tuple_list,pred_attr_list=None)
+													 partition_value_list=exp_tuple_list,pred_attr_list=None)
 			exp_selected = exp_chosen_row
 
 			data_convert_dict = self.plot_data_convert_dict
@@ -689,7 +689,7 @@ class CAPE_UI:
 			self.Explainer.load_exp_graph()
 			self.Explainer.load_exp_description(user_direction=self.user_direction)
 
-def startCapeGUI(conn,config,local_table,global_table):
+def startCapeGUI(conn,config):
 	root = Tk()
 	root.title('CAPE')
 	default_font = nametofont("TkTextFont")
@@ -699,7 +699,7 @@ def startCapeGUI(conn,config,local_table,global_table):
 	root.option_add('*TCombobox*Listbox.selectBackground', 'wheat1')
 	width, height = root.winfo_screenwidth(), root.winfo_screenheight()
 	root.geometry('%dx%d+0+0' % (width,height))
-	ui = CAPE_UI(root,conn=conn,config=config,assigned_local_table=local_table,assigned_global_table=global_table)
+	ui = CAPE_UI(root,conn=conn,config=config)
 	root.mainloop()
 
 
@@ -707,10 +707,8 @@ def main():
 
 	config=DictLike()
 	dbconn=DBConnection(host="127.0.0.1",user="antiprov",db="antiprov",password='1234',port="5432")
-	local_table = dbconn['local_table']
-	global_table = dbconn['global_table']
 	conn=dbconn.pgconnect()
-	startCapeGUI(conn=conn,config=config,assigned_local_table=local_table,assigned_global_table=global_table)
+	startCapeGUI(conn=conn,config=config)
 
 if __name__ == '__main__':
 	main()

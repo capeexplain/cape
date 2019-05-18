@@ -123,11 +123,11 @@ def guiCommand(command,log):
     conn=dbconn.pgconnect()
     config.conn = conn
     config.cur = config.conn.cursor()
-    config.pattern_table = dbconn.local_table[:-6]
     log.debug("connected to database")
     #TODO gui=Cape_UI() # (config, dbconn)
     # start the gui gui.start()
-    startCapeGUI(conn=conn,config=config,local_table=dbconn['local_table'],global_table=dbconn['global_table'])
+    startCapeGUI(conn=conn,config=config)
+
     conn.close()
     log.debug("closed database connection ... DONE")
 
@@ -181,11 +181,9 @@ STATS_OPTIONS = COMMON_OPTIONS + [
 HELP_OPTIONS = [ ConfigOpt(longopt='log', shortopt='l', desc='select log level {DEBUG,INFO,WARNING,ERROR}', hasarg=True, value="ERROR"),
 ]
 
-GUI_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
-    ConfigOpt(longopt='local_table', shortopt='L', desc='local pattern table name', hasarg=True),
-    ConfigOpt(longopt='global_table', shortopt='G', desc='global pattern table name', hasarg=True),
-    ConfigOpt(longopt='maximize_window', shortopt='m', desc='maximize window at start')
-    ]
+GUI_OPTIONS = COMMON_OPTIONS + DB_OPTIONS +[
+
+]
 
 # mapping strings to log levels
 LOGLEVELS_MAP = { "DEBUG": logging.DEBUG,
