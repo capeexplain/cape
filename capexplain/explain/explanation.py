@@ -19,7 +19,15 @@ from capexplain.cl.cfgoption import DictLike
 from capexplain.explanation_model.explanation_model import *
 #from build.lib.capexplain.database.dbaccess import DBConnection
 # setup logging
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
 
 TEST_ID = ''
 #********************************************************************************
@@ -1267,12 +1275,17 @@ class ExplanationGenerator:
         aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
-        
+        logger.debug("pattern_table is")
+        logger.debug(pattern_table)
+
+        logger.debug("query_result_table is")
+        logger.debug(query_result_table)
+
         # print(opts)
         start = time.clock()
-        log.info("start explaining ...")
+        logger.info("start explaining ...")
         self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
-        log.debug("loaded patterns from database")
+        logger.debug("loaded patterns from database")
 
         self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
         # self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
@@ -1298,7 +1311,7 @@ class ExplanationGenerator:
                     if is_float(uq_tuple[v]):
                         row_data[v] = float(uq_tuple[v])
                     elif is_integer(uq_tuple[v]):
-                        row_data[v] = float(long(uq_tuple[v]))
+                        row_data[v] = float((uq_tuple[v]))
                     else:
                         row_data[v] = uq_tuple[v]
                 if v not in schema and v != 'lambda' and v != 'direction':
@@ -1332,10 +1345,16 @@ class ExplanationGenerator:
         aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
+
+        logger.debug("pattern_table is")
+        logger.debug(pattern_table)
+
+        logger.debug("query_result_table is")
+        logger.debug(query_result_table)
         
         Q = self.wrap_user_question(self.global_patterns, self.global_patterns_dict, uq_tuple, self.schema)
 
-        log.debug("start finding explanations ...")
+        logger.debug("start finding explanations ...")
         
         start = time.clock()
         #regression_package = 'scikit-learn'
@@ -1349,7 +1368,7 @@ class ExplanationGenerator:
             
         end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
-        log.debug("finding explanations ... DONE")
+        logger.debug("finding explanations ... DONE")
 
         # for g_key in ecf.MATERIALIZED_DICT:
         #     for fv_key in ecf.MATERIALIZED_DICT[g_key]:
@@ -1361,22 +1380,22 @@ class ExplanationGenerator:
 
     def doExplain(self):
         # c=self.config
-        # log.info("start explaining ...")
+        # logger.info("start explaining ...")
         # start = time.clock()
         # data = load_data(c.query_result_file)
-        # log.debug("loaded query results from file")
+        # logger.debug("loaded query results from file")
         # constraints = load_constraints(ExplConfig.DEFAULT_CONSTRAINT_PATH)
-        # log.debug("loaded patterns from file")
+        # logger.debug("loaded patterns from file")
         # Q = load_user_question(c.user_question_file)
-        # log.debug("loaded user question from file")
+        # logger.debug("loaded user question from file")
         # category_similarity = CategorySimilarityMatrix(ExplConfig.EXAMPLE_SIMILARITY_MATRIX_PATH)
         # #category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         # num_dis_norm = normalize_numerical_distance(data['df'])
         # end = time.clock()
-        # log.debug("done loading")
+        # logger.debug("done loading")
         # print('Loading time: ' + str(end-start) + 'seconds')
 
-        # log.debug("start finding explanations ...")
+        # logger.debug("start finding explanations ...")
         # start = time.clock()
         # #regression_package = 'scikit-learn'
         # regression_package = 'statsmodels'
@@ -1385,7 +1404,7 @@ class ExplanationGenerator:
         #                                                       aggregate_column, regression_package)
         # end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
-        # log.debug("finding explanations ... DONE")
+        # logger.debug("finding explanations ... DONE")
         
         # ofile = sys.stdout
         # if outputfile != '':
@@ -1422,9 +1441,9 @@ class ExplanationGenerator:
         
         # print(opts)
         start = time.clock()
-        log.info("start explaining ...")
+        logger.info("start explaining ...")
         global_patterns, schema, global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
-        log.debug("loaded patterns from database")
+        logger.debug("loaded patterns from database")
         # category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
         category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
@@ -1435,12 +1454,12 @@ class ExplanationGenerator:
         Q, global_patterns, global_patterns_dict = load_user_question_from_file(
             global_patterns, global_patterns_dict, user_question_file, 
             schema, conn, cur, pattern_table, query_result_table, None, category_similarity)
-        log.debug("loaded user question from file")
+        logger.debug("loaded user question from file")
 
         end = time.clock()
         print('Loading time: ' + str(end-start) + 'seconds')
 
-        log.debug("start finding explanations ...")
+        logger.debug("start finding explanations ...")
         
         start = time.clock()
         #regression_package = 'scikit-learn'
@@ -1455,7 +1474,7 @@ class ExplanationGenerator:
             
         end = time.clock()
         print('Total querying time: ' + str(end-start) + 'seconds')
-        log.debug("finding explanations ... DONE")
+        logger.debug("finding explanations ... DONE")
 
         ofile = sys.stdout
         if outputfile != '':

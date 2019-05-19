@@ -9,6 +9,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 from math import floor,ceil
 import re
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
 
 
 coded = re.compile('(coded\_).*')
@@ -134,9 +143,19 @@ class Plotter:
 	def plot_2D_linear(self,x,slope,intercept,label=None):  # x:df column; slope,intercept:numeric values
 		var_min = pd.to_numeric(x.min()).item()
 		var_max = pd.to_numeric(x.max()).item()
+		logger.debug("var_min is:")
+		logger.debug(var_min)
+
+		logger.debug("var_max is:")
+		logger.debug(var_max)
+
 		X1 = np.linspace(var_min-1,var_max+1,100)
 		X = x.astype('float64')
 		y_vals = slope * X1 + intercept
+
+		logger.debug("y_vals is:")
+		logger.debug(y_vals)
+
 		self.a.plot(X1, y_vals, c='r',linewidth=2,label=label)
 		self.a.legend(loc='best')
 
