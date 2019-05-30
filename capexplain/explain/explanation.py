@@ -1247,6 +1247,8 @@ def load_patterns(cur, pat_table_name, query_table_name):
     for s in res:
         schema[s[0]] = s[1]
     
+    logger.debug('patterns')
+    logger.debug(patterns)
     return patterns, schema, pattern_dict
 
 class ExplanationGenerator:
@@ -1332,6 +1334,8 @@ class ExplanationGenerator:
         else:
             dir = -1
         uq = {'target_tuple': row_data, 'dir':dir, 'query_result': []}
+
+        # logger.debug("uq is"+uq)
 
         return [uq]
 
