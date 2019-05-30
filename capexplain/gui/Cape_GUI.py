@@ -308,7 +308,6 @@ class CAPE_UI:
 			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
 
 		self.local_output_pattern_df = pd.read_sql(local_query,self.conn)
-		self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
 		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
 		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
 		self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
