@@ -277,7 +277,6 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
 def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_name, res_table_name):
     local_patterns = []
     local_patterns_dict = {}
-    tF = get_F_value(F, t)
         
     if model_type is not None:
         mt_predicate = " AND model='{}'".format(model_type)
@@ -295,6 +294,7 @@ def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_na
             )
         # print(406, Fv, local_pattern_query)
     else:
+        tF = get_F_value(F, t)
         # local_pattern_query = '''SELECT * FROM {} WHERE array_to_string(fixed, ', ')='{}' AND 
         #     REPLACE(array_to_string(fixed_value, ', '), '"', '') = REPLACE('{}', '"', '') AND array_to_string(variable, ', ')='{}' AND
         #     agg='{}'{};'''.format(
@@ -1240,15 +1240,16 @@ def load_patterns(cur, pat_table_name, query_table_name):
             pattern_dict[1][f_key][v_key] = []
         pattern_dict[1][f_key][v_key].append(patterns[-1])
     schema_query = '''select column_name, data_type, character_maximum_length
-        from INFORMATION_SCHEMA.COLUMNS where table_name=\'{}\''''.format(query_table_name);
+        from INFORMATION_SCHEMA.COLUMNS where table_name=\'{}\'
+    '''.format(query_table_name);
     cur.execute(schema_query)
     res = cur.fetchall()
     schema = {}
     for s in res:
         schema[s[0]] = s[1]
     
-    logger.debug('patterns')
-    logger.debug(patterns)
+    # logger.debug('patterns')
+    # logger.debug(patterns)
     return patterns, schema, pattern_dict
 
 class ExplanationGenerator:
@@ -1270,13 +1271,14 @@ class ExplanationGenerator:
 
     def initialize(self):
         ecf = self.config
-        query_result_table = ecf.query_table_name
+        query_result_table = ecf.query_result_table
         pattern_table = ecf.pattern_table
         user_question_file = ecf.DEFAULT_QUESTION_PATH
         outputfile = ''
         aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
+        logger.debug(ecf)
         logger.debug("pattern_table is")
         logger.debug(pattern_table)
 
@@ -1289,8 +1291,10 @@ class ExplanationGenerator:
         self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
         logger.debug("loaded patterns from database")
 
-        self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
-        # self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
+        if query_result_table.find('crime') == -1:
+            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        else:
+            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         #num_dis_norm = normalize_numerical_distance(data['df'])
         self.num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
@@ -1333,9 +1337,13 @@ class ExplanationGenerator:
             dir = 1
         else:
             dir = -1
+
+        if 'count_*' in row_data:
+            row_data['count'] = row_data['count_*']
         uq = {'target_tuple': row_data, 'dir':dir, 'query_result': []}
 
-        # logger.debug("uq is"+uq)
+        logger.debug("uq is")
+        logger.debug(uq)
 
         return [uq]
 
@@ -1343,7 +1351,7 @@ class ExplanationGenerator:
     def do_explain_online(self, uq_tuple):
 
         ecf = self.config
-        query_result_table = ecf.query_table_name
+        query_result_table = ecf.query_result_table
         pattern_table = ecf.pattern_table
         outputfile = ''
         aggregate_column = ecf.aggregate_column
@@ -1589,7 +1597,7 @@ def main(argv=[]):
     eg = ExplanationGenerator(user_input_config)
     # eg.doExplain()
     eg.initialize()
-    elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
+    # elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
     # elist = eg.do_explain_online({'name': 'Kirsten Bergmann', 'venue': 'iva', 'sum_pubcount': 6.0, 'direction': 'high', 'lambda': 0.2})
 
     # elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
