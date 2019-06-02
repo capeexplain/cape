@@ -22,6 +22,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from capexplain.gui.Plotting import Plotter
 import logging
 import textwrap
+import copy
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -34,7 +35,7 @@ logger.addHandler(stream_handler)
 
 class Exp_Frame:
 
-	def __init__(self,question_df=None, explanation_df=None, exp_chosen_row=None, none_drill_down_df=None, drill_down_df=None, data_convert_dict=None):
+	def __init__(self,input_question_df=None, input_explanation_df=None, input_exp_chosen_row=None, input_none_drill_down_df=None, input_drill_down_df=None, input_data_convert_dict=None):
 
 		self.win = Toplevel()
 		self.win.geometry("%dx%d%+d%+d" % (1580, 900, 250, 125))
@@ -42,31 +43,31 @@ class Exp_Frame:
 		self.win_frame = Frame(self.win)
 		self.win_frame.pack(fill=BOTH,expand=True)
 
-		self.question_df = question_df
-		self.explanation_df = explanation_df
-		self.exp_chosen_row = exp_chosen_row
-		self.none_drill_down_df = none_drill_down_df
+		self.question_df = input_question_df
+		self.explanation_df = input_explanation_df
+		self.exp_chosen_row = input_exp_chosen_row
+		self.none_drill_down_df = input_none_drill_down_df
 
-		print("self.question_df type-----------------")
-		print(self.question_df.dtypes)
+		# print("self.question_df type-----------------")
+		# print(self.question_df.dtypes)
 
-		print("self.explanation_df type-----------------")
-		print(self.explanation_df.dtypes)
+		# print("self.explanation_df type-----------------")
+		# print(self.explanation_df.dtypes)
 
-		print("self.exp_chosen_row type-----------------")
-		print(self.exp_chosen_row.dtypes)
+		# print("self.exp_chosen_row type-----------------")
+		# print(self.exp_chosen_row.dtypes)
 
-		print("self.none_drill_down_df type-----------------")
-		print(self.none_drill_down_df.dtypes)
+		# print("self.none_drill_down_df type-----------------")
+		# print(self.none_drill_down_df.dtypes)
 
 
-		if(drill_down_df is not None):
-			self.drill_down_df = drill_down_df.astype(object)
-			print("self.drill_down_df type-----------------")
-			print(self.drill_down_df.dtypes)
+		if(input_drill_down_df is not None):
+			self.drill_down_df = input_drill_down_df.astype(object)
+			# print("self.drill_down_df type-----------------")
+			# print(self.drill_down_df.dtypes)
 		else:
 			self.drill_down_df = None
-		self.data_convert_dict=data_convert_dict
+		self.data_convert_dict=input_data_convert_dict
 		self.drill_exist=False
 
 		self.relevent_pattern = self.exp_chosen_row['From_Pattern']
@@ -178,23 +179,23 @@ class Exp_Frame:
 
 				self.rel_plotter.plot_2D_const(const,label='Explanation Model')
 				# self.rel_plotter.plot_categorical_scatter_2D(x,y)
-				none_drill_down_df = self.none_drill_down_df[[x,y]]
-				logger.debug(none_drill_down_df)
+				none_drill_down_df = copy.deepcopy(self.none_drill_down_df[[x,y]])
+				# logger.debug(none_drill_down_df)
 
 				common_cols = self.rel_pattern_part_list + self.rel_pattern_pred_list
 
-				logger.debug("common_cols for question is ")
-				print(common_cols)
+				# logger.debug("common_cols for question is ")
+				# print(common_cols)
 
-				logger.debug("self.explanation_df is")
-				logger.debug(self.explanation_df)
+				# logger.debug("self.explanation_df is")
+				# logger.debug(self.explanation_df)
 
 				question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
-				logger.debug("question_df is ")
-				print(question_df)
+				# logger.debug("question_df is ")
+				# print(question_df)
 
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
@@ -220,23 +221,23 @@ class Exp_Frame:
 
 				const = round(self.rel_param,2)
 
-				none_drill_down_df = self.none_drill_down_df[[x,y,z]]
-				logger.debug(none_drill_down_df)
+				none_drill_down_df = copy.deepcopy(self.none_drill_down_df[[x,y,z]])
+				# logger.debug(none_drill_down_df)
 
 				common_cols = self.rel_pattern_part_list + self.rel_pattern_pred_list
 
-				logger.debug("common_cols for question is ")
-				print(common_cols)
+				# logger.debug("common_cols for question is ")
+				# print(common_cols)
 
-				logger.debug("self.explanation_df is")
-				logger.debug(self.explanation_df)
+				# logger.debug("self.explanation_df is")
+				# logger.debug(self.explanation_df)
 
 				question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
-				logger.debug("question_df is ")
-				print(question_df)
+				# logger.debug("question_df is ")
+				# print(question_df)
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x,(z+"_x"):z})
 				question_df = question_df[[x,y,z]]
@@ -269,24 +270,24 @@ class Exp_Frame:
 				slope_name = list(self.rel_param)[1]
 				slope_value = float(self.rel_param[slope_name])
 
-				draw_line_df = self.none_drill_down_df[[x]]
+				draw_line_df = copy.deepcopy(self.none_drill_down_df[[x]])
 
-				none_drill_down_df = self.none_drill_down_df[[x,y]]
+				none_drill_down_df = copy.deepcopy(self.none_drill_down_df[[x,y]])
 
 				common_cols = self.rel_pattern_part_list + self.rel_pattern_pred_list
 
-				logger.debug("common_cols for question is ")
-				print(common_cols)
+				# logger.debug("common_cols for question is ")
+				# print(common_cols)
 
-				logger.debug("self.explanation_df is")
-				logger.debug(self.explanation_df)
+				# logger.debug("self.explanation_df is")
+				# logger.debug(self.explanation_df)
 
 				question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
-				logger.debug("question_df is ")
-				print(question_df)
+				# logger.debug("question_df is ")
+				# print(question_df)
 
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
@@ -317,7 +318,7 @@ class Exp_Frame:
 		elif(len(self.rel_pattern_pred_list)>2):
 			
 			self.text_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
-			self.rel_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
+			self.rel_plotter.add_text("Cannot plot because the dimension of the data is higher than 2!")
 
 
 		elif(self.rel_pattern_model=='const'):
@@ -333,18 +334,18 @@ class Exp_Frame:
 
 				common_cols = self.rel_pattern_part_list + self.rel_pattern_pred_list
 
-				logger.debug("common_cols for question is ")
-				print(common_cols)
+				# logger.debug("common_cols for question is ")
+				# print(common_cols)
 
-				logger.debug("self.explanation_df is")
-				logger.debug(self.explanation_df)
+				# logger.debug("self.explanation_df is")
+				# logger.debug(self.explanation_df)
 
 				question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
-				logger.debug("question_df is ")
-				print(question_df)
+				# logger.debug("question_df is ")
+				# print(question_df)
 
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
@@ -353,10 +354,10 @@ class Exp_Frame:
 				explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
 				explanation_df = explanation_df[[x,y]]
 
-				logger.debug(question_df)
+				# logger.debug(question_df)
 
 				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
-				self.rel_plotter.plot_2D_scatter(self.none_drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
+				self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
 				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=0,label="Explanation")
 				self.rel_plotter.set_x_label(x)
 				self.rel_plotter.set_y_label(y)
@@ -412,8 +413,8 @@ class Exp_Frame:
 
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
-				logger.debug("question_df is ")
-				print(question_df)
+				# logger.debug("question_df is ")
+				# print(question_df)
 
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
@@ -423,7 +424,7 @@ class Exp_Frame:
 				explanation_df = explanation_df[[x,y]]
 
 				self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Relevent Model")
-				self.rel_plotter.plot_2D_scatter(self.none_drill_down_df,x=x,y=y,label=self.rel_pattern_agg)
+				self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,label=self.rel_pattern_agg)
 				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=150,zorder=1,label="User Question")
 				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=150,zorder=0,label="Explanation")
 
@@ -456,8 +457,19 @@ class Exp_Frame:
 				common_cols = self.rel_pattern_part_list+ self.drill_attr+self.rel_pattern_pred_list
 
 
-				self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=10,label="Explanation")
-				self.drill_plotter.plot_2D_scatter(self.drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
+				self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='b',marker='^',size=250,zorder=10,label="Explanation")
+				logger.debug("After Drilldown explanation:")
+				logger.debug(self.drill_plotter.x_max)
+				logger.debug(self.drill_plotter.x_min)
+				logger.debug(self.drill_plotter.y_max)
+				logger.debug(self.drill_plotter.y_min)
+				self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
+				logger.debug(copy.deepcopy(self.drill_down_df))
+				logger.debug("After Drilldown scatters:")
+				logger.debug(self.drill_plotter.x_max)
+				logger.debug(self.drill_plotter.x_min)
+				logger.debug(self.drill_plotter.y_max)
+				logger.debug(self.drill_plotter.y_min)
 				self.drill_plotter.set_x_label(x)
 				self.drill_plotter.set_y_label(y)
 				self.drill_plotter.set_title("Refined Pattern Explanation")
@@ -516,9 +528,9 @@ class Exp_Frame:
 
 				explanation_df = explanation_df[[x,y]]
 
-				logger.debug(explanation_df)
+				# logger.debug(explanation_df)
 				self.drill_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value)
-				self.drill_plotter.plot_2D_scatter(self.drill_down_df,x=x,y=y)
+				self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df)	,x=x,y=y)
 				self.drill_plotter.plot_2D_scatter(explanation_df,x=x,y=y,zorder=1)
 				self.drill_plotter.set_x_label(x)
 				self.drill_plotter.set_y_label(y)
@@ -539,17 +551,17 @@ class Exp_Frame:
 		else:
 			likelihood_words = ['highly plausible','similar','extremly']
 
-		ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question andit deviates "+likelihood_words[2]+" from the predicted outcome."
+		ranking_clause = "  This explanation was ranked "+likelihood_words[0] + " because the counterbalance is " + likelihood_words[1]+" to the user question and it deviates "+likelihood_words[2]+" from the predicted outcome."
 
-		logger.debug('ranking_clause:')
-		logger.debug(ranking_clause)
+		# logger.debug('ranking_clause:')
+		# logger.debug(ranking_clause)
 
-		logger.debug('self.question_df is:')
-		logger.debug(self.question_df)
+		# logger.debug('self.question_df is:')
+		# logger.debug(self.question_df)
 
 		user_question_list = []
-		logger.debug('question_df.items()')
-		logger.debug(self.question_df.items())
+		# logger.debug('question_df.items()')
+		# logger.debug(self.question_df.items())
 
 		for k,v in self.question_df.items():
 			if(k==self.rel_pattern_agg):
@@ -557,8 +569,8 @@ class Exp_Frame:
 			else:
 				user_question_list.append(str(k)+"="+str(v.to_string(index=False)))
 		user_question_clause = ',\n  '.join(user_question_list)
-		logger.debug("user_question_list")
-		logger.debug(user_question_clause)
+		# logger.debug("user_question_list")
+		# logger.debug(user_question_clause)
 
 		predict = '' 
 		if(len(self.rel_pattern_pred_list)>1):
@@ -597,8 +609,8 @@ class Exp_Frame:
 			counter_dir='high'
 
 
-		logger.debug('counter_dir:')
-		logger.debug(counter_dir)
+		# logger.debug('counter_dir:')
+		# logger.debug(counter_dir)
 
 		exp_tuple_dict = self.explanation_df.to_dict('records')[0]
 
@@ -610,16 +622,20 @@ class Exp_Frame:
 				exp_list.append(str(k)+"="+str(v))
 		exp_clause = ','.join(exp_list)
 
-		logger.debug('exp_clause:')
-		logger.debug(exp_clause)
+		# logger.debug('exp_clause:')
+		# logger.debug(exp_clause)
 
 
-		logger.debug('exp_tuple_dict.items()')
-		logger.debug(exp_tuple_dict.items())
+		# logger.debug('exp_tuple_dict.items()')
+		# logger.debug(exp_tuple_dict.items())
 
 		if(self.drill_down_df is None):
 
-			comprehensive_exp = "  Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+"  In general, "+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for most "+str(self.rel_pattern_part)+"."+"This is also true for "+ fixed_pair+'.'+"  However, for "+variable_pair+" ," + self.rel_pattern_agg+" is "+ user_direction+"er than predicted."+"  This may be explained through the "+counter_dir+"er than expected outcome for "+ exp_clause+"."
+			comprehensive_exp = """Explanation for why {} is {}er than expected for: {}. In general, {} {} {}  for most {}. This is also true for {}. However, for {}, {} is {}er than predicted. This may be explained through the {}er than expected outcome for {}.
+			""".format(self.rel_pattern_agg,user_direction,user_question_clause,
+				str(self.rel_pattern_pred),predict,self.rel_pattern_agg,str(self.rel_pattern_part),fixed_pair,
+				variable_pair,self.rel_pattern_agg,user_direction,counter_dir,exp_clause)
+
 			raw_exp = ranking_clause+comprehensive_exp
 			raw_exp_lists = textwrap.wrap(raw_exp,width=50)
 			final_exp_lists = '\n'.join(raw_exp_lists)
@@ -637,7 +653,13 @@ class Exp_Frame:
 
 			user_question_clause = ','.join(user_question_list)
 
-			comprehensive_exp = " Explanation for why "+self.rel_pattern_agg+" is "+ user_direction+"er than expected for:"+user_question_clause+" Even though like many other "+str(self.rel_pattern_part)+', '+str(self.rel_pattern_pred)+" "+predict+" "+self.rel_pattern_agg+" for "+ fixed_pair+'(Left Graph), the fact that '+user_question_clause + " is "+user_direction+" can also be explained by "+counter_dir+"er than usual number of "+self.rel_pattern_agg+ " in "+drill_pair+','+variable_pair+"(Right Graph)."
+			comprehensive_exp = """ Explanation for why {} is {}er than expected for: {}.Even though like many other {}, {} {} {} for {}(Left Graph), the fact that  {} is {} can also be explained by \n{}er than usual number of {} in {}(Right Graph).
+			""".format(self.rel_pattern_agg,user_direction,user_question_clause,
+				str(self.rel_pattern_part),str(self.rel_pattern_pred),predict,self.rel_pattern_agg,
+				fixed_pair,user_question_clause,user_direction,
+				counter_dir,self.rel_pattern_agg,exp_clause)
+
+
 			raw_exp = ranking_clause+comprehensive_exp
 			raw_exp_lists = textwrap.wrap(raw_exp,width=90)
 			final_exp_lists = '\n'.join(raw_exp_lists)

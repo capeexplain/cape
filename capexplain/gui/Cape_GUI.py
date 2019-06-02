@@ -31,8 +31,12 @@ from capexplain.database.dbaccess import DBConnection
 
 
 
+#to do
+# 1. fix "when misinput system have to be restart" issue
+# 2. fix "drill down" in crime data set
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
@@ -206,7 +210,7 @@ class CAPE_UI:
 		"SELECT array_agg(x order by x) FROM unnest($1) x;"+\
 		"$$ LANGUAGE sql;"
 
-		logger.debug(sort_array_function)
+		# logger.debug(sort_array_function)
 		self.cur.execute(sort_array_function)	
 
 #------------------------------- local pattern frame---------------------------------------#
@@ -257,11 +261,15 @@ class CAPE_UI:
 	def run_query(self):
 		
 		self.user_query,self.query_group_str,self.agg_function,self.user_agg,self.agg_name,self.cur_table_name=self.query_temp.get_query()
-		logger.debug(self.user_query)
+		# logger.debug(self.user_query)
 		self.handle_view ="\nDROP VIEW IF EXISTS user_query;"+\
 		"\nCREATE VIEW user_query as "+ self.user_query
-		logger.debug(self.handle_view)
-		self.cur.execute(self.handle_view)
+		# logger.debug(self.handle_view)
+		try:
+			self.cur.execute(self.handle_view)
+		except:
+			tkinter.messagebox.showinfo("Info","Invalid Query, Please Doublecheck!")
+
 		self.original_query_result_df = pd.read_sql(self.user_query,self.conn)
 		self.query_result_df = self.original_query_result_df
 
@@ -287,10 +295,10 @@ class CAPE_UI:
 		global_query = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,agg,"+\
 		"round((lambda)::numeric(4,2),2) as Support,model from "+self.assigned_global_table+\
 		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
-		logger.debug(global_query)
+		# logger.debug(global_query)
 		self.global_pattern_df = pd.read_sql(global_query,self.conn)
-		logger.debug(self.global_pattern_df.head())
-		logger.debug(list(self.global_pattern_df))
+		# logger.debug(self.global_pattern_df.head())
+		# logger.debug(list(self.global_pattern_df))
 
 		pattern_model = TableModel(dataframe=self.global_pattern_df)
 		self.global_pattern_table.updateModel(pattern_model)
@@ -327,7 +335,7 @@ class CAPE_UI:
 		for n in self.global_pattern_table.multiplerowlist:
 
 			model_name = self.global_pattern_df.iloc[int(n)]['model']
-			logger.debug("model_name"+model_name)
+			# logger.debug("model_name"+model_name)
 			global_partition = self.global_pattern_df.iloc[int(n)]['partition']
 			global_predictor = self.global_pattern_df.iloc[int(n)]['predictor']
 
@@ -338,7 +346,7 @@ class CAPE_UI:
 			"' and array_to_string(variable,',')='"+global_predictor+\
 			"' and model = '"+model_name+"';"
 
-			logger.debug(g_filter_l_query)
+			# logger.debug(g_filter_l_query)
 
 			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
 			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
@@ -407,8 +415,8 @@ class CAPE_UI:
 			where_clause = " and ".join(where_clause_list)
 				
 		l_filter_o_query = "select user_query.* from user_query where "+where_clause+";"
-		logger.debug("filter_output_query:")
-		logger.debug(l_filter_o_query)
+		# logger.debug("filter_output_query:")
+		# logger.debug(l_filter_o_query)
 		filtered_result_df = pd.read_sql(l_filter_o_query,self.conn)
 
 		return chosen_row,filtered_result_df
@@ -440,11 +448,11 @@ class CAPE_UI:
 
 			self.question.rename(columns={self.agg_name:self.user_agg}, inplace=True)
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
-			logger.debug(self.question)
+			# logger.debug(self.question)
 			self.question['direction']=direction
 			self.question['lambda'] = 0.2
 			question = self.question.iloc[0].to_dict()
-			logger.debug(question)
+			# logger.debug(question)
 			elist = eg.do_explain_online(question)
 
 			exp_list=[]
@@ -547,11 +555,11 @@ class CAPE_UI:
 		where_clause_list = []
 		where_clause = None
 
-		logger.debug("partition_attr_list is ")
-		logger.debug(partition_attr_list)
+		# logger.debug("partition_attr_list is ")
+		# logger.debug(partition_attr_list)
 
-		logger.debug("partition_value_list is ")
-		logger.debug(partition_value_list)
+		# logger.debug("partition_value_list is ")
+		# logger.debug(partition_value_list)
 
 
 		for n in range(len(partition_attr_list)):
@@ -579,13 +587,13 @@ class CAPE_UI:
 			" GROUP BY "+','.join(partition_attr_list)
 
 
-		logger.debug("Pattern_Q")
-		logger.debug(Pattern_Q)
+		# logger.debug("Pattern_Q")
+		# logger.debug(Pattern_Q)
 
 		exp_pattern_df = pd.read_sql(Pattern_Q,self.conn)
 
-		logger.debug('exp_pattern_df is :')
-		logger.debug(exp_pattern_df)
+		# logger.debug('exp_pattern_df is :')
+		# logger.debug(exp_pattern_df)
 
 		return exp_pattern_df
 
@@ -617,40 +625,40 @@ class CAPE_UI:
 				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
 				exp_tuple_col.sort()
 
-		logger.debug('drill_attr is:')
-		logger.debug(drill_attr)
+		# logger.debug('drill_attr is:')
+		# logger.debug(drill_attr)
 
 
-		logger.debug('exp_tuple_col is:')
-		logger.debug(exp_tuple_col)
+		# logger.debug('exp_tuple_col is:')
+		# logger.debug(exp_tuple_col)
 
-		logger.debug('exp_tuple_list is:')
-		logger.debug(exp_tuple_list)
+		# logger.debug('exp_tuple_list is:')
+		# logger.debug(exp_tuple_list)
 
 
 		exp_tuple_df_list = [exp_tuple_list]
 		exp_tuple_df = pd.DataFrame(exp_tuple_df_list)
-		logger.debug("exp_tuple_df:")
+		# logger.debug("exp_tuple_df:")
 		exp_tuple_df.columns = exp_tuple_col
-		logger.debug(exp_tuple_df)
+		# logger.debug(exp_tuple_df)
 
 
 		if(drill_attr != ''):
 
 			drill_value = exp_tuple_df[drill_attr].to_string(index=False)
 
-			logger.debug('rel_pattern_part_list')
-			logger.debug(rel_pattern_part_list)
+			# logger.debug('rel_pattern_part_list')
+			# logger.debug(rel_pattern_part_list)
 
-			logger.debug('rel_pattern_part_value_list')
-			logger.debug(rel_pattern_part_value_list)
+			# logger.debug('rel_pattern_part_value_list')
+			# logger.debug(rel_pattern_part_value_list)
 
 
 			drill_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list+[drill_attr],
 													 partition_value_list=rel_pattern_part_value_list+[drill_value],pred_attr_list=rel_pattern_pred_list)
 
-			logger.debug("drill_pattern_df is")
-			logger.debug(drill_pattern_df)
+			# logger.debug("drill_pattern_df is")
+			# logger.debug(drill_pattern_df)
 
 			rel_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list,
 													 partition_value_list=rel_pattern_part_value_list,pred_attr_list=rel_pattern_pred_list)
@@ -664,8 +672,8 @@ class CAPE_UI:
 
 			data_convert_dict = self.plot_data_convert_dict
 
-			self.Explainer = Exp_Frame(question_df=question_df, explanation_df=explanation_df, exp_chosen_row=exp_selected, none_drill_down_df=rel_pattern_df,
-				drill_down_df=drill_pattern_df, data_convert_dict=data_convert_dict)
+			self.Explainer = Exp_Frame(input_question_df=question_df, input_explanation_df=explanation_df, input_exp_chosen_row=exp_selected, input_none_drill_down_df=rel_pattern_df,
+				input_drill_down_df=drill_pattern_df, input_data_convert_dict=data_convert_dict)
 
 			self.Explainer.load_exp_graph()
 			self.Explainer.load_exp_description(user_direction=self.user_direction)
@@ -682,8 +690,8 @@ class CAPE_UI:
 
 			data_convert_dict = self.plot_data_convert_dict
 
-			self.Explainer = Exp_Frame(question_df=question_df, explanation_df=explanation_df, exp_chosen_row=exp_selected, none_drill_down_df=rel_pattern_df,
-				drill_down_df=None, data_convert_dict=data_convert_dict)
+			self.Explainer = Exp_Frame(input_question_df=question_df, input_explanation_df=explanation_df, input_exp_chosen_row=exp_selected, input_none_drill_down_df=rel_pattern_df,
+				input_drill_down_df=None, input_data_convert_dict=data_convert_dict)
 
 			self.Explainer.load_exp_graph()
 			self.Explainer.load_exp_description(user_direction=self.user_direction)
