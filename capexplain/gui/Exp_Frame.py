@@ -81,7 +81,7 @@ class Exp_Frame:
 		self.rel_pattern_part_list = self.rel_pattern_part.split(',')
 		self.rel_pattern_pred_list = self.rel_pattern_pred.split(',')
 		self.exp_tuple_score = float(self.exp_chosen_row['Score'])
-		self.drill_attr = [self.exp_chosen_row['Drill_Down_To']]
+		self.drill_attr = [self.exp_chosen_row['Drill_Down_To'].split(',')]
 		self.drill_model = self.exp_chosen_row['refinement_model']
 		self.drill_param = self.exp_chosen_row['drill_param']
 

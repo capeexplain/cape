@@ -619,17 +619,14 @@ class CAPE_UI:
 			exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
 			exp_tuple_list = exp_tuple.split(',')[:-1]
 			exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
-			drill_attr = self.exp_df.iloc[int(n)]['Drill_Down_To']
+			drill_attr_list = self.exp_df.iloc[int(n)]['Drill_Down_To'].split(',')
 
-			if(drill_attr!=''):
-				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list + [drill_attr]
+			if(drill_attr_list!=['']):
+				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list + drill_attr_list
 				exp_tuple_col.sort()
 			else:
 				exp_tuple_col = rel_pattern_part_list + rel_pattern_pred_list
 				exp_tuple_col.sort()
-
-		# logger.debug('drill_attr is:')
-		# logger.debug(drill_attr)
 
 
 		# logger.debug('exp_tuple_col is:')
@@ -646,9 +643,12 @@ class CAPE_UI:
 		logger.debug(exp_tuple_df)
 
 
-		if(drill_attr != ''):
+		if(drill_attr_list != ['']):
 
-			drill_value = exp_tuple_df[drill_attr].to_string(index=False)
+			drill_values = []
+			for n in drill_attr_list:
+				drill_value = exp_tuple_df[n].to_string(index=False)
+				drill_values.append(drill_value)
 
 			# logger.debug('rel_pattern_part_list')
 			# logger.debug(rel_pattern_part_list)
@@ -657,8 +657,8 @@ class CAPE_UI:
 			# logger.debug(rel_pattern_part_value_list)
 
 
-			drill_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list+[drill_attr],
-													 partition_value_list=rel_pattern_part_value_list+[drill_value],pred_attr_list=rel_pattern_pred_list)
+			drill_pattern_df = self.get_pattern_result(partition_attr_list=rel_pattern_part_list+drill_attr_list,
+													 partition_value_list=rel_pattern_part_value_list+drill_values,pred_attr_list=rel_pattern_pred_list)
 
 			# logger.debug("drill_pattern_df is")
 			# logger.debug(drill_pattern_df)
