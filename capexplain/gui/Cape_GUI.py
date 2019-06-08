@@ -458,7 +458,10 @@ class CAPE_UI:
 			exp_list=[]
 			for e in elist:
 				tuple_list=[]
-				e_tuple_str = ','.join(map(str, e.tuple_value.values()))
+				# print(str(e.tuple_value))
+				# print(str(e.tuple_value.keys()))
+				# e_tuple_str = ','.join(map(str, e.tuple_value.values()))
+				e_tuple_str = e.ordered_tuple_string()
 				tuple_list.append(e_tuple_str)
 
 				score = round(e.score,2)
