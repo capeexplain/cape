@@ -410,7 +410,8 @@ class Exp_Frame:
 
 				common_cols = self.rel_pattern_part_list+ self.rel_pattern_pred_list
 				question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
-
+				logger.debug(self.none_drill_down_df)
+				logger.debug(self.explanation_df)
 				explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
 
 				# logger.debug("question_df is ")
@@ -419,13 +420,16 @@ class Exp_Frame:
 
 				question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
 				question_df = question_df[[x,y]]
+				logger.debug(question_df)
 
 				explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
 				explanation_df = explanation_df[[x,y]]
+				logger.debug(explanation_df)
 
 				self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Relevent Model")
 				self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,label=self.rel_pattern_agg)
 				self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=150,zorder=1,label="User Question")
+				logger.debug(explanation_df)
 				self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=150,zorder=0,label="Explanation")
 
 				self.rel_plotter.set_x_label(x)

@@ -36,7 +36,7 @@ from capexplain.database.dbaccess import DBConnection
 # 2. fix "drill down" in crime data set
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
@@ -638,9 +638,9 @@ class CAPE_UI:
 
 		exp_tuple_df_list = [exp_tuple_list]
 		exp_tuple_df = pd.DataFrame(exp_tuple_df_list)
-		# logger.debug("exp_tuple_df:")
+		logger.debug("exp_tuple_df:")
 		exp_tuple_df.columns = exp_tuple_col
-		# logger.debug(exp_tuple_df)
+		logger.debug(exp_tuple_df)
 
 
 		if(drill_attr != ''):
@@ -667,7 +667,7 @@ class CAPE_UI:
 
 			explanation_df = self.get_pattern_result(partition_attr_list=exp_tuple_col,
 													 partition_value_list=exp_tuple_list,pred_attr_list=None)
-
+			logger.debug(explanation_df)
 			exp_selected = exp_chosen_row
 
 			data_convert_dict = self.plot_data_convert_dict
