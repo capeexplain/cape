@@ -9,6 +9,9 @@ log = logging.getLogger(__name__)
 # Cmd types
 @unique
 class CmdTypes(Enum):
+    """
+    Types of commands supported by the Cape CLI.
+    """
     Mine = 1,
     Explain = 2,
     Stats = 3,
@@ -18,7 +21,10 @@ class CmdTypes(Enum):
 # ********************************************************************************
 # Information about a command for capexplain
 class Command:
-
+    """
+    A command.
+    """
+    
     def __init__(self, cmd, cmdstr, helpMessage, execute, options=None):
         self.cmd = cmd
         self.cmdstr = cmdstr
@@ -27,6 +33,9 @@ class Command:
         self.execute = execute
 
     def helpString(self):
+        """
+        Print a help string.
+        """
         return '{:30}- {}'.format(self.cmdstr,self.helpMessage)
 
     def __str__(self):
@@ -35,7 +44,9 @@ class Command:
 # ********************************************************************************
 # multiple indexes for the options for a command
 class CmdOptions:
-
+    """
+    Class to store the CLI options for a command.
+    """
     def constructOptions(self):
         self.shortopts = ''
         self.longopts = []
