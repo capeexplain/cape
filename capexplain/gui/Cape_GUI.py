@@ -30,6 +30,10 @@ import matplotlib
 matplotlib.use("TkAgg")
 
 
+# to do
+# 1. fix "when misinput system have to be restart" issue
+# 2. fix "drill down" in crime data set
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter(

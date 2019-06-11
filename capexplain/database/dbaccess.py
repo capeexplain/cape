@@ -32,9 +32,7 @@ class DBConnection:
                   user='postgres',
                   port=5432,
                   db='postgres',
-                  password=None,
-                  local_table=None,
-                  global_table=None):
+                  password=None):
         self.host=host
         self.user=user
         self.port=port
@@ -43,8 +41,6 @@ class DBConnection:
         self.engine = None
         self.conn=None
         log.debug("create DBconnection info: %s", self.__dict__)
-        self.local_table = local_table
-        self.global_table = global_table
 
 
     # overwrite __getitem__ to allow dictory style access to options

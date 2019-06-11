@@ -135,7 +135,6 @@ def guiCommand(command, log):
     conn = dbconn.pgconnect()
     config.conn = conn
     config.cur = config.conn.cursor()
-    config.pattern_table = dbconn.local_table[:-6]
     log.debug("connected to database")
     # TODO gui=Cape_UI() # (config, dbconn)
     # start the gui gui.start()

@@ -9,6 +9,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 from math import floor,ceil
 import re
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
 
 
 coded = re.compile('(coded\_).*')
@@ -27,10 +36,12 @@ class Plotter:
 		elif(mode=='3D'):
 			self.a= self.figure.gca(projection='3d')
 
-
-		self.cur_x_range = [0]
-		self.cur_y_range = [0]
-		self.cur_z_range = [0]
+		self.x_max = None
+		self.x_min = None
+		self.y_max = None
+		self.y_min = None
+		self.z_max = None
+		self.z_min = None
 
 		self.encoding_list = []
 
@@ -66,12 +77,8 @@ class Plotter:
 					dict1['dict_name'] = 'coded_'+n
 					self.encoding_list.append(dict1)
 
-		print("encoding_list is :")
-		print(self.encoding_list)
-
 		return data_frame
-
-
+		
 	def set_x_label(self,label_name):
 		self.a.set_xlabel(label_name)
 
@@ -117,12 +124,46 @@ class Plotter:
 			self.a.set(xticks=df['coded_'+x].values, xticklabels=df[x])
 
 		else:
-			self.a.set(xticks=list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1,3))))
+			x_min = floor(df[x].values.min())
+			x_max = ceil(df[x].values.max()+1)
+
+			if(self.x_min==None):
+				self.x_min=x_min
+			else:
+				self.x_min=min(self.x_min,x_min)
+
+			if(self.x_max==None):
+				self.x_max=x_max
+			else:
+				self.x_max=max(self.x_max,x_max)
+
+			x_division_value = (self.x_max - self.x_min) // 10
+			if(x_division_value==0):
+				x_division_value = 1
+			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:
 			self.a.set(yticks=df['coded_'+y].values, yticklabels=df[y])
+
 		else:
-			self.a.set(yticks=list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5)))
+			y_min = floor(df[y].values.min())
+			y_max = ceil(df[y].values.max()+1)
+
+			if(self.y_min==None):
+				self.y_min=y_min
+			else:
+				self.y_min=min(self.y_min,y_min)
+
+			if(self.y_max==None):
+				self.y_max=y_max
+			else:
+				self.y_max=max(self.y_max,y_max)
+
+			y_division_value = (self.y_max - self.y_min) // 10
+			if(y_division_value==0):
+				y_division_value = 1
+			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+
 
 		plane_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc="r")
 		plane_proxy_name = label
@@ -134,9 +175,19 @@ class Plotter:
 	def plot_2D_linear(self,x,slope,intercept,label=None):  # x:df column; slope,intercept:numeric values
 		var_min = pd.to_numeric(x.min()).item()
 		var_max = pd.to_numeric(x.max()).item()
+		logger.debug("var_min is:")
+		logger.debug(var_min)
+
+		logger.debug("var_max is:")
+		logger.debug(var_max)
+
 		X1 = np.linspace(var_min-1,var_max+1,100)
 		X = x.astype('float64')
 		y_vals = slope * X1 + intercept
+
+		logger.debug("y_vals is:")
+		logger.debug(y_vals)
+
 		self.a.plot(X1, y_vals, c='r',linewidth=2,label=label)
 		self.a.legend(loc='best')
 
@@ -148,6 +199,7 @@ class Plotter:
 
 		df = self.df_type_conversion(df)
 
+		logger.debug(df)
 		if ('coded_'+x) in df.columns:
 			X=df['coded_'+x]
 		else:
@@ -165,29 +217,49 @@ class Plotter:
 		if ('coded_'+x) in df.columns:
 
 			x_ticks = df['coded_'+x].values
-			if(len(x_ticks)>len(self.cur_x_range)):
-				self.a.set(xticks=x_ticks, xticklabels=df[x])
-				self.cur_x_range = x_ticks
-
+			self.a.set(xticks=x_ticks, xticklabels=df[x])
 
 		else:
-			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1),3))
-			if(len(x_ticks)>len(self.cur_x_range)):
-				self.a.set(xticks=x_ticks)
-				self.cur_x_range = x_ticks
+			x_min = floor(df[x].values.min())
+			x_max = ceil(df[x].values.max()+1)
 
+			if(self.x_min==None):
+				self.x_min=x_min
+			else:
+				self.x_min=min(self.x_min,x_min)
+
+			if(self.x_max==None):
+				self.x_max=x_max
+			else:
+				self.x_max=max(self.x_max,x_max)
+
+			x_division_value = (self.x_max - self.x_min) // 10
+			if(x_division_value==0):
+				x_division_value = 1
+			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:			
 			y_ticks = df['coded_'+y].values
-			if(len(y_ticks)>len(self.cur_y_range)):
-				self.a.set(yticks=y_ticks, yticklabels=df[y])
-				self.cur_y_range = y_ticks
+			self.a.set(yticks=y_ticks, yticklabels=df[y])
 
 		else:
-			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5))
-			if(len(y_ticks)>len(self.cur_y_range)):
-				self.a.set(yticks=y_ticks)
-				self.cur_y_range = y_ticks
+			y_min = floor(df[y].values.min())
+			y_max = ceil(df[y].values.max()+1)
+
+			if(self.y_min==None):
+				self.y_min=y_min
+			else:
+				self.y_min=min(self.y_min,y_min)
+
+			if(self.y_max==None):
+				self.y_max=y_max
+			else:
+				self.y_max=max(self.y_max,y_max)
+
+			y_division_value = (self.y_max - self.y_min) // 10
+			if(y_division_value==0):
+				y_division_value = 1
+			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
 	def plot_3D_scatter(self,df,x,y,z,color='g',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
@@ -213,43 +285,78 @@ class Plotter:
 		
 		if ('coded_'+x) in df.columns:
 			x_ticks = df['coded_'+x].values
-			if(len(x_ticks)>len(self.cur_x_range)):
-				self.a.set(xticks=x_ticks, xticklabels=df[x])
-				self.cur_x_range = x_ticks
+			self.a.set(xticks=x_ticks, xticklabels=df[x])
 
 
 		else:
-			x_ticks = list(range(floor(df[x].values.min()),ceil(df[x].values.max()+1),3))
-			if(len(x_ticks)>len(self.cur_x_range)):
-				self.a.set(xticks=x_ticks)
-				self.cur_x_range = x_ticks
+			x_min = floor(df[x].values.min())
+			x_max = ceil(df[x].values.max()+1)
+
+			if(self.x_min==None):
+				self.x_min=x_min
+			else:
+				self.x_min=min(self.x_min,x_min)
+
+			if(self.x_max==None):
+				self.x_max=x_max
+			else:
+				self.x_max=max(self.x_max,x_max)
+
+			x_division_value = (self.x_max - self.x_min) // 10
+			if(x_division_value==0):
+				x_division_value = 1
+			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:
 			
 			y_ticks = df['coded_'+y].values
-			if(len(y_ticks)>len(self.cur_y_range)):
-				self.a.set(yticks=y_ticks, yticklabels=df[y])
-				self.cur_y_range = y_ticks
+			self.a.set(yticks=y_ticks, yticklabels=df[y])
 
 		else:
-			y_ticks = list(range(floor(df[y].values.min()),ceil(df[y].values.max()+1),5))
-			if(len(y_ticks)>len(self.cur_y_range)):
-				self.a.set(yticks=y_ticks)
-				self.cur_y_range = y_ticks
+			y_min = floor(df[y].values.min())
+			y_max = ceil(df[y].values.max()+1)
+
+			if(self.y_min==None):
+				self.y_min=y_min
+			else:
+				self.y_min=min(self.y_min,y_min)
+
+			if(self.y_max==None):
+				self.y_max=y_max
+			else:
+				self.y_max=max(self.y_max,y_max)
+
+			y_division_value = (self.y_max - self.y_min) // 10
+			if(y_division_value==0):
+				y_division_value = 1
+			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+
 
 
 		if ('coded_'+z) in df.columns:
 			
 			z_ticks = df['coded_'+z].values
-			if(len(z_ticks)>len(self.cur_z_range)):
-				self.a.set(zticks=z_ticks, zticklabels=df[z])
-				self.cur_z_range = z_ticks
+			self.a.set(zticks=z_ticks, zticklabels=df[z])
 
 		else:
-			z_ticks = list(range(floor(df[z].values.min()),ceil(df[z].values.max()+1)))
-			if(len(z_ticks)>len(self.cur_z_range)):
-				self.a.set(zticks=z_ticks)
-				self.cur_z_range = z_ticks
+			z_min = floor(df[z].values.min())
+			z_max = ceil(df[z].values.max()+1)
+
+			if(self.z_min==None):
+				self.z_min=z_min
+			else:
+				self.z_min=min(self.z_min,z_min)
+
+			if(self.z_max==None):
+				self.z_max=z_max
+			else:
+				self.z_max=max(self.z_max,z_max)
+
+			z_division_value = (self.z_max - self.z_min) // 10
+			if(z_division_value==0):
+				z_division_value = 1
+			self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
+
 
 		scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
 		scatter_proxy_name = label

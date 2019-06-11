@@ -54,7 +54,7 @@ class User_Query_Frame:
 
 		self.table_label = Label(self.query_frame,text='Choose Table:',font=('New Times Roman Bold',12))
 		self.table_label.grid(row=0,column=1,sticky='nsew')
-		self.table = ttk.Combobox(self.query_frame,width=8,state='readonly')
+		self.table = ttk.Combobox(self.query_frame,width=15,state='readonly')
 		self.table.bind('<<ComboboxSelected>>', self.table_decide_attrs)
 		self.table['values'] = list(self.table_dict.keys())
 		self.table.grid(row=0,column=2,sticky='ew')
