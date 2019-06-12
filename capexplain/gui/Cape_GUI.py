@@ -311,15 +311,11 @@ class CAPE_UI:
 		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
 		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
 		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
-
+		
 		for n in self.local_pattern_table.multiplerowlist:
-			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
+			self.chosen_local_pattern = self.global_pattern_table.model.df.iloc[int(n)]
 
 		self.local_output_pattern_df = pd.read_sql(local_query,self.conn)
-		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
-		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
-		self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
-		self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
 
 		local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
 
@@ -333,11 +329,10 @@ class CAPE_UI:
 		pattern_df_lists = []
 
 		for n in self.global_pattern_table.multiplerowlist:
-
-			model_name = self.global_pattern_df.iloc[int(n)]['model']
+			model_name = self.global_pattern_table.model.df.iloc[int(n)]['model']
 			# logger.debug("model_name"+model_name)
-			global_partition = self.global_pattern_df.iloc[int(n)]['partition']
-			global_predictor = self.global_pattern_df.iloc[int(n)]['predictor']
+			global_partition = self.global_pattern_table.model.df.iloc[int(n)]['partition']
+			global_predictor = self.global_pattern_table.model.df.iloc[int(n)]['predictor']
 
 			g_filter_l_query = " select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
 			"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
@@ -345,17 +340,10 @@ class CAPE_UI:
 			" where array_to_string(fixed,',')='"+global_partition+\
 			"' and array_to_string(variable,',')='"+global_predictor+\
 			"' and model = '"+model_name+"';"
-
+			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
 			# logger.debug(g_filter_l_query)
 
-			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
-			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
-			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
-			self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
-			self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
-
 			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
-
 		model = TableModel(dataframe=local_shown)
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
@@ -364,11 +352,11 @@ class CAPE_UI:
 	def global_description(self):
 
 		for n in self.global_pattern_table.multiplerowlist:
-			fixed_attribute = self.global_pattern_df.iloc[int(n)]['partition']
-			aggregation_function=self.global_pattern_df.iloc[int(n)]['agg']
-			modeltype = self.global_pattern_df.iloc[int(n)]['model']
-			variable_attribute = self.global_pattern_df.iloc[int(n)]['predictor']
-			Lambda = self.global_pattern_df.iloc[int(n)]['support']
+			fixed_attribute = self.global_pattern_table.model.df.iloc[int(n)]['partition']
+			aggregation_function=self.global_pattern_table.model.df.iloc[int(n)]['agg']
+			modeltype = self.global_pattern_table.model.df.iloc[int(n)]['model']
+			variable_attribute = self.global_pattern_table.model.df.iloc[int(n)]['predictor']
+			Lambda = self.global_pattern_table.model.df.iloc[int(n)]['support']
 
 		fixed_attribute=fixed_attribute.replace(",",", ")
 
@@ -391,10 +379,10 @@ class CAPE_UI:
 		l_filter_o_query = None
 
 		for n in self.local_pattern_table.multiplerowlist:
-
-			chosen_row = self.local_output_pattern_df.iloc[int(n)]
-			partition_attr_list = self.local_output_pattern_df.iloc[int(n)]['partition'].split(',')
-			partition_value_list = self.local_output_pattern_df.iloc[int(n)]['partition_values'].split(',')
+			chosen_row = self.local_pattern_table.model.df.iloc[int(n)]
+			logger.debug(chosen_row)
+			partition_attr_list = self.local_pattern_table.model.df.iloc[int(n)]['partition'].split(',')
+			partition_value_list = self.local_pattern_table.model.df.iloc[int(n)]['partition_values'].split(',')
 
 		where_clause_list = []
 		where_clause = None
@@ -443,9 +431,9 @@ class CAPE_UI:
 		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
 		for n in self.query_result_table.multiplerowlist:
-			self.question = self.query_result_df.iloc[[int(n)]]
-			self.original_question = self.question.copy(deep=True)
 
+			self.question = self.query_result_table.model.df.iloc[[int(n)]]
+			self.original_question = self.question.copy(deep=True)
 			self.question.rename(columns={self.agg_name:self.user_agg}, inplace=True)
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
 			# logger.debug(self.question)
@@ -546,12 +534,25 @@ class CAPE_UI:
 	def pop_up_pattern(self):
 
 		chosen_row,pattern_data_df = self.use_local_filter_output()
-		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=chosen_row,pattern_data_df=pattern_data_df,
+		fetch_full_chosen_row_info = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
+		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
+		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
+		" where array_to_string(fixed_value,',')='"+chosen_row['partition_values']+"'"+\
+		" and array_to_string(variable,',')='"+chosen_row['predictor']+"';"
+
+		full_chosen_row = pd.read_sql(fetch_full_chosen_row_info,self.conn)
+
+		full_chosen_row['stats'] = full_chosen_row['stats'].str.split(',',expand=True)[0]
+		full_chosen_row['stats'] = full_chosen_row['stats'].str.strip('[')
+		full_chosen_row['stats'] = pd.to_numeric(full_chosen_row['stats'])
+		full_chosen_row['stats'] = full_chosen_row['stats'].round(2)
+
+		logger.debug(full_chosen_row)
+		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=full_chosen_row.iloc[0],pattern_data_df=pattern_data_df,
 			agg_alias=self.agg_name,data_convert_dict=self.plot_data_convert_dict)
 		
 		self.local_pattern_detail.load_pattern_description()
 		self.local_pattern_detail.load_pattern_graph()
-
 
 	def get_pattern_result(self,partition_attr_list=None,partition_value_list=None,pred_attr_list=None):  # given partition attributes and partition values, get explanation(query on table)
 
@@ -605,8 +606,8 @@ class CAPE_UI:
 	def pop_up_explanation(self):
 
 		for n in self.exp_table.multiplerowlist:
-			exp_chosen_row = self.exp_df.iloc[int(n)]
-			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern']
+			exp_chosen_row = self.exp_table.model.df.iloc[int(n)]
+			relevent_pattern = self.exp_table.model.df.iloc[int(n)]['From_Pattern']
 			rel_pattern_part = relevent_pattern.split(':')[0].split('=')[0].strip('[')
 			rel_pattern_part_value = relevent_pattern.split(':')[0].split('=')[1].split(']')
 			rel_pattern_pred = relevent_pattern.split(':')[1].split(' \u2933 ')[0]
