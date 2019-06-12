@@ -122,7 +122,7 @@ class MinerStats(ExecStats):
 # ********************************************************************************
 class PatternFinder:
     """
-    Mining patterns for an input relation. Patterns are stored in a table X.
+    Mining patterns for an input relation. Patterns are stored in a table X
     """
 
     config=None

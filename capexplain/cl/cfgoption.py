@@ -5,7 +5,7 @@ from enum import Enum, unique
 @unique
 class OptionType(Enum):
     """
-    Type of the value of a configuration option.
+    Type of the value of a configuration option
     """
     Int = 'int',
     Float = 'float',
@@ -28,9 +28,6 @@ class ConfigOpt:
         self.cfgFieldName = cfgFieldName
 
     def helpString(self):
-        """
-        Print a help message for this configuration option.
-        """
         helpMessage=''
         if self.shortopt != None:
             helpMessage='-' + self.shortopt + ' ,'
@@ -43,9 +40,6 @@ class ConfigOpt:
         return helpMessage
 
     def castValue(self):
-        """
-        Cast value into other type
-        """
         if self.hasarg == True and self.value is not None:
             if self.otype == OptionType.Int:
                 self.value =  int(self.value)
@@ -71,32 +65,20 @@ class DictLike:
     """
     # overwrite __getitem__ to allow dictory style access to options
     def __getitem__(self, key):
-        """
-        Get the value associated to a key.
-        """
         if key not in self.__dict__:
             raise AttributeError("No such attribute: " + key)
         return self.__dict__[key]
 
     # overwrite __setitem__ to allow dictory style setting of options
     def __setitem__(self,key,value):
-        """
-        Set the value associated with a key.
-        """
         if key not in self.__dict__:
             raise AttributeError("No such attribute: " + key)
         self.__dict__[key] = value
 
     # get access to list of field names
     def getValidKeys(self):
-        """
-        Get a list of supported keys.
-        """
         return self.__dict__
 
     # check whether configuration is valid
     def validateConfiguration(self):
-        """
-        Validate a configuration. The default implementation does not perform any valuation.
-        """
         return True
