@@ -44,19 +44,29 @@ logger.addHandler(stream_handler)
 
 
 # conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5436")
+
+
+
 class CAPE_UI:
 
-	def __init__(self,parent,conn,config):
+	def __init__(self,parent,conn,config,frame_color='light yellow'):
 		self.conn=conn
 		self.config=config
 		self.cur=self.conn.cursor()
+		self.frame_color = frame_color
 		# self.assigned_local_table = assigned_local_table
 		# self.assigned_global_table = assigned_global_table
+
+		style = ttk.Style()
+		style.map('TCombobox', fieldbackground=[('readonly','white')])
+		style.theme_use("clam")
+		style.configure("Treeview", background=self.frame_color, 
+		                fieldbackground=self.frame_color)
 
 #----------------------------main frame----------------------------------------#
 
 		self.parent=parent
-		self.main_frame=ttk.Frame(self.parent,padding=(3,3,12,12))
+		self.main_frame=Frame(self.parent,bg=self.frame_color)
 
 		self.main_frame.columnconfigure(0,weight=1)
 		self.main_frame.columnconfigure(1,weight=8,uniform=1)
@@ -77,37 +87,50 @@ class CAPE_UI:
 		
 		self.main_frame.grid(column=0, row=0, columnspan=3, rowspan=10, sticky='nsew')
 
-		self.table_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.table_frame = Frame(self.main_frame, borderwidth=5, relief="sunken",bg=self.frame_color)
 		self.table_frame.grid(column=0,row=0, columnspan=1, rowspan=10, sticky='nsew')
 
-		self.query_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="ridge")
+		self.table_frame.rowconfigure(0,weight=1)
+		self.table_frame.rowconfigure(1,weight=14)
+
+		self.query_frame = Frame(self.main_frame, borderwidth=5, relief="ridge",bg=self.frame_color)
 		self.query_frame.grid(column=1, row=0, columnspan=1, rowspan=2, sticky='nsew')
 
 		self.query_frame.rowconfigure(0,weight=5)
-		self.query_frame.rowconfigure(0,weight=1)
+		self.query_frame.rowconfigure(1,weight=1)
 
-		self.query_template_frame = ttk.Frame(self.query_frame)
+		self.query_template_frame = Frame(self.query_frame,bg=self.frame_color)
 		self.query_template_frame.grid(row=0,sticky='nsew')
 
-		self.query_button_frame = ttk.Frame(self.query_frame)
+		self.query_button_frame = Frame(self.query_frame,bg=self.frame_color)
 		self.query_button_frame.grid(row=1,sticky='nsew')
 
 
-		self.query_result = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.query_result = Frame(self.main_frame, borderwidth=5, relief="sunken",bg=self.frame_color)
 		self.query_result.grid(column=1, row=2, columnspan=1, rowspan=8, sticky='nsew')
 
-		self.local_pattern = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.local_pattern = Frame(self.main_frame, borderwidth=5, relief="sunken",bg=self.frame_color)
 		self.local_pattern.grid(column=2, row=0, columnspan=2, rowspan=5, sticky='nsew')
 
-		self.explanation_frame = ttk.Frame(self.main_frame, borderwidth=5, relief="sunken")
+		self.explanation_frame = Frame(self.main_frame, borderwidth=5, relief="sunken",bg=self.frame_color)
 		self.explanation_frame.grid(column=2, row=5, columnspan=2, rowspan=5, sticky='nsew')
 
 
-#---------------------------table frame-----------------------------------------#
-		self.table_view = ttk.Treeview(self.table_frame,height=47)
-		self.table_info = ttk.Label(self.table_frame, text="Database Information",font=('Times New Roman bold',11),borderwidth=5,relief=RIDGE)
+#---------------------------table frame-----------------------------------------
+
+		self.table_info = Label(self.table_frame, text="Database Information",font=('Times New Roman bold',15),bg=self.frame_color,borderwidth=5,relief=RIDGE)
 		self.table_info.grid(column=0, row=0,sticky='nsew')
-		self.table_view.grid(column=0, row=1)
+
+		self.tree_view_frame = Frame(self.table_frame)
+		self.tree_view_frame.grid(column=0,row=1,sticky='nsew')
+		self.table_view = ttk.Treeview(self.tree_view_frame)
+		self.table_view.pack(side='left',fill=BOTH)
+
+		self.tree_view_scroll = ttk.Scrollbar(self.tree_view_frame, orient="vertical", command=self.table_view.yview)
+		self.tree_view_scroll.pack(side='right', fill='y')
+
+		self.table_view.configure(yscrollcommand=self.tree_view_scroll.set)
+
 
 		self.db_info = DBinfo(conn=self.conn)
 		self.db_info_dict = self.db_info.get_db_info()
@@ -148,10 +171,10 @@ class CAPE_UI:
 		self.query_result.rowconfigure(1,weight=10)
 		self.query_result.rowconfigure(2,weight=10)
 
-		self.result_label = Label(self.query_result,text='Query Result',font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.result_label = Label(self.query_result,text='Query Result',font=('Times New Roman bold',20),borderwidth=5,relief=RIDGE,bg=self.frame_color)
 		self.result_label.grid(row=0,column=0,sticky='nsew')
 
-		self.high_low_frame = Frame(self.query_result)
+		self.high_low_frame = Frame(self.query_result,bg=self.frame_color)
 		self.high_low_frame.grid(column=1,row=1,rowspan=2,sticky='nsew')
 		
 		self.high_low_frame.columnconfigure(0,weight=1)
@@ -189,7 +212,7 @@ class CAPE_UI:
 		self.show_global.rowconfigure(1,weight=10)
 		self.show_global.columnconfigure(0,weight=1)
 
-		self.global_pattern_label = Label(self.show_global,text="Global Patterns",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.global_pattern_label = Label(self.show_global,text="Global Patterns",font=('Times New Roman bold',20),borderwidth=5,bg=self.frame_color,relief=RIDGE)
 		self.global_pattern_label.grid(column=0,row=0,sticky='nsew')
 
 		self.show_global_patterns = Frame(self.show_global)
@@ -226,7 +249,7 @@ class CAPE_UI:
 
 		self.local_show_patterns = Frame(self.local_pattern)
 		self.local_show_patterns.grid(column=0,row=1,sticky='nsew')
-		self.local_pattern_label = Label(self.local_pattern,text="Local Patterns",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.local_pattern_label = Label(self.local_pattern,text="Local Patterns",font=('Times New Roman bold',20),borderwidth=5,bg=self.frame_color,relief=RIDGE)
 		self.local_pattern_label.grid(column=0,row=0,columnspan=5,sticky='nsew')
 		self.local_pattern_filter_button = Button(self.local_pattern,text='Reset Query Output',font=('Times New Roman bold',12),command=self.reset_output)
 		self.local_pattern_filter_button.grid(column=0,row=2)
@@ -247,7 +270,7 @@ class CAPE_UI:
 		self.explanation_frame.rowconfigure(1,weight=10)
 		self.explanation_frame.rowconfigure(2,weight=1)
 		self.explanation_frame.columnconfigure(0,weight=10)
-		self.exp_label = Label(self.explanation_frame,text="Top Explanations",font=('Times New Roman bold',12),borderwidth=5,relief=RIDGE)
+		self.exp_label = Label(self.explanation_frame,text="Top Explanations",font=('Times New Roman bold',20),borderwidth=5,bg=self.frame_color,relief=RIDGE)
 		self.exp_label.grid(column=0,row=0,sticky='nsew')
 		self.exp_table_frame = Frame(self.explanation_frame)
 		self.exp_table_frame.grid(row=1,column=0,sticky='nsew')
@@ -311,15 +334,11 @@ class CAPE_UI:
 		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
 		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
 		" where array_to_string(array_sort(fixed||variable),',')='"+self.query_group_str+"';"
-
+		
 		for n in self.local_pattern_table.multiplerowlist:
-			self.chosen_local_pattern = self.local_output_pattern_df.iloc[int(n)]
+			self.chosen_local_pattern = self.global_pattern_table.model.df.iloc[int(n)]
 
 		self.local_output_pattern_df = pd.read_sql(local_query,self.conn)
-		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
-		self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
-		self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
-		self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
 
 		local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
 
@@ -333,11 +352,10 @@ class CAPE_UI:
 		pattern_df_lists = []
 
 		for n in self.global_pattern_table.multiplerowlist:
-
-			model_name = self.global_pattern_df.iloc[int(n)]['model']
+			model_name = self.global_pattern_table.model.df.iloc[int(n)]['model']
 			# logger.debug("model_name"+model_name)
-			global_partition = self.global_pattern_df.iloc[int(n)]['partition']
-			global_predictor = self.global_pattern_df.iloc[int(n)]['predictor']
+			global_partition = self.global_pattern_table.model.df.iloc[int(n)]['partition']
+			global_predictor = self.global_pattern_table.model.df.iloc[int(n)]['predictor']
 
 			g_filter_l_query = " select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
 			"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
@@ -345,17 +363,10 @@ class CAPE_UI:
 			" where array_to_string(fixed,',')='"+global_partition+\
 			"' and array_to_string(variable,',')='"+global_predictor+\
 			"' and model = '"+model_name+"';"
-
+			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
 			# logger.debug(g_filter_l_query)
 
-			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
-			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.split(',',expand=True)[0]
-			self.local_output_pattern_df['stats'] = self.local_output_pattern_df['stats'].str.strip('[')
-			self.local_output_pattern_df["stats"] = pd.to_numeric(self.local_output_pattern_df["stats"])
-			self.local_output_pattern_df["stats"] = self.local_output_pattern_df["stats"].round(2)
-
 			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
-
 		model = TableModel(dataframe=local_shown)
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
@@ -364,11 +375,11 @@ class CAPE_UI:
 	def global_description(self):
 
 		for n in self.global_pattern_table.multiplerowlist:
-			fixed_attribute = self.global_pattern_df.iloc[int(n)]['partition']
-			aggregation_function=self.global_pattern_df.iloc[int(n)]['agg']
-			modeltype = self.global_pattern_df.iloc[int(n)]['model']
-			variable_attribute = self.global_pattern_df.iloc[int(n)]['predictor']
-			Lambda = self.global_pattern_df.iloc[int(n)]['support']
+			fixed_attribute = self.global_pattern_table.model.df.iloc[int(n)]['partition']
+			aggregation_function=self.global_pattern_table.model.df.iloc[int(n)]['agg']
+			modeltype = self.global_pattern_table.model.df.iloc[int(n)]['model']
+			variable_attribute = self.global_pattern_table.model.df.iloc[int(n)]['predictor']
+			Lambda = self.global_pattern_table.model.df.iloc[int(n)]['support']
 
 		fixed_attribute=fixed_attribute.replace(",",", ")
 
@@ -391,10 +402,10 @@ class CAPE_UI:
 		l_filter_o_query = None
 
 		for n in self.local_pattern_table.multiplerowlist:
-
-			chosen_row = self.local_output_pattern_df.iloc[int(n)]
-			partition_attr_list = self.local_output_pattern_df.iloc[int(n)]['partition'].split(',')
-			partition_value_list = self.local_output_pattern_df.iloc[int(n)]['partition_values'].split(',')
+			chosen_row = self.local_pattern_table.model.df.iloc[int(n)]
+			logger.debug(chosen_row)
+			partition_attr_list = self.local_pattern_table.model.df.iloc[int(n)]['partition'].split(',')
+			partition_value_list = self.local_pattern_table.model.df.iloc[int(n)]['partition_values'].split(',')
 
 		where_clause_list = []
 		where_clause = None
@@ -443,9 +454,9 @@ class CAPE_UI:
 		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
 		for n in self.query_result_table.multiplerowlist:
-			self.question = self.query_result_df.iloc[[int(n)]]
-			self.original_question = self.question.copy(deep=True)
 
+			self.question = self.query_result_table.model.df.iloc[[int(n)]]
+			self.original_question = self.question.copy(deep=True)
 			self.question.rename(columns={self.agg_name:self.user_agg}, inplace=True)
 			self.question_tuple = self.query_result_df.iloc[[int(n)]]
 			# logger.debug(self.question)
@@ -546,12 +557,25 @@ class CAPE_UI:
 	def pop_up_pattern(self):
 
 		chosen_row,pattern_data_df = self.use_local_filter_output()
-		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=chosen_row,pattern_data_df=pattern_data_df,
+		fetch_full_chosen_row_info = "select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
+		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
+		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
+		" where array_to_string(fixed_value,',')='"+chosen_row['partition_values']+"'"+\
+		" and array_to_string(variable,',')='"+chosen_row['predictor']+"';"
+
+		full_chosen_row = pd.read_sql(fetch_full_chosen_row_info,self.conn)
+
+		full_chosen_row['stats'] = full_chosen_row['stats'].str.split(',',expand=True)[0]
+		full_chosen_row['stats'] = full_chosen_row['stats'].str.strip('[')
+		full_chosen_row['stats'] = pd.to_numeric(full_chosen_row['stats'])
+		full_chosen_row['stats'] = full_chosen_row['stats'].round(2)
+
+		logger.debug(full_chosen_row)
+		self.local_pattern_detail = Local_Pattern_Frame(chosen_row=full_chosen_row.iloc[0],pattern_data_df=pattern_data_df,
 			agg_alias=self.agg_name,data_convert_dict=self.plot_data_convert_dict)
 		
 		self.local_pattern_detail.load_pattern_description()
 		self.local_pattern_detail.load_pattern_graph()
-
 
 	def get_pattern_result(self,partition_attr_list=None,partition_value_list=None,pred_attr_list=None):  # given partition attributes and partition values, get explanation(query on table)
 
@@ -605,8 +629,8 @@ class CAPE_UI:
 	def pop_up_explanation(self):
 
 		for n in self.exp_table.multiplerowlist:
-			exp_chosen_row = self.exp_df.iloc[int(n)]
-			relevent_pattern = self.exp_df.iloc[int(n)]['From_Pattern']
+			exp_chosen_row = self.exp_table.model.df.iloc[int(n)]
+			relevent_pattern = self.exp_table.model.df.iloc[int(n)]['From_Pattern']
 			rel_pattern_part = relevent_pattern.split(':')[0].split('=')[0].strip('[')
 			rel_pattern_part_value = relevent_pattern.split(':')[0].split('=')[1].split(']')
 			rel_pattern_pred = relevent_pattern.split(':')[1].split(' \u2933 ')[0]
@@ -712,16 +736,6 @@ def startCapeGUI(conn,config):
 	ui = CAPE_UI(root,conn=conn,config=config)
 	root.mainloop()
 
-
-def main():
-
-	config=DictLike()
-	dbconn=DBConnection(host="127.0.0.1",user="antiprov",db="antiprov",password='1234',port="5432")
-	conn=dbconn.pgconnect()
-	startCapeGUI(conn=conn,config=config)
-
-if __name__ == '__main__':
-	main()
 
 
 

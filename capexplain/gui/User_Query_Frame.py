@@ -6,17 +6,24 @@ from tkinter import *
 from tkinter import ttk
 import pandas as pd
 
+
+
 class User_Query_Frame:
 
-	def __init__(self,conn=None,table_dict = None,parent=None):
+	def __init__(self,conn=None,table_dict = None,parent=None,frame_color='light yellow'):
 
 		self.table_dict = table_dict
 		self.conn = conn
 		self.parent = parent
 		self.attr_list = None
 		self.user_query = None
+		self.frame_color = frame_color
 
-		self.query_frame=ttk.Frame(self.parent,padding=(3,3,12,12))
+		style = ttk.Style()
+		style.map('TCombobox', fieldbackground=[('readonly','white')])
+
+
+		self.query_frame=Frame(self.parent,bg=self.frame_color)
 		self.parent.columnconfigure(0, weight=1)
 		self.parent.rowconfigure(0, weight=1)
 		self.query_frame.grid(column=0,row=0,sticky='nsew')
@@ -34,7 +41,7 @@ class User_Query_Frame:
 		self.query_frame.columnconfigure(4,weight=3)
 		self.query_frame.columnconfigure(5,weight=3)
 
-		self.select_frame = Frame(self.query_frame)
+		self.select_frame = Frame(self.query_frame,bg=self.frame_color)
 		self.select_frame.grid(row=2,column=0,columnspan=6,sticky='nsew')
 
 		self.select_frame.columnconfigure(0,weight=4)
@@ -52,7 +59,7 @@ class User_Query_Frame:
 
 #************************************************* Choose Table****************************************************************
 
-		self.table_label = Label(self.query_frame,text='Choose Table:',font=('New Times Roman Bold',12))
+		self.table_label = Label(self.query_frame,text='Choose Table:',font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.table_label.grid(row=0,column=1,sticky='nsew')
 		self.table = ttk.Combobox(self.query_frame,width=15,state='readonly')
 		self.table.bind('<<ComboboxSelected>>', self.table_decide_attrs)
@@ -60,14 +67,14 @@ class User_Query_Frame:
 		self.table.grid(row=0,column=2,sticky='ew')
 
 #*************************************************  SELECT  ******************************************************************
-		self.agg_label = Label(self.select_frame,text='Aggregate',font=('New Times Roman Bold',10))
+		self.agg_label = Label(self.select_frame,text='Aggregate',font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.agg_label.grid(row=1,column=3,sticky='e')
-		self.agg_label = Label(self.select_frame,text='Over',font=('New Times Roman Bold',10))
+		self.agg_label = Label(self.select_frame,text='Over',font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.agg_label.grid(row=1,column=5,sticky='ew')
 
-		self.select_label = Label(self.select_frame,text="SELECT",font=('New Times Roman Bold',12))
+		self.select_label = Label(self.select_frame,text='SELECT',font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.select_label.grid(row=2,column=0,sticky='ew')
-		self.select_content = Label(self.select_frame, textvariable=self.select_clause,font=('New Times Roman Bold',12),wraplength=400)
+		self.select_content = Label(self.select_frame, textvariable=self.select_clause,font=('New Times Roman Bold',13),wraplength=400,bg=self.frame_color)
 		self.select_content.grid(row=2,column=1,columnspan=2,sticky='ew')
 		self.agg_type = ttk.Combobox(self.select_frame,width=5,state='readonly')
 		self.agg_type.grid(row=2,column=3,sticky=E)
@@ -78,38 +85,38 @@ class User_Query_Frame:
 		self.agg_attr.grid(row=2,column=5,sticky='ew')
 		self.second_bracket = Label(self.select_frame,text=')')
 		self.second_bracket.grid(row=2,column=6,sticky=W)
-		self.as_label = Label(self.select_frame,text=' AS ',font=('New Times Roman Bold',12))
+		self.as_label = Label(self.select_frame,text=' AS ',font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.as_label.grid(row=2,column=7,sticky='we')
 		self.alias = Entry(self.select_frame,bg="white",width=2)
 		self.alias.grid(row=2,column=8,sticky='we')
 
 #*************************************************   FROM   ********************************************************************     
-		self.from_table = Label(self.query_frame,text="FROM",font=('New Times Roman Bold',12))
+		self.from_table = Label(self.query_frame,text="FROM",font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.from_table.grid(row=3,column=0,sticky='ew')
-		self.from_table = Label(self.query_frame,textvariable=self.from_where,font=('New Times Roman Bold',12))
+		self.from_table = Label(self.query_frame,textvariable=self.from_where,font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.from_table.grid(row=3,column=1,sticky='ew')
 
 #*****************************************************GROUP BY ******************************************************************		
-		self.group_by_label = Label(self.query_frame,text="GROUP BY",font=('New Times Roman Bold',12))
+		self.group_by_label = Label(self.query_frame,text="GROUP BY",font=('New Times Roman Bold',12),bg=self.frame_color)
 		self.group_by_label.grid(column=0,row=4)
 
-		self.group1 = ttk.Combobox(self.query_frame,width=13,state='readonly')
+		self.group1 = ttk.Combobox(self.query_frame,width=12,state='readonly')
 		self.group1.grid(column=1,row=4)
 		self.group1.bind('<<ComboboxSelected>>', self.update_query_frame)
 
-		self.group2 = ttk.Combobox(self.query_frame,width=13,state='readonly')
+		self.group2 = ttk.Combobox(self.query_frame,width=12,state='readonly')
 		self.group2.grid(column=2,row=4)
 		self.group2.bind('<<ComboboxSelected>>', self.update_query_frame)
 
-		self.group3 = ttk.Combobox(self.query_frame,width=13,state='readonly')
+		self.group3 = ttk.Combobox(self.query_frame,width=12,state='readonly')
 		self.group3.grid(column=3,row=4)
 		self.group3.bind('<<ComboboxSelected>>', self.update_query_frame)
 
-		self.group4 = ttk.Combobox(self.query_frame,width=13,state='readonly')
+		self.group4 = ttk.Combobox(self.query_frame,width=12,state='readonly')
 		self.group4.grid(column=4,row=4)
 		self.group4.bind('<<ComboboxSelected>>', self.update_query_frame)
 
-		self.group5 = ttk.Combobox(self.query_frame,width=13,state='readonly')
+		self.group5 = ttk.Combobox(self.query_frame,width=12,state='readonly')
 		self.group5.grid(column=5,row=4)
 		self.group5.bind('<<ComboboxSelected>>', self.update_query_frame)
 
