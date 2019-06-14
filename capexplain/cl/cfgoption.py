@@ -18,7 +18,7 @@ class OptionType(Enum):
 
 class ConfigOpt:
     """
-    A commandline configuration option.
+    A configuration option which can be passed on the commandline.
     """
 
     def __init__(self, longopt, shortopt=None, desc=None, hasarg=False, otype=OptionType.String, cfgFieldName=None, defaultValue=None):
@@ -35,6 +35,9 @@ class ConfigOpt:
             self.value = None
 
     def helpString(self):
+        """
+        Return a help string for this option (used to create help messages for a commandline program.
+        """
         helpMessage = ''
         if self.shortopt != None:
             helpMessage = '-' + self.shortopt + ' ,'
@@ -49,7 +52,10 @@ class ConfigOpt:
         return helpMessage
 
     def castValue(self):
-        if self.hasarg == True and self.value is not None:
+        """
+        The value has been set as a string, but this option is of a non-string type, then cast the string to the options type.
+        """
+        if self.hasarg == True and self.value is not None and type(self.value) == str:
             if self.otype == OptionType.Int:
                 self.value = int(self.value)
             elif self.otype == OptionType.Float:
@@ -65,6 +71,15 @@ class ConfigOpt:
                               '0': False}[self.value]
                 self.value = bool(self.value)
             return self
+
+    def getConfigKey(self):
+        """
+        Get the key of the configuration this option is stored at (either cftFieldName if it exists or longopt otherwhise)
+        """
+        return self.longopt if(self.cfgFieldName is None) else self.cfgFieldName
+
+    def __str__(self):
+        return "ConfigOption(longopt={0}, shortopt={1}, hasarg={2}, description={3}, otype={4}, cfgFieldName={5}, defaultValue={6}, value={7})".format(self.longopt, self.shortopt, self.hasarg, self.description, self.otype, self.cfgFieldName, self.defaultValue, self.value)
 
 # ********************************************************************************
 # add support for accessing a class like a dictionary.
