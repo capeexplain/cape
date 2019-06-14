@@ -31,6 +31,9 @@ class Plotter:
 		self.legend_proxies_shape= []  # for 3d legend specifically
 		self.legend_proxies_name = [] # for 3d legend specifically
 
+		plt.rc('xtick',labelsize=9)
+		plt.rc('ytick',labelsize=9)
+
 		if(mode=='2D'):
 			self.a = self.figure.add_subplot(111)
 		elif(mode=='3D'):
@@ -104,6 +107,7 @@ class Plotter:
 	def plot_3D_const(self,df,x=None,y=None,z_value=None,label=None): # df is the dataframe containing the columns to be drawn
 
 		df = self.df_type_conversion(df)
+		row_size = df.shape[0]
 
 		if ('coded_'+x) in df.columns:
 			x_range=np.arange(df['coded_'+x].min(),df['coded_'+x].max()+1,1)
@@ -137,9 +141,10 @@ class Plotter:
 			else:
 				self.x_max=max(self.x_max,x_max)
 
-			x_division_value = (self.x_max - self.x_min) // 10
+			x_division_value = (self.x_max - self.x_min) // 5
 			if(x_division_value==0):
 				x_division_value = 1
+					
 			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:
@@ -159,9 +164,10 @@ class Plotter:
 			else:
 				self.y_max=max(self.y_max,y_max)
 
-			y_division_value = (self.y_max - self.y_min) // 10
+			y_division_value = (self.y_max - self.y_min) // 5
 			if(y_division_value==0):
 				y_division_value = 1
+					
 			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
@@ -199,6 +205,8 @@ class Plotter:
 
 		df = self.df_type_conversion(df)
 
+		row_size = df.shape[0]
+
 		logger.debug(df)
 		if ('coded_'+x) in df.columns:
 			X=df['coded_'+x]
@@ -233,9 +241,10 @@ class Plotter:
 			else:
 				self.x_max=max(self.x_max,x_max)
 
-			x_division_value = (self.x_max - self.x_min) // 10
+			x_division_value = (self.x_max - self.x_min) // 5
 			if(x_division_value==0):
 				x_division_value = 1
+
 			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:			
@@ -256,15 +265,18 @@ class Plotter:
 			else:
 				self.y_max=max(self.y_max,y_max)
 
-			y_division_value = (self.y_max - self.y_min) // 10
+			y_division_value = (self.y_max - self.y_min) // 5
 			if(y_division_value==0):
 				y_division_value = 1
+					
 			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
 	def plot_3D_scatter(self,df,x,y,z,color='g',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
 
 		df = self.df_type_conversion(df)
+		row_size = df.shape[0]
+
 
 		if ('coded_'+x) in df.columns:
 			X=df['coded_'+x]
@@ -302,9 +314,10 @@ class Plotter:
 			else:
 				self.x_max=max(self.x_max,x_max)
 
-			x_division_value = (self.x_max - self.x_min) // 10
+			x_division_value = (self.x_max - self.x_min) // 5
 			if(x_division_value==0):
 				x_division_value = 1
+
 			self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
 		if ('coded_'+y) in df.columns:
@@ -326,9 +339,10 @@ class Plotter:
 			else:
 				self.y_max=max(self.y_max,y_max)
 
-			y_division_value = (self.y_max - self.y_min) // 10
+			y_division_value = (self.y_max - self.y_min) // 5
 			if(y_division_value==0):
 				y_division_value = 1
+					
 			self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
@@ -352,9 +366,10 @@ class Plotter:
 			else:
 				self.z_max=max(self.z_max,z_max)
 
-			z_division_value = (self.z_max - self.z_min) // 10
+			z_division_value = (self.z_max - self.z_min) // 5
 			if(z_division_value==0):
 				z_division_value = 1
+					
 			self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
 
 
