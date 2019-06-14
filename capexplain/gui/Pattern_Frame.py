@@ -24,18 +24,19 @@ logger.addHandler(stream_handler)
 
 class Local_Pattern_Frame:
 
-	def __init__(self,chosen_row=None,pattern_data_df=None,agg_alias=None,data_convert_dict=None):
+	def __init__(self,chosen_row=None,pattern_data_df=None,agg_alias=None,data_convert_dict=None,frame_color='light yellow'):
 
 		self.chosen_row = chosen_row
 		self.pattern_data_df = pattern_data_df
 		self.agg_alias = agg_alias
 		self.data_convert_dict = data_convert_dict
+		self.frame_color = frame_color
 
 		self.pop_up_frame = Toplevel()
 		self.pop_up_frame.geometry("%dx%d%+d%+d" % (1200, 800, 250, 125))
 		self.pop_up_frame.wm_title("Pattern Detail")
 
-		self.win_frame = Frame(self.pop_up_frame)
+		self.win_frame = Frame(self.pop_up_frame,bg=self.frame_color)
 		self.win_frame.pack(fill=BOTH,expand=True)
 		self.win_frame.columnconfigure(0,weight=1)
 		self.win_frame.columnconfigure(1,weight=3)
@@ -44,7 +45,7 @@ class Local_Pattern_Frame:
 
 	def load_pattern_graph(self):
 
-		graph_frame = Frame(self.win_frame)
+		graph_frame = Frame(self.win_frame,bg=self.frame_color)
 		graph_frame.grid(column=1,row=0,sticky='nesw')
 		self.figure = Figure(figsize=(5,5),dpi=130)
 		canvas = FigureCanvasTkAgg(self.figure,graph_frame)
@@ -145,7 +146,7 @@ class Local_Pattern_Frame:
 		raw_pattern_description_lists = textwrap.wrap(raw_pattern_description,width=35)
 		final_pattern_description = '\n'.join(raw_pattern_description_lists)
 
-		pattern_description = Label(self.win_frame,text=final_pattern_description,font=('Times New Roman bold',18),borderwidth=5,bg='white',relief=SOLID,justify=LEFT)
+		pattern_description = Label(self.win_frame,text=final_pattern_description,font=('Times New Roman bold',18),borderwidth=5,bg=self.frame_color,relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
 
 

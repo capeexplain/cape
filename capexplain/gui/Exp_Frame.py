@@ -35,12 +35,15 @@ logger.addHandler(stream_handler)
 
 class Exp_Frame:
 
-	def __init__(self,input_question_df=None, input_explanation_df=None, input_exp_chosen_row=None, input_none_drill_down_df=None, input_drill_down_df=None, input_data_convert_dict=None):
+	def __init__(self,input_question_df=None, input_explanation_df=None, input_exp_chosen_row=None, 
+		input_none_drill_down_df=None, input_drill_down_df=None, input_data_convert_dict=None,
+		frame_color = 'light yellow'):
 
 		self.win = Toplevel()
 		self.win.geometry("%dx%d%+d%+d" % (1580, 900, 250, 125))
-		self.win.wm_title("Explanation Detail")		
-		self.win_frame = Frame(self.win)
+		self.win.wm_title("Explanation Detail")
+		self.frame_color = frame_color		
+		self.win_frame = Frame(self.win,bg=self.frame_color)
 		self.win_frame.pack(fill=BOTH,expand=True)
 
 		self.question_df = input_question_df
@@ -98,10 +101,10 @@ class Exp_Frame:
 			self.Quit_Button = Button(self.win_frame, text="Quit",width=10, height=4, command=self.win.destroy)
 			self.Quit_Button.grid(column=0,row=1)
 
-			self.rel_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg='white')
+			self.rel_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg=self.frame_color)
 			self.rel_graph_frame.grid(column=1,row=0,rowspan=2,sticky='nesw')
 
-			self.exp_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg='white')
+			self.exp_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg=self.frame_color)
 			self.exp_frame.grid(column=0,row=0,sticky='nesw')
 
 			self.rel_figure = Figure(figsize=(5,5),dpi=130)
@@ -120,10 +123,10 @@ class Exp_Frame:
 			self.win_frame.rowconfigure(0,weight=2)
 			self.win_frame.rowconfigure(1,weight=1)
 
-			self.rel_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg='white')
+			self.rel_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg=self.frame_color)
 			self.rel_graph_frame.grid(column=0,row=0,sticky='nesw')
 
-			self.drill_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg='white')
+			self.drill_graph_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg=self.frame_color)
 			self.drill_graph_frame.grid(column=1,row=0,sticky='nesw')
 
 			self.rel_figure = Figure(figsize=(5,5),dpi=130)
@@ -140,7 +143,7 @@ class Exp_Frame:
 			self.drill_toolbar.update()
 			self.drill_canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 
-			self.exp_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg='white')
+			self.exp_frame = Frame(self.win_frame,borderwidth=5,relief=RIDGE,bg=self.frame_color)
 			self.exp_frame.grid(column=0,columnspan=2,row=1,sticky='nesw')
 
 
@@ -673,7 +676,7 @@ class Exp_Frame:
 
 
 
-		pattern_description = Label(self.exp_frame,text=final_exp_lists,font=('Times New Roman bold',19),bg='white',relief=SOLID,justify=LEFT)
+		pattern_description = Label(self.exp_frame,text=final_exp_lists,font=('Times New Roman bold',19),bg=self.frame_color,relief=SOLID,justify=LEFT)
 		pattern_description.pack(expand=True)
 
 
