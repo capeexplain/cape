@@ -256,6 +256,9 @@ class PatternFinder:
             return ret
 
     def findPattern(self, user=None):
+        """
+        Main function mining patterns for a table.
+        """
         if (self.config.showProgress):
             print(" MINING PATTERNS FOR: {}".format(self.config.table))
 #       self.pc=PC.PatternCollection(list(self.schema))
