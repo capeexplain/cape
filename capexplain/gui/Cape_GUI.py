@@ -28,6 +28,8 @@ from capexplain.gui.Pattern_Frame import Local_Pattern_Frame
 from capexplain.gui.Exp_Frame import Exp_Frame
 from capexplain.cl.cfgoption import DictLike
 from capexplain.database.dbaccess import DBConnection
+import statsmodels.api as sm
+
 
 
 
@@ -56,6 +58,8 @@ class CAPE_UI:
 		self.frame_color = frame_color
 		# self.assigned_local_table = assigned_local_table
 		# self.assigned_global_table = assigned_global_table
+		self.high_outlier_row_numbers = [1] # this is used to record the row numbers labeled as outliers
+		self.low_outlier_row_numbers = [1]
 
 		style = ttk.Style()
 		style.map('TCombobox', fieldbackground=[('readonly','white')])
@@ -178,6 +182,7 @@ class CAPE_UI:
 		self.high_low_frame.grid(column=1,row=1,rowspan=2,sticky='nsew')
 		
 		self.high_low_frame.columnconfigure(0,weight=1)
+		self.high_low_frame.columnconfigure(1,weight=1)
 		self.high_low_frame.rowconfigure(0,weight=1)
 		self.high_low_frame.rowconfigure(1,weight=1)
 		self.high_low_frame.rowconfigure(2,weight=1)
@@ -187,12 +192,20 @@ class CAPE_UI:
 		self.high_low_frame.rowconfigure(6,weight=1)
 		self.high_low_frame.rowconfigure(7,weight=1)
 
+		self.low_outlier_text = Label(self.high_low_frame,text='Unusually\nLow: ',font=('Times New Roman bold',10),bg='light yellow')
+
+		self.low_outlier_label = Label(self.high_low_frame,bg='red',height=2, width=2)
+
+		self.high_outlier_text = Label(self.high_low_frame,text='Unusually\nHigh: ',font=('Times New Roman bold',10),bg='light yellow')
+
+		self.high_outlier_label = Label(self.high_low_frame,bg='green',height=2, width=2)
+
 
 		self.high_button = Button(self.high_low_frame,text='High',font=('Times New Roman bold',12), command=self.handle_high)
-		self.high_button.grid(column=0,row=1)
+		self.high_button.grid(column=0,row=2,columnspan=2)
 
 		self.low_button = Button(self.high_low_frame,text='Low',font=('Times New Roman bold',12), command=self.handle_low)
-		self.low_button.grid(column=0,row=2)
+		self.low_button.grid(column=0,row=3,columnspan=2)
 
 		self.show_results = Frame(self.query_result)
 		self.show_results.grid(column=0,row=1,sticky='nsew')
@@ -219,10 +232,10 @@ class CAPE_UI:
 		self.show_global_patterns.grid(column=0,row=1,sticky='nsew')
 
 		self.global_description_button = Button(self.high_low_frame,text='Describe\nGlobal',font=('Times New Roman bold',12),command=self.global_description)
-		self.global_description_button.grid(column=0,row=5)
+		self.global_description_button.grid(column=0,row=5,columnspan=2)
 
 		self.global_pattern_filter_button = Button(self.high_low_frame,text='Filter \nLocal\n Pattern',font=('Times New Roman bold',12),command=self.use_global_filter_local)
-		self.global_pattern_filter_button.grid(column=0,row=6)
+		self.global_pattern_filter_button.grid(column=0,row=6,columnspan=2)
 
 		self.global_pattern_table = Table(self.show_global_patterns)
 		self.global_pattern_table.show()
@@ -282,7 +295,12 @@ class CAPE_UI:
 #----------------------------------Functions----------------------------------------#
 
 	def run_query(self):
-		
+
+		self.low_outlier_text.destroy()
+		self.low_outlier_label.destroy()
+		self.high_outlier_text.destroy()
+		self.high_outlier_label.destroy()
+
 		self.user_query,self.query_group_str,self.agg_function,self.user_agg,self.agg_name,self.cur_table_name=self.query_temp.get_query()
 		# logger.debug(self.user_query)
 		self.handle_view ="\nDROP VIEW IF EXISTS user_query;"+\
@@ -305,6 +323,8 @@ class CAPE_UI:
 
 		model = TableModel(dataframe=self.original_query_result_df)
 		self.query_result_table.updateModel(model)
+		self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#ffffff', cols='all')
+		self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#ffffff', cols='all')
 		self.query_result_table.redraw()
 
 		# if(self.cur_table_name.lower()==self.pub_dict['dict_name']):
@@ -364,9 +384,9 @@ class CAPE_UI:
 			"' and array_to_string(variable,',')='"+global_predictor+\
 			"' and model = '"+model_name+"';"
 			self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
-			# logger.debug(g_filter_l_query)
+			logger.debug(g_filter_l_query)
 
-			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg']]
+			local_shown = self.local_output_pattern_df[['partition','partition_values','predictor','agg','model','param','stats']]
 		model = TableModel(dataframe=local_shown)
 		self.local_pattern_table.updateModel(model)
 		self.local_pattern_table.redraw()
@@ -430,16 +450,76 @@ class CAPE_UI:
 		# logger.debug(l_filter_o_query)
 		filtered_result_df = pd.read_sql(l_filter_o_query,self.conn)
 
+
 		return chosen_row,filtered_result_df
+
+	def get_outlier_frame(self,chosen_row,pattern_data_df):
+
+		copy_pattern_df = pattern_data_df.copy()
+
+		if(chosen_row['model']=='const'):
+			Q1 = copy_pattern_df[self.agg_name].quantile(0.25)
+			Q3 = copy_pattern_df[self.agg_name].quantile(0.75)
+			IQR = Q3 - Q1
+			low_outlier_df = copy_pattern_df.query("(@Q1 - 1.5 * @IQR) > "+self.agg_name)
+			low_row_numbers = low_outlier_df.index.values.tolist()
+			high_outlier_df = copy_pattern_df.query(self.agg_name+ " > (@Q3 + 1.5 * @IQR)")
+			high_row_numbers = high_outlier_df.index.values.tolist()
+
+			return low_outlier_df, low_row_numbers, high_outlier_df, high_row_numbers
+		else:
+			x_name = chosen_row['predictor']
+			x = copy_pattern_df[x_name].astype(np.float)
+			y = copy_pattern_df[self.agg_name].astype(np.float)
+			x = sm.add_constant(x)
+			model = sm.OLS(y, x).fit()
+			infl = model.get_influence()
+			copy_pattern_df['predicted_value'] = model.predict(x)
+			sm_fr = infl.summary_frame()
+			copy_pattern_df['cooks_d'] = sm_fr['cooks_d']
+			low_outlier_df = copy_pattern_df.query(self.agg_name+" < predicted_value and cooks_d > "+ str(4/copy_pattern_df.shape[0]))
+			low_row_numbers = low_outlier_df.index.values.tolist()
+			high_outlier_df = copy_pattern_df.query(self.agg_name+" > predicted_value and cooks_d > "+ str(4/copy_pattern_df.shape[0]))
+			high_row_numbers = high_outlier_df.index.values.tolist()
+
+			low_outlier_df = low_outlier_df.drop(['predicted_value','cooks_d'],axis=1)
+
+			high_outlier_df = high_outlier_df.drop(['predicted_value','cooks_d'],axis=1)
+
+
+			return low_outlier_df, low_row_numbers, high_outlier_df, high_row_numbers
+
 
 
 	def show_updated_output(self):
 
-		filtered_result_df = self.use_local_filter_output()[1]
+		self.low_outlier_text = Label(self.high_low_frame,text='Unusually\nLow: ',font=('Times New Roman bold',10),bg='light yellow')
+		self.low_outlier_text.grid(column=0,row=0)
+
+		self.low_outlier_label = Label(self.high_low_frame,bg='#dc0000',height=2, width=2)
+		self.low_outlier_label.grid(column=1,row=0)
+
+		self.high_outlier_text = Label(self.high_low_frame,text='Unusually\nHigh: ',font=('Times New Roman bold',10),bg='light yellow')
+		self.high_outlier_text.grid(column=0,row=1)
+
+		self.high_outlier_label = Label(self.high_low_frame,bg='#00e600',height=2, width=2)
+		self.high_outlier_label.grid(column=1,row=1)
+
+		if(self.low_outlier_row_numbers):
+			self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#ffffff', cols='all')
+		if(self.high_outlier_row_numbers):
+			self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#ffffff', cols='all')
+
+		chosen_row,filtered_result_df = self.use_local_filter_output()
+		low_outlier_rows,self.low_outlier_row_numbers,high_outlier_rows,self.high_outlier_row_numbers = self.get_outlier_frame(chosen_row,filtered_result_df)
 		self.query_result_df = filtered_result_df
 		model = TableModel(dataframe=filtered_result_df)
 		self.query_result_table.updateModel(model)
 		self.query_result_table.redraw()
+		if(self.low_outlier_row_numbers):
+			self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#dc0000', cols='all')
+		if(self.high_outlier_row_numbers):
+			self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#00e600', cols='all')
 
 
 	def handle_question(self,direction):
@@ -550,6 +630,8 @@ class CAPE_UI:
 		model = TableModel(dataframe=self.original_query_result_df)
 		self.query_result_table.updateModel(model)	
 		self.query_result_table.redraw()
+		self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#ffffff', cols='all')
+		self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#ffffff', cols='all')
 
 		self.query_result_df = self.original_query_result_df
 
@@ -561,8 +643,8 @@ class CAPE_UI:
 		"array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
 		"theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
 		" where array_to_string(fixed_value,',')='"+chosen_row['partition_values']+"'"+\
-		" and array_to_string(variable,',')='"+chosen_row['predictor']+"';"
-
+		" and array_to_string(variable,',')='"+chosen_row['predictor']+"' and model = '"+chosen_row['model']+"';"
+		logger.debug(fetch_full_chosen_row_info)
 		full_chosen_row = pd.read_sql(fetch_full_chosen_row_info,self.conn)
 
 		full_chosen_row['stats'] = full_chosen_row['stats'].str.split(',',expand=True)[0]
@@ -722,6 +804,7 @@ class CAPE_UI:
 
 			self.Explainer.load_exp_graph()
 			self.Explainer.load_exp_description(user_direction=self.user_direction)
+
 
 def startCapeGUI(conn,config):
 	root = Tk()

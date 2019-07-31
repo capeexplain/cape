@@ -12,6 +12,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from capexplain.gui.Plotting import Plotter
 import logging
 import textwrap
+import statsmodels.api as sm
 
 
 logger = logging.getLogger(__name__)
@@ -69,9 +70,16 @@ class Local_Pattern_Frame:
 				const=round(self.chosen_row['stats'],2)
 				self.plotter.plot_2D_const(const,label="Pattern Model")
 				draw_df = self.pattern_data_df[[variable_name,self.agg_alias]]
-				logger.debug(draw_df)
+				low_outlier_df, high_outlier_df = self.get_outlier_frame(self.chosen_row, self.pattern_data_df)
 
 				self.plotter.plot_2D_scatter(draw_df,x=variable_name,y=self.agg_alias,label=self.agg_alias)
+				if(low_outlier_df.empty is False):
+					self.plotter.plot_2D_scatter(low_outlier_df,x=variable_name, y=self.agg_alias, 
+						label='Low Outlier(s)',color='r',marker='*',size=250)
+				if(high_outlier_df.empty is False):
+					self.plotter.plot_2D_scatter(high_outlier_df,x=variable_name, y=self.agg_alias, 
+						label='High Outlier(s)',color='g',marker='*',size=250)
+
 				self.plotter.set_x_label(variable_name)
 				self.plotter.set_y_label(self.agg_alias)
 				self.plotter.set_title("Pattern Graph")
@@ -102,8 +110,16 @@ class Local_Pattern_Frame:
 
 				draw_line_df = self.pattern_data_df[[variable_name]]
 				draw_scatter_df = self.pattern_data_df[[variable_name,self.agg_alias]]
+				low_outlier_df, high_outlier_df = self.get_outlier_frame(self.chosen_row, self.pattern_data_df)
+
 				self.plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Pattern Model")
 				self.plotter.plot_2D_scatter(draw_scatter_df,x=variable_name,y=self.agg_alias,label=self.agg_alias)
+				if(low_outlier_df.empty is False):
+					self.plotter.plot_2D_scatter(low_outlier_df,x=variable_name, y=self.agg_alias, 
+						label='Low Outlier(s)',color='r',marker='*',size=250)
+				if(high_outlier_df.empty is False):
+					self.plotter.plot_2D_scatter(high_outlier_df,x=variable_name, y=self.agg_alias, 
+						label='High Outlier(s)',color='g',marker='*',size=250)
 				self.plotter.set_x_label(variable_name)
 				self.plotter.set_y_label(self.agg_alias)
 				self.plotter.set_title("Pattern Graph")
@@ -148,5 +164,35 @@ class Local_Pattern_Frame:
 
 		pattern_description = Label(self.win_frame,text=final_pattern_description,font=('Times New Roman bold',18),borderwidth=5,bg=self.frame_color,relief=SOLID,justify=LEFT)
 		pattern_description.grid(column=0,row=0,sticky='nsew')
+
+	def get_outlier_frame(self,chosen_row,pattern_data_df):
+
+		copy_pattern_df = pattern_data_df.copy()
+
+		if(chosen_row['model']=='const'):
+			Q1 = copy_pattern_df[self.agg_alias].quantile(0.25)
+			Q3 = copy_pattern_df[self.agg_alias].quantile(0.75)
+			IQR = Q3 - Q1
+			low_outlier_df = copy_pattern_df.query("(@Q1 - 1.5 * @IQR) > "+self.agg_alias)
+			high_outlier_df = copy_pattern_df.query(self.agg_alias+ " > (@Q3 + 1.5 * @IQR)")
+
+			return low_outlier_df, high_outlier_df
+		else:
+			x_name = chosen_row['predictor']
+			x = copy_pattern_df[x_name].astype(np.float)
+			y = copy_pattern_df[self.agg_alias].astype(np.float)
+			x = sm.add_constant(x)
+			model = sm.OLS(y, x).fit()
+			infl = model.get_influence()
+			sm_fr = infl.summary_frame()
+			copy_pattern_df['predicted_value'] = model.predict(x)
+			copy_pattern_df['cooks_d'] = sm_fr['cooks_d']
+			low_outlier_df = copy_pattern_df.query(self.agg_alias+" < predicted_value and cooks_d > "+ str(4/copy_pattern_df.shape[0]))
+			low_outlier_df = low_outlier_df.drop(['predicted_value','cooks_d'],axis=1)
+			high_outlier_df = copy_pattern_df.query(self.agg_alias+" > predicted_value and cooks_d > "+ str(4/copy_pattern_df.shape[0]))
+			high_outlier_df = high_outlier_df.drop(['predicted_value','cooks_d'],axis=1)
+
+			return low_outlier_df, high_outlier_df
+
 
 

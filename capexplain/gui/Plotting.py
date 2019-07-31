@@ -201,7 +201,7 @@ class Plotter:
 		pass 
 
 
-	def plot_2D_scatter(self,df,x=None,y=None,color='g',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
+	def plot_2D_scatter(self,df,x=None,y=None,color='b',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
 
 		df = self.df_type_conversion(df)
 
