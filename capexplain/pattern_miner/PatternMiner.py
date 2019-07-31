@@ -44,7 +44,7 @@ class MinerConfig(DictLike):
                  supp_l=10,
                  supp_g=100,
                  fd_check=True,
-                 supp_inf=True,
+                 supp_inf=False,  # changed from True for debugging error, but does not seem to work
                  manual_num=False,
                  algorithm='optimized',
                  showProgress=True):
@@ -256,6 +256,9 @@ class PatternFinder:
             return ret
 
     def findPattern(self, user=None):
+        """
+        Main function mining patterns for a table.
+        """
         if (self.config.showProgress):
             print(" MINING PATTERNS FOR: {}".format(self.config.table))
 #       self.pc=PC.PatternCollection(list(self.schema))
@@ -273,6 +276,7 @@ class PatternFinder:
         log.debug(
             "mine patterns for group-by attrs %s and aggregate input attributes %s", grouping_attr, aList)
 
+        log.info("USE ALGORITHM %s", self.config.algorithm)
         if self.config.algorithm == 'naive':  # CUBE ALGORITHM
             for a in self.progress(aList, desc='agg functions'):
                 if not user:
@@ -305,9 +309,14 @@ class PatternFinder:
         else:  # self.config.algorithm=='optimized' or self.config.algorithm=='naive_alternative'
             self.failedf = set()
             for size in self.progress(range(2, min(4, len(grouping_attr))+1), desc='pattern size'):
+                log.debug("PROCESS PATTERN SIZE %u", size)
                 for group in self.progress(combinations(grouping_attr, size), desc='group'):
+                    log.debug("PROCESS GROUP %s", group)
+                    self.stats.incr('G')
                     for i in self.superkey:
                         if set(i).issubset(group):
+                            log.debug(
+                                "skip group because it contains superkey %s", str(i))
                             break
                     else:  # doesn't contain superkey
                         aggList = []
@@ -318,6 +327,7 @@ class PatternFinder:
                                 aggList.append('count')
                             else:
                                 aggList.append('sum_'+a+'')
+                        log.debug("consider attributes %s", aggList)
                         if len(aggList) == 0:
                             continue
                         self.aggQuery(group, aList)
@@ -339,9 +349,12 @@ class PatternFinder:
                                         df = pd.read_sql(
                                             'SELECT * FROM agg ORDER BY '+','.join(f), con=self.config.conn)
                                         self.stats.stopTimer('df')
+                                        self.stats.incr('query.sort')
                                         grouping = tuple(
                                             [fattr for fattr in f]+[vattr for vattr in group if vattr not in f])
                                         division = len(f)
+                                        log.debug(
+                                            "fit pattern F:%s, V:%s", grouping[:division], grouping[division:])
                                         self.fitmodel(
                                             df, grouping, aggList, division)
                             else:  # algorithm='optimized'
@@ -351,6 +364,8 @@ class PatternFinder:
                                     df = pd.read_sql(
                                         'SELECT * FROM agg ORDER BY '+','.join(perm[:-1]), con=self.config.conn)
                                     self.stats.stopTimer('df')
+                                    self.stats.incr('query.sort')
+                                    log.debug("fit model for group %s", perm)
                                     self.fitmodel(df, perm, aggList, None)
                                 if len(group) == 4:
                                     for f in [(group[0], group[2]), (group[1], group[3])]:
@@ -366,6 +381,9 @@ class PatternFinder:
                                             df = pd.read_sql(
                                                 'SELECT * FROM agg ORDER BY '+','.join(f), con=self.config.conn)
                                             self.stats.stopTimer('df')
+                                            self.stats.incr('query.sort')
+                                            log.debug(
+                                                "fit model for group %s", group)
                                             self.fitmodel(
                                                 df, grouping, aggList, division)
                         self.dropAgg()
@@ -442,6 +460,7 @@ class PatternFinder:
 
     def aggQuery(self, g, aList):
         self.stats.startTimer('aggregate')
+        self.stats.incr('query.agg')
         group = ",".join(
             ["CAST("+att+" AS NUMERIC)" if att in self.num else att for att in g])
         agg = []
@@ -492,8 +511,8 @@ class PatternFinder:
         oldKey = None
         oldIndex = [0]*size
         num_f = [0]*size
-        valid_l_f = [{}]*size
-        valid_c_f = [{}]*size
+        valid_l_f = [{} for i in range(1, size+1)]
+        valid_c_f = [{} for i in range(1, size+1)]
         f = [list(group[:i]) for i in range(1, size+1)]
         v = [list(group[j:]) for j in range(1, size+1)]
         supp_valid = [group[:i] not in self.failedf for i in range(1, size+1)]
@@ -512,16 +531,21 @@ class PatternFinder:
                 global_dev_neg[i][agg] = {}
                 global_dev_neg[i][agg]['l'] = float('inf')
                 global_dev_neg[i][agg]['c'] = float('inf')
+        log.debug("fd_valid: %s, supp_valid: %s for process group %s with f:<%s>, v:<%s>",
+                  fd_valid, supp_valid, group, f, v)
         if not any(fd_valid) or not any(supp_valid):
             return
         pattern = []
 
         def fit(df, fval, i, n):
+            """
+            Given a dataframe df with group-by query results, partition attributes f (outer scope), and values fval for the partition attributes, try to find local patterns for all aggregation functions and n (TODO explain n). Also keep track of deviation of agg function results from the median for this values of the partition attributes.
+            """
+            nonlocal global_dev_pos, global_dev_neg, valid_l_f, valid_c_f
             if not self.config.fit:
                 return
             self.stats.startTimer('regression')
             for agg in aggList:
-                nonlocal global_dev_pos, global_dev_neg
                 if agg not in sample_invalid[i] or 'c' not in sample_invalid[i][agg]:
                     avg = mean(df[agg])
                     describe = [avg, mode(df[agg]), percentile(
@@ -530,8 +554,8 @@ class PatternFinder:
                     dev_neg = min(df[agg])-avg
                     # fitting constant
                     theta_c = chisquare(df[agg].dropna())[1]
+                    self.stats.incr('patcand.local')
                     if theta_c > self.config.theta_c:
-                        nonlocal valid_c_f
                         try:
                             valid_c_f[i][agg] += 1
                         except KeyError:
@@ -541,6 +565,8 @@ class PatternFinder:
                         global_dev_neg[i][agg]['c'] = min(
                             global_dev_neg[i][agg]['c'], dev_neg)
                         # self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
+                        log.debug("local constant pattern holds: (f: %s, %s, %s, agg: %s, GOF: %s) - dev-:%f - dev+:%f",
+                                  f[i], fval, v[i], agg, theta_l, global_dev_neg[i][agg]['c'], global_dev_pos[i][agg]['c'])
                         pattern.append(self.addLocal(f[i], fval, v[i], agg, 'const', theta_c, describe, 'NULL',
                                                      dev_pos, dev_neg))
                         self.stats.incr('patterns.local')
@@ -569,8 +595,8 @@ class PatternFinder:
                             dev_pos = max(lr.resid)
                             dev_neg = min(lr.resid)
 
+                        self.stats.incr('patcand.local')
                         if theta_l and theta_l > self.config.theta_l:
-                            nonlocal valid_l_f
                             try:
                                 valid_l_f[i][agg] += 1
                             except KeyError:
@@ -579,6 +605,8 @@ class PatternFinder:
                                 global_dev_pos[i][agg]['l'], dev_pos)
                             global_dev_neg[i][agg]['l'] = min(
                                 global_dev_neg[i][agg]['l'], dev_neg)
+                            log.debug("local linear pattern holds: (f: %s, %s, %s, agg: %s, GOF: %s) dev-: %f, dev+: %f",
+                                      f[i], fval, v[i], agg, theta_l, global_dev_neg[i][agg]['l'], global_dev_pos[i][agg]['l'])
                             pattern.append(self.addLocal(f[i], fval, v[i], agg, 'linear', theta_l, describe, param,
                                                          dev_pos, dev_neg))
                             self.stats.incr('patterns.local')
@@ -636,15 +664,24 @@ class PatternFinder:
                         fit(fd[indices[0]:], fval, i,
                             oldKey.Index-indices[0]+1)
 
+        log.debug("deviation global:\nneg: %s\n\npos:%s\n",
+                  global_dev_neg, global_dev_pos)
+        log.debug("valid number of local constant patterns: %s", valid_c_f)
+        log.debug("valid number local linear patterns: %s", valid_l_f)
         # sifting global
         for i in range(size):
             if not fd_valid[i] or not supp_valid[i]:
                 continue
+            self.stats.incr('F,V')
             for agg in valid_c_f[i]:
                 if agg in sample_invalid[i] and 'c' in sample_invalid[i][agg]:
                     continue
                 lamb_c = valid_c_f[i][agg]/num_f[i]
+                self.stats.incr('patcand.global')
                 if valid_c_f[i][agg] >= self.config.supp_g and lamb_c > self.config.lamb:
+                    log.info("found global constant pattern (f:%s, v:%s, agg:%s) theta:%s, globalsupp:%s, lambda:%s, dev-:%f, dev+:%f", f[i], v[i], agg, self.config.theta_l, valid_c_f[i][agg], lamb_c,
+                             global_dev_pos[i][agg]['c'], global_dev_neg[i][agg]['c'])
+                    self.stats.incr('patterns.global')
                     self.glob.append(self.addGlobal(f[i], v[i], agg, 'const', self.config.theta_c, lamb_c,
                                                     global_dev_pos[i][agg]['c'], global_dev_neg[i][agg]['c']))
 
@@ -652,7 +689,11 @@ class PatternFinder:
                 if agg in sample_invalid[i] and 'l' in sample_invalid[i][agg]:
                     continue
                 lamb_l = valid_l_f[i][agg]/num_f[i]
+                self.stats.incr('patcand.global')
                 if valid_l_f[i][agg] >= self.config.supp_g and lamb_l > self.config.lamb:
+                    log.info("found global linear pattern (f:%s, v:%s, agg:%s) theta:%s, globalsupp:%s, lambda:%s, dev-:%f, dev+:%f", f[i], v[i], agg, self.config.theta_l, valid_l_f[i][agg], lamb_l,
+                             global_dev_pos[i][agg]['l'], global_dev_neg[i][agg]['l'])
+                    self.stats.incr('patterns.global')
                     self.glob.append(self.addGlobal(f[i], v[i], agg, 'linear', self.config.theta_l, lamb_l,
                                                     global_dev_pos[i][agg]['l'], global_dev_neg[i][agg]['l']))
 
@@ -677,6 +718,7 @@ class PatternFinder:
         valid_c_f = {}
         f = list(group[:division])
         v = list(group[division:])
+        self.stats.incr('F,V')
         log.debug("fitting patterns for F=%s, V=%s", f, v)
         sample_invalid = {}
         global_dev_pos = {}
@@ -692,7 +734,6 @@ class PatternFinder:
         pattern = []
 
         def fit(df, f, fval, v, n):
-            self.stats.incr('patcand.local')
             if not self.config.fit:
                 return
             log.debug("do regression for F=%s, f=%s", f, fval)
@@ -707,6 +748,7 @@ class PatternFinder:
                     dev_neg = min(df[agg])-avg
                     # fitting constant
                     theta_c = chisquare(df[agg].dropna())[1]
+                    self.stats.incr('patcand.local')
                     if theta_c > self.config.theta_c:
                         nonlocal valid_c_f
                         try:
@@ -746,6 +788,7 @@ class PatternFinder:
                             param = Json(dict(lr.params))
                             dev_pos = max(lr.resid)
                             dev_neg = min(lr.resid)
+                        self.stats.incr('patcand.local')
 
                         if theta_l and theta_l > self.config.theta_l:
                             nonlocal valid_l_f
@@ -817,6 +860,7 @@ class PatternFinder:
             if agg in sample_invalid and 'c' in sample_invalid[agg]:
                 continue
             lamb_c = valid_c_f[agg]/num_f
+            self.stats.incr('patcand.global')
             if valid_c_f[agg] >= self.config.supp_g and lamb_c > self.config.lamb:
                 log.info("found global pattern P = (%s, %s, %s, const)", f, v, agg)
                 self.glob.append(self.addGlobal(f, v, agg, 'const', self.config.theta_c, lamb_c,
@@ -830,6 +874,7 @@ class PatternFinder:
             if agg in sample_invalid and 'l' in sample_invalid[agg]:
                 continue
             lamb_l = valid_l_f[agg]/num_f
+            self.stats.incr('patcand.global')
             if valid_l_f[agg] >= self.config.supp_g and lamb_l > self.config.lamb:
                 log.info(
                     "found global pattern P = (%s, %s, %s, linear)", f, v, agg)
