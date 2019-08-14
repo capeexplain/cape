@@ -147,13 +147,13 @@ class CAPE_UI:
 		   table_index +=1
 
 		# self.pub_dict = {"dict_name":"pub",
-		# "global_name":"dev.pub_global",
-		# "local_name":"dev.pub_local"
+		# "global_name":"pattern.pub_global",
+		# "local_name":"pattern.pub_local"
 		# }
 
 		# self.crime_dict = {"dict_name":"crime",
-		# "global_name": "dev.crime_global",
-		# "local_name":"dev.crime_local"
+		# "global_name": "pattern.crime_global",
+		# "local_name":"pattern.crime_local"
 		# }
 
 
@@ -318,8 +318,8 @@ class CAPE_UI:
 		self.plot_data_convert_dict[self.agg_name] = 'numeric'
 		self.query_data_convert_dict[self.agg_name] = 'float'
 
-		self.assigned_global_table = 'dev.{}_global'.format(self.cur_table_name)
-		self.assigned_local_table = 'dev.{}_local'.format(self.cur_table_name)
+		self.assigned_global_table = 'pattern.{}_global'.format(self.cur_table_name)
+		self.assigned_local_table = 'pattern.{}_local'.format(self.cur_table_name)
 
 		model = TableModel(dataframe=self.original_query_result_df)
 		self.query_result_table.updateModel(model)
@@ -529,7 +529,7 @@ class CAPE_UI:
 		config.conn = self.config.conn
 		config.cur = self.config.cur
 		config.query_table_name = self.cur_table_name
-		eg = ExplanationGenerator(config, {'pattern_table':'dev.{}'.format(self.cur_table_name),'query_result_table':self.cur_table_name})
+		eg = ExplanationGenerator(config, {'pattern_table':'pattern.{}'.format(self.cur_table_name),'query_result_table':self.cur_table_name})
 		eg.initialize() 
 		col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
 		exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])

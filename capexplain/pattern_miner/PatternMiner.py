@@ -566,7 +566,7 @@ class PatternFinder:
                             global_dev_neg[i][agg]['c'], dev_neg)
                         # self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
                         log.debug("local constant pattern holds: (f: %s, %s, %s, agg: %s, GOF: %s) - dev-:%f - dev+:%f",
-                                  f[i], fval, v[i], agg, theta_l, global_dev_neg[i][agg]['c'], global_dev_pos[i][agg]['c'])
+                                  f[i], fval, v[i], agg, theta_c, global_dev_neg[i][agg]['c'], global_dev_pos[i][agg]['c'])
                         pattern.append(self.addLocal(f[i], fval, v[i], agg, 'const', theta_c, describe, 'NULL',
                                                      dev_pos, dev_neg))
                         self.stats.incr('patterns.local')

@@ -144,7 +144,7 @@ class User_Query_Frame:
 		self.agg_attr['values'] = self.shown_attrs
 
 		table_name = self.table.get()
-		q = "select distinct substring( agg from '(sum|max|avg|min|count)') as agg from dev." +str(table_name)+'_global'
+		q = "select distinct substring( agg from '(sum|max|avg|min|count)') as agg from pattern." +str(table_name)+'_global'
 		agg_df = pd.read_sql(q,self.conn)
 		agg_list = agg_df['agg'].values.tolist()
 		self.agg_type['values'] = agg_list
