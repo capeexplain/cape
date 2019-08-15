@@ -51,7 +51,7 @@ Cape currently only supports PostgreSQL as a backend database (version 9 or high
 
 ## Mining Patterns
 
-Use `capexplain mine [OPTIONS]` to mine patterns. Cape will store the discovered patterns in the database. The "mined" patterns will be stored in a created schema called `pattern`,so the pattern tables generated after running `mine` command are `patterns.{target_table}_global` and `patterns.{target_table}_local`. At the minimum you have to tell Cape how to connect to the database you want to use and which table it should generate patterns for. Run `capexplain help mine` to get a list of all supported options for the mine command. The options needed to specify the target table and database connection are:
+Use `capexplain mine [OPTIONS]` to mine patterns. Cape will store the discovered patterns in the database. The "mined" patterns will be stored in a created schema called `pattern`, and the pattern tables generated after running `mine` command are `patterns.{target_table}_global` and `patterns.{target_table}_local`. At the minimum you have to tell Cape how to connect to the database you want to use and which table it should generate patterns for. Run `capexplain help mine` to get a list of all supported options for the mine command. The options needed to specify the target table and database connection are:
 
 ~~~shell
 -h ,--host <arg>               - database connection host IP address (DEFAULT: 127.0.0.1)

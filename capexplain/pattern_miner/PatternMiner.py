@@ -15,8 +15,6 @@ from capexplain.utils import printException, CombinationsWithLen, progress_iter,
 from capexplain.fd.fd import closure
 from capexplain.cl.cfgoption import DictLike
 from capexplain.cl.instrumentation import ExecStats
-from capexplain.gui.DBinfo import DBinfo
-
 
 
 # setup logging
@@ -182,52 +180,19 @@ class PatternFinder:
 
         log.debug("possible grouping attributes: %s", self.grouping_attr)
 
-        # for col in self.schema:
-        #     try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
-        #         self.config.conn.execute(
-        #             "SELECT CAST("+col+" AS NUMERIC) FROM "+self.config.table)
-        #         self.num.append(col)
-        #     except:
-        #         continue
-        # if self.config.manual_num:
-        #     self.setNumeric()
-        # else:
-        #     self.summable = self.num
-        # log.debug("tables has numerical attributes %s and summable attributes %s",
-        #           self.num, self.summable)
-
-        self.num = []
-        dbinfo = DBinfo(self.config.conn)
-        plot_data_convert_dict,query_data_convert_dict = dbinfo.get_db_data_type(self.config.table)
-
-        str_attr_list = []
-        for k,v in query_data_convert_dict.items():
-            print(str(k) + ': '+ str(v))
-            if v=='str':
-                str_attr_list.append(k)
-            else:
-                self.num.append(k)
-
-        for a in str_attr_list:
-            float_q = "select cast("+a+" AS float) from " + self.config.table + ";" # check if this field is "numerical_string"
-            check_dot_q = "select count(*) as dot_num from "+self.config.table+" WHERE CAST("+a+ " AS varchar) LIKE '%%.%%';" # then check if this field is float or int
-            print(check_dot_q)
-            try:
-                x = pd.read_sql(float_q, self.config.conn)
-                print('found a numeric-like string field')
-                m = pd.read_sql(check_dot_q,self.config.conn)
-                print(m)
-                if(pd.read_sql(check_dot_q,self.config.conn)['dot_num'][0] > 0):
-                    self.float_like_str.append(a)
-                    print('found a float-like string: ' + str(a))
-                else:
-                    print('found a int-like string: ' + str(a))
-                    self.int_like_str.append(a)
-            except Exception as e:
-                print('found an error')
-
-
-        self.setNumeric()
+        for col in self.schema:
+            try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
+                self.config.conn.execute(
+                    "SELECT CAST("+col+" AS NUMERIC) FROM "+self.config.table)
+                self.num.append(col)
+            except:
+                continue
+        if self.config.manual_num:
+            self.setNumeric()
+        else:
+            self.summable = self.num
+        log.debug("tables has numerical attributes %s and summable attributes %s",
+                  self.num, self.summable)
 
     def progress(self, iter, desc=None):
         return progress_iter(iter=iter, desc=desc, showProgress=self.config.showProgress)
@@ -238,54 +203,20 @@ class PatternFinder:
         self.num = []
         self.grouping_attr = []
         self.group_rows = {}
-        self.float_like_str = []
-        self.int_like_str  = []
 
     def setNumeric(self):
-        # print("Current Numeric: ")
-        print("""We Found some string-type fields that contains only numerical values, we'd like to double-check with you before we mine the pattern
-            since this issue could cause missing patterns you expected""")
-
-        user_cast_int_attrs = []
-        user_cast_float_attrs = []
-        print(self.float_like_str)
-        print(self.int_like_str)
-        print("now the self.num is")
+        print("Current Numeric: ")
         print(self.num)
-        if input('Redefine those strings as numeric type? (y/n, default n)') == 'y':
-            if(not self.float_like_str):
-                pass
-            else:
-                for attr in self.float_like_str:
-                    keep = input('Keep '+attr+' as string(y/n,default n)')
-                    if keep == 'y':
-                        continue
-                    else:
-                        user_cast_float_attrs.append(attr)
-                        self.num.append(attr)
-                        print('ok, added to our todo-list')
-            if(not self.int_like_str):
-                pass
-            else:
-                for attr in self.int_like_str:
-                    print(self.int_like_str)
-                    keep = input('Keep '+attr+' as string(y/n,default n)')
-                    if keep == 'y':
-                        continue
-                    else:
-                        user_cast_int_attrs.append(attr)
-                        self.num.append(attr)
-                        print('ok, added to our todo-list')
-            if(len(user_cast_int_attrs)!=0):
-                for n in user_cast_int_attrs:
-                    self.config.conn.execute("ALTER TABLE " + self.config.table +" ALTER COLUMN " +n+" TYPE INT using "+n+"::integer;")
-            if(len(user_cast_float_attrs)!=0):
-                for n in user_cast_float_attrs:
-                    self.config.conn.execute("ALTER TABLE " + self.config.table +" ALTER COLUMN " +n+" TYPE FLOAT using "+n+"::float;")
-        if(not self.num):
-            self.summable = []
-        else:
-            self.summable = self.num
+        if input('Redefine? (y/n, default n)') == 'y':
+            num = []
+            for attr in self.num:
+                keep = input('Keep '+attr+' as Numeric?(y/n,default y)')
+                if keep == 'n':
+                    continue
+                else:
+                    num.append(attr)
+            self.num = num
+            self.summable = [attr for attr in self.summable if attr in num]
         print("Current Summable: ")
         print(self.summable)
         if input('Redefine? (y/n, default n)') == 'y':
