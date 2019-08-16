@@ -51,7 +51,7 @@ Cape currently only supports PostgreSQL as a backend database (version 9 or high
 
 ## Mining Patterns
 
-Use `capexplain mine [OPTIONS]` to mine patterns. Cape will store the discovered patterns in the database. The "mined" patterns will be stored in a created schema called `pattern`, and the pattern tables generated after running `mine` command are `patterns.{target_table}_global` and `patterns.{target_table}_local`. At the minimum you have to tell Cape how to connect to the database you want to use and which table it should generate patterns for. Run `capexplain help mine` to get a list of all supported options for the mine command. The options needed to specify the target table and database connection are:
+Use `capexplain mine [OPTIONS]` to mine patterns. Cape will store the discovered patterns in the database. The "mined" patterns will be stored in a created schema called `pattern`, and the pattern tables generated after running `mine` command are `pattern.{target_table}_global` and `pattern.{target_table}_local`. At the minimum you have to tell Cape how to connect to the database you want to use and which table it should generate patterns for. Run `capexplain help mine` to get a list of all supported options for the mine command. The options needed to specify the target table and database connection are:
 
 ~~~shell
 -h ,--host <arg>               - database connection host IP address (DEFAULT: 127.0.0.1)
@@ -70,11 +70,25 @@ capexplain mine -p test -d mydb -t employees
 
 ### Mining algorithm parameters
 
-Cape's mining algorithm takes 
+Cape's mining algorithm takes the following arguments:
+
+~~~shell
+--gof-const <arg>              - goodness-of-fit threshold for constant regression (DEFAULT: 0.1)
+--gof-linear <arg>             - goodness-of-fit threshold for linear regression (DEFAULT: 0.1)
+--confidence <arg>             - global confidence threshold
+-r ,--regpackage <arg>         - regression analysis package to use {'statsmodels', 'sklearn'} (DEFAULT: statsmodels)
+--local-support <arg>          - local support threshold (DEFAULT: 10)
+--global-support <arg>         - global support thresh (DEFAULT: 100)
+-f ,--fd-optimizations <arg>   - activate functional dependency detection and optimizations (DEFAULT: False)
+-a ,--algorithm <arg>          - algorithm to use for pattern mining {'naive', 'optimized', 'naive_alternative'} (DEFAULT: optimized)
+--show-progress <arg>          - show progress meters (DEFAULT: True)
+
+~~~
 
 ### Running our "crime" data example
 
-We included a subset of the "Chicago Crime" dataset (https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/))in our repository for user to play with. To import this dataset in your postgres databse, under `/testdb` directory, run the following command template:
+We included a subset of the "Chicago Crime" dataset (https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/)
+in our repository for user to play with. To import this dataset in your postgres databse, under `/testdb` directory, run the following command template:
 
 ~~~shell
 psql -h <host> -U <postgres user name> -d <databse> < ~/cape/testdb/crime_demonstration.sql

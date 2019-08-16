@@ -121,7 +121,7 @@ class MinerStats(ExecStats):
                 'F,V'
                 }
 
-    TIME_TABLE_NAME = 'time_detail'
+    TIME_TABLE_NAME = 'pattern.time_detail'
 
 
 # ********************************************************************************
