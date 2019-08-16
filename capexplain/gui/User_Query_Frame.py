@@ -82,6 +82,7 @@ class User_Query_Frame:
         self.first_bracket.grid(row=2,column=4,sticky=E)
         self.agg_attr = ttk.Combobox(self.select_frame,width=8,state='readonly')
         self.agg_attr.bind('<<ComboboxSelected>>', self.update_query_frame)
+        
         self.agg_attr.grid(row=2,column=5,sticky='ew')
         self.second_bracket = Label(self.select_frame,text=')')
         self.second_bracket.grid(row=2,column=6,sticky=W)
@@ -182,7 +183,6 @@ class User_Query_Frame:
         alias_name = self.alias.get().lower()
         table_name = self.from_where.get()
         agg_function=self.agg_type.get()+'('+self.agg_attr.get()+')'
-
         user_agg =self.agg_type.get()+'_'+self.agg_attr.get()
 
         query = "SELECT " +self.select_clause.get() + ","+agg_function+ " as " + alias_name+\

@@ -104,15 +104,19 @@ class Local_Pattern_Frame:
 
                 self.plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
                 variable_name = self.chosen_row['variable'][0]
+                print(self.chosen_row)
                 intercept_value = self.chosen_row['param']['Intercept']
                 slope_name = list(self.chosen_row['param'])[1]
-                slope_value = float(self.chosen_row['param'][slope_name])
+                print("slope name " + str(slope_name))
+                slope_value = self.chosen_row['param'][slope_name]
 
                 draw_line_df = self.pattern_data_df[[variable_name]]
                 draw_scatter_df = self.pattern_data_df[[variable_name,self.agg_alias]]
                 low_outlier_df, high_outlier_df = self.get_outlier_frame(self.chosen_row, self.pattern_data_df)
 
                 self.plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Pattern Model")
+                print("slope value" + str(slope_value))
+                print("intercept value" +str(intercept_value))
                 self.plotter.plot_2D_scatter(draw_scatter_df,x=variable_name,y=self.agg_alias,label=self.agg_alias)
                 if(low_outlier_df.empty is False):
                     self.plotter.plot_2D_scatter(low_outlier_df,x=variable_name, y=self.agg_alias, 

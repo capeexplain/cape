@@ -23,7 +23,7 @@ class DBinfo:
 
     def __init__(self,conn=None):
         self.conn = conn
-
+        self.cur = self.conn.cursor()
     def get_table_name(self):  # get table names in current connection
 
         extract_table_query = """
@@ -64,9 +64,9 @@ class DBinfo:
 
     def get_db_data_type(self,table_name):
 
-        pg_numeric_list = ['smallint','integer','bigint','decimal','numeric','real','double precision','smallserial','serial','bigserial']
-        pg_int_list = ['smallint','integer','bigint','smallserial','serial','bigserial']
-        pg_float_list = ['decimal','numeric','real','double precision']
+        # pg_numeric_list = ['smallint','integer','bigint','decimal','numeric','real','double precision','smallserial','serial','bigserial']
+        # pg_int_list = ['smallint','integer','bigint','smallserial','serial','bigserial']
+        # pg_float_list = ['decimal','numeric','real','double precision']
         data_type_query = "SELECT column_name, data_type FROM information_schema.columns"+\
                           " WHERE table_name = \'"+table_name+"\';"
         data_type_df = pd.read_sql(data_type_query,self.conn)
@@ -78,16 +78,29 @@ class DBinfo:
         plot_data_convert_dict = dict.fromkeys(column_name_list, None)
 
 
+        # for n in data_type_list:
+        #     if(n[1] in pg_numeric_list):
+        #         plot_data_convert_dict[n[0]] = 'numeric'
+        #         if(n[1] in pg_int_list):
+        #             query_data_convert_dict[n[0]]='int'
+        #         else:
+        #             query_data_convert_dict[n[0]]='float'
+        #     else:
+        #         query_data_convert_dict[n[0]] = 'str'
+        #         plot_data_convert_dict[n[0]]='str'
+
         for n in data_type_list:
-            if(n[1] in pg_numeric_list):
+            try:
+                print("SELECT " + n[0] + '::numeric FROM crime_demo;')
+                self.cur.execute("SELECT " + n[0] + '::numeric FROM crime_demo;')
+                self.conn.commit()
                 plot_data_convert_dict[n[0]] = 'numeric'
-                if(n[1] in pg_int_list):
-                    query_data_convert_dict[n[0]]='int'
-                else:
-                    query_data_convert_dict[n[0]]='float'
-            else:
+                query_data_convert_dict[n[0]] = 'numeric'
+            except:
+                self.conn.rollback()
+                plot_data_convert_dict[n[0]] = 'str'
                 query_data_convert_dict[n[0]] = 'str'
-                plot_data_convert_dict[n[0]]='str'
+
 
         logger.debug(plot_data_convert_dict)
         logger.debug(query_data_convert_dict)
@@ -97,10 +110,10 @@ class DBinfo:
 
 
 if __name__ == "__main__":
-    conn = psycopg2.connect(dbname="antiprov",user="antiprov",host="127.0.0.1",port="5432",password='1234')
+    conn = psycopg2.connect(dbname="capetest",user="antiprov",host="127.0.0.1",port="5432",password='1234')
     dbinfo = DBinfo(conn)
 
-    dbinfo.get_db_data_type('pub')
+    dbinfo.get_db_data_type('crime_demo')
 
 
 

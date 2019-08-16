@@ -378,13 +378,15 @@ class CAPE_UI:
             # logger.debug("model_name"+model_name)
             global_partition = self.global_pattern_table.model.df.iloc[int(n)]['partition']
             global_predictor = self.global_pattern_table.model.df.iloc[int(n)]['predictor']
+            global_agg = self.global_pattern_table.model.df.iloc[int(n)]['agg']
 
             g_filter_l_query = " select array_to_string(fixed,',') as Partition,array_to_string(variable,',') as Predictor,"+\
             "array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
             "theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
             " where array_to_string(fixed,',')='"+global_partition+\
             "' and array_to_string(variable,',')='"+global_predictor+\
-            "' and model = '"+model_name+"';"
+            "' and model = '"+model_name+\
+            "' and agg = '"+global_agg+"';"
             self.local_output_pattern_df = pd.read_sql(g_filter_l_query,self.conn)
             logger.debug(g_filter_l_query)
 
@@ -661,7 +663,7 @@ class CAPE_UI:
         "array_to_string(fixed_value,',') as partition_values,agg,model,fixed,fixed_value,variable,"+\
         "theta,param,stats,dev_pos,dev_neg from "+self.assigned_local_table+\
         " where array_to_string(fixed_value,',')='"+chosen_row['partition_values']+"'"+\
-        " and array_to_string(variable,',')='"+chosen_row['predictor']+"' and model = '"+chosen_row['model']+"';"
+        " and array_to_string(variable,',')='"+chosen_row['predictor']+"' and model = '"+chosen_row['model']+"' and agg='"+chosen_row['agg']+"';"
         logger.debug(fetch_full_chosen_row_info)
         full_chosen_row = pd.read_sql(fetch_full_chosen_row_info,self.conn)
 
@@ -689,19 +691,27 @@ class CAPE_UI:
         # logger.debug(partition_value_list)
 
 
-        for n in range(len(partition_attr_list)):
-            if(self.query_data_convert_dict[partition_attr_list[n]]=='str'):
-                    condition = "{} =\'{}\'".format(partition_attr_list[n],partition_value_list[n])
-            elif(self.query_data_convert_dict[partition_attr_list[n]]=='float'):
-                condition = "{} = {}::float".format(partition_attr_list[n],partition_value_list[n])
-            else:
-                condition = "{} = {}::int".format(partition_attr_list[n],partition_value_list[n])
-            where_clause_list.append(condition)
+        # for n in range(len(partition_attr_list)):
+        #     if(self.query_data_convert_dict[partition_attr_list[n]]=='str'):
+        #             condition = "{} =\'{}\'".format(partition_attr_list[n],partition_value_list[n])
+        #     elif(self.query_data_convert_dict[partition_attr_list[n]]=='float'):
+        #         condition = "{} = {}::float".format(partition_attr_list[n],partition_value_list[n])
+        #     else:
+        #         condition = "{} = {}::int".format(partition_attr_list[n],partition_value_list[n])
+        #     where_clause_list.append(condition)
 
-        if(len(where_clause_list)==1):
-            where_clause = where_clause_list[0]
-        else:
-            where_clause = " and ".join(where_clause_list)
+        for n in range(len(partition_attr_list)):
+            try:
+                self.cur.execute("SELECT " + partition_attr_list[n] + '::numeric FROM user_query;')
+                self.conn.commit()
+                condition = '{}::numeric = {}::numeric'.format(partition_attr_list[n],partition_value_list[n])
+                where_clause_list.append(condition)
+            except:
+                self.conn.rollback()
+                condition = "{} =\'{}\'".format(partition_attr_list[n],partition_value_list[n])
+                where_clause_list.append(condition)
+
+        where_clause = " and ".join(where_clause_list)
 
         if (pred_attr_list is not None):
 

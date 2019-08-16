@@ -32,6 +32,8 @@ stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
 
+coded = re.compile('(coded\_).*')
+
 
 class Exp_Frame:
 
@@ -84,7 +86,9 @@ class Exp_Frame:
         self.rel_pattern_part_list = self.rel_pattern_part.split(',')
         self.rel_pattern_pred_list = self.rel_pattern_pred.split(',')
         self.exp_tuple_score = float(self.exp_chosen_row['Score'])
-        self.drill_attr = [self.exp_chosen_row['Drill_Down_To'].split(',')]
+        self.drill_attr = self.exp_chosen_row['Drill_Down_To'].split(',')
+        print("self.drill_attr:")
+        print(self.drill_attr)
         self.drill_model = self.exp_chosen_row['refinement_model']
         self.drill_param = self.exp_chosen_row['drill_param']
 
@@ -161,13 +165,13 @@ class Exp_Frame:
 
         if(len(self.none_drill_down_df)>=50):
 
-            self.text_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.rel_plotter.add_text("Cannot plot because the size of the data is so large!")
 
 
         elif(len(self.rel_pattern_pred_list)>2):
 
-            self.text_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.rel_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
 
 
@@ -208,7 +212,7 @@ class Exp_Frame:
                 explanation_df = explanation_df[[x,y]]
 
                 self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=5,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=5,label="Explanation")
                 self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -255,7 +259,7 @@ class Exp_Frame:
                 self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
                 self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
                 self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
-                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='b',marker='^',size=250,label="Explanation")
+                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='g',marker='^',size=250,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -269,9 +273,10 @@ class Exp_Frame:
                 x = self.rel_pattern_pred_list[0]
                 y = self.rel_pattern_agg
 
-                intercept_value = self.rel_param['Intercept']
                 slope_name = list(self.rel_param)[1]
                 slope_value = float(self.rel_param[slope_name])
+
+                intercept_value = self.rel_param['Intercept']
 
                 draw_line_df = copy.deepcopy(self.none_drill_down_df[[x]])
 
@@ -302,7 +307,7 @@ class Exp_Frame:
                 self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Explanation Model")
                 self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,label=self.rel_pattern_agg)
                 self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=1,label="User Question")
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=2,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=2,label="Explanation")
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
                 self.rel_plotter.set_title("Pattern Graph")
@@ -314,13 +319,13 @@ class Exp_Frame:
 
         if(len(self.none_drill_down_df)>=50):
 
-            self.text_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.rel_plotter.add_text("Cannot plot because the size of the data is so large!")
 
 
         elif(len(self.rel_pattern_pred_list)>2):
             
-            self.text_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.rel_plotter.add_text("Cannot plot because the dimension of the data is higher than 2!")
 
 
@@ -361,7 +366,7 @@ class Exp_Frame:
 
                 self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
                 self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=250,zorder=0,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=0,label="Explanation")
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
                 self.rel_plotter.set_title("User Question Graph")
@@ -433,7 +438,7 @@ class Exp_Frame:
                 self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,label=self.rel_pattern_agg)
                 self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=150,zorder=1,label="User Question")
                 logger.debug(explanation_df)
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='b',marker='^',size=150,zorder=0,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=150,zorder=0,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -444,12 +449,14 @@ class Exp_Frame:
     def load_drill_exp_graph(self):
 
         if(len(self.none_drill_down_df)>=50):
+            self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.drill_plotter.add_text("Cannot plot because the size of the data is so large!")
 
         elif(len(self.rel_pattern_pred_list)>2):
+            self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.drill_plotter.add_text("Cannot plot because the number of dimension of data is higher than 2!")
 
-        if(self.drill_model=='const'):
+        elif(self.drill_model=='const'):
 
             if(len(self.drill_attr)==1):
                 self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
@@ -459,24 +466,11 @@ class Exp_Frame:
                 y=self.rel_pattern_agg
 
                 self.drill_plotter.plot_2D_const(const,label="Refined Explanation Model")
-                # self.drill_plotter.plot_categorical_scatter_2D(x,y)
 
-                common_cols = self.rel_pattern_part_list+ self.drill_attr+self.rel_pattern_pred_list
+                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
 
-
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='b',marker='^',size=250,zorder=10,label="Explanation")
-                logger.debug("After Drilldown explanation:")
-                logger.debug(self.drill_plotter.x_max)
-                logger.debug(self.drill_plotter.x_min)
-                logger.debug(self.drill_plotter.y_max)
-                logger.debug(self.drill_plotter.y_min)
                 self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
-                logger.debug(copy.deepcopy(self.drill_down_df))
-                logger.debug("After Drilldown scatters:")
-                logger.debug(self.drill_plotter.x_max)
-                logger.debug(self.drill_plotter.x_min)
-                logger.debug(self.drill_plotter.y_max)
-                logger.debug(self.drill_plotter.y_min)
+
                 self.drill_plotter.set_x_label(x)
                 self.drill_plotter.set_y_label(y)
                 self.drill_plotter.set_title("Refined Pattern Explanation")
@@ -518,30 +512,27 @@ class Exp_Frame:
 
             if(len(self.drill_attr)==1):
                 self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
-                x = self.drill_attr[0]
+                # x = self.drill_attr[0]
+                x=self.rel_pattern_pred_list[0]
+
+                logger.debug(x)
                 y = self.rel_pattern_agg
 
                 intercept_value = self.drill_param['Intercept']
                 slope_name = list(self.drill_param)[1]
                 slope_value = float(self.drill_param[slope_name])
 
-                draw_line_df = self.none_drill_down_df[[x]]
-
-                common_cols = self.rel_pattern_part_list+self.drill_attr
-
-                explanation_df = pd.merge(self.drill_down_df,self.explanation_df,on=common_cols)
-
-                explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
-
-                explanation_df = explanation_df[[x,y]]
+                logger.debug(self.drill_down_df)
+                draw_line_df = self.drill_down_df[[x]]
 
                 # logger.debug(explanation_df)
-                self.drill_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value)
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df)    ,x=x,y=y)
-                self.drill_plotter.plot_2D_scatter(explanation_df,x=x,y=y,zorder=1)
+                self.drill_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Refined Explanation Model")
+                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y)
+                self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,zorder=1)
+                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
                 self.drill_plotter.set_x_label(x)
                 self.drill_plotter.set_y_label(y)
-                self.drill_plotter.set_title("Pattern Graph")
+                self.drill_plotter.set_title("Refined Pattern Explanation")
 
         self.drill_canvas.draw()
 
@@ -623,7 +614,7 @@ class Exp_Frame:
 
         exp_list = []
         for k,v in exp_tuple_dict.items():
-            if(k==self.rel_pattern_agg or k in self.rel_pattern_part.split(',')):
+            if(k==self.rel_pattern_agg or k in self.rel_pattern_part.split(',') or coded.search(k) is not None):
                 continue
             else:
                 exp_list.append(str(k)+"="+str(v))
