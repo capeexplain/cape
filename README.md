@@ -70,7 +70,16 @@ capexplain mine -p test -d mydb -t employees
 
 ### Mining algorithm parameters
 
-Cape's mining algorithm takes
+Cape's mining algorithm takes 
+
+### Running our "crime" data example
+
+We included a subset of the "Chicago Crime" dataset (https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/))in our repository for user to play with. To import this dataset in your postgres databse, under `/testdb` directory, run the following command template:
+
+~~~shell
+psql -h <host> -U <postgres user name> -d <databse> < ~/cape/testdb/crime_demonstration.sql
+~~~
+then run the `capexplain` commands accordingly to explore this example.
 
 ## Explaining Outliers
 
