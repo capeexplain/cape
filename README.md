@@ -82,6 +82,7 @@ Cape's mining algorithm takes the following arguments:
 -f ,--fd-optimizations <arg>   - activate functional dependency detection and optimizations (DEFAULT: False)
 -a ,--algorithm <arg>          - algorithm to use for pattern mining {'naive', 'optimized', 'naive_alternative'} (DEFAULT: optimized)
 --show-progress <arg>          - show progress meters (DEFAULT: True)
+--manual-config                - manually configure numeric-like string fields (treat fields as string or numeric?) (DEFAULT: False)
 
 ~~~
 
@@ -91,7 +92,7 @@ We included a subset of the "Chicago Crime" dataset (https://data.cityofchicago.
 in our repository for user to play with. To import this dataset in your postgres databse, under `/testdb` directory, run the following command template:
 
 ~~~shell
-psql -h <host> -U <postgres user name> -d <databse> < ~/cape/testdb/crime_demonstration.sql
+psql -h <host> -U <user name> -d <local database name where you want to store our example table> < ~/cape/testdb/crime_demonstration.sql
 ~~~
 then run the `capexplain` commands accordingly to explore this example.
 
