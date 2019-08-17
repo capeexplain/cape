@@ -1597,7 +1597,7 @@ def main(argv=[]):
     eg = ExplanationGenerator(user_input_config)
     # eg.doExplain()
     eg.initialize()
-    # elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
+    elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
     # elist = eg.do_explain_online({'name': 'Kirsten Bergmann', 'venue': 'iva', 'sum_pubcount': 6.0, 'direction': 'high', 'lambda': 0.2})
 
     # elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})

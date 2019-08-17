@@ -188,6 +188,7 @@ class PatternFinder:
             except:
                 continue
         if self.config.manual_num:
+            self.summable = self.num
             self.setNumeric()
         else:
             self.summable = self.num

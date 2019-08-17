@@ -188,7 +188,6 @@ class Plotter:
         logger.debug(var_max)
 
         X1 = np.linspace(var_min-1,var_max+1,100)
-        # X = x.astype('float64')
         y_vals = slope * X1 + intercept
 
         logger.debug("y_vals is:")

@@ -140,11 +140,13 @@ class CAPE_UI:
         self.db_info_dict = self.db_info.get_db_info()
 
         table_index = 0
-        for key,value in self.db_info_dict.items(): 
-           self.table_view.insert('', 'end','item'+str(table_index),text = key)
-           for n in value:
-               self.table_view.insert('item'+str(table_index),'end',text=n)
-           table_index +=1
+        if('community_area_loc' in self.db_info_dict.keys()):
+            del self.db_info_dict["community_area_loc"]
+        for key,value in self.db_info_dict.items():
+            self.table_view.insert('', 'end','item'+str(table_index),text = key)
+            for n in value:
+                self.table_view.insert('item'+str(table_index),'end',text=n)
+            table_index +=1
 
         # self.pub_dict = {"dict_name":"pub",
         # "global_name":"pattern.pub_global",
