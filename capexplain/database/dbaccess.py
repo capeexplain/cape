@@ -42,6 +42,7 @@ class DBConnection:
         self.conn=None
         log.debug("create DBconnection info: %s", self.__dict__)
 
+
     # overwrite __getitem__ to allow dictory style access to options
     def __getitem__(self, key):
         if key not in self.__dict__:
@@ -111,3 +112,9 @@ class DBConnection:
             raise SQLException("cannot create table: no database connection")
         stmtStr = CREATE_TABLE_TEMP.format(tableName, ",".join(attrs + constraints))
         conn.execute(stmtStr)
+
+
+if __name__ =='__main__':
+    dbc = DBConnection()
+    dbc['local_table'] = 'pub_large_no_domain_local'
+    print(dbc['local_table'])

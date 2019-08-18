@@ -17,8 +17,17 @@ from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
 from capexplain.cl.cfgoption import DictLike
 from capexplain.explanation_model.explanation_model import *
+#from build.lib.capexplain.database.dbaccess import DBConnection
 # setup logging
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s line %(lineno)d: %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
 
 TEST_ID = ''
 #********************************************************************************
@@ -27,7 +36,7 @@ class ExplConfig(DictLike):
 
     DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
     # DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
-    DEFAULT_PATTERN_TABLE = 'dev.pub_large_no_domain'
+    DEFAULT_PATTERN_TABLE = 'dev.pub'
     # DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
     DEFAULT_QUESTION_PATH = './input/user_question.csv'
 
@@ -64,17 +73,21 @@ class ExplConfig(DictLike):
         self.global_patterns =None
         self.schema = None
         self.global_patterns_dict = None
-
-        try:
-            self.conn = psycopg2.connect("host=localhost port=5436 dbname=antiprov user=antiprov")
-            self.cur = self.conn.cursor()
-        except psycopg2.OperationalError:
-            print('Fail to connect to the database!')
+        self.conn = self.cur = None
+#         try:
+#             self.conn = psycopg2.connect(dbname=DBConn.db,
+#                                          user=DBConn.user,
+#                                          host=DBConn.host,
+#                                          port=DBConn.port,
+#                                          password=DBConn.password)
+#             self.pattern_table = DBConn.local_table[:-6]
+#             self.cur = self.conn.cursor()
+#         except psycopg2.OperationalError:
+#             print('Fail to connect to the database!')
 
 
     def __str__(self):
         return self.__dict__.__str__()
-
 
 class TopkHeap(object):
     def __init__(self, k):
@@ -264,7 +277,6 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
 def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_name, res_table_name):
     local_patterns = []
     local_patterns_dict = {}
-    tF = get_F_value(F, t)
         
     if model_type is not None:
         mt_predicate = " AND model='{}'".format(model_type)
@@ -282,6 +294,7 @@ def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_na
             )
         # print(406, Fv, local_pattern_query)
     else:
+        tF = get_F_value(F, t)
         # local_pattern_query = '''SELECT * FROM {} WHERE array_to_string(fixed, ', ')='{}' AND 
         #     REPLACE(array_to_string(fixed_value, ', '), '"', '') = REPLACE('{}', '"', '') AND array_to_string(variable, ', ')='{}' AND
         #     agg='{}'{};'''.format(
@@ -1227,13 +1240,16 @@ def load_patterns(cur, pat_table_name, query_table_name):
             pattern_dict[1][f_key][v_key] = []
         pattern_dict[1][f_key][v_key].append(patterns[-1])
     schema_query = '''select column_name, data_type, character_maximum_length
-        from INFORMATION_SCHEMA.COLUMNS where table_name=\'{}\''''.format(query_table_name);
+        from INFORMATION_SCHEMA.COLUMNS where table_name=\'{}\'
+    '''.format(query_table_name);
     cur.execute(schema_query)
     res = cur.fetchall()
     schema = {}
     for s in res:
         schema[s[0]] = s[1]
     
+    # logger.debug('patterns')
+    # logger.debug(patterns)
     return patterns, schema, pattern_dict
 
 class ExplanationGenerator:
@@ -1255,22 +1271,30 @@ class ExplanationGenerator:
 
     def initialize(self):
         ecf = self.config
-        query_result_table = ecf.DEFAULT_RESULT_TABLE
-        pattern_table = ecf.DEFAULT_PATTERN_TABLE
+        query_result_table = ecf.query_result_table
+        pattern_table = ecf.pattern_table
         user_question_file = ecf.DEFAULT_QUESTION_PATH
         outputfile = ''
-        aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
-        
+        logger.debug(ecf)
+        logger.debug("pattern_table is")
+        logger.debug(pattern_table)
+
+        logger.debug("query_result_table is")
+        logger.debug(query_result_table)
+
         # print(opts)
         start = time.clock()
-        log.info("start explaining ...")
+        logger.info("start explaining ...")
         self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
-        log.debug("loaded patterns from database")
+        logger.debug("loaded patterns from database")
 
-        # self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
-        self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
+        if query_result_table.find('crime') == -1:
+            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        else:
+            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         #num_dis_norm = normalize_numerical_distance(data['df'])
         self.num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
@@ -1293,7 +1317,7 @@ class ExplanationGenerator:
                     if is_float(uq_tuple[v]):
                         row_data[v] = float(uq_tuple[v])
                     elif is_integer(uq_tuple[v]):
-                        row_data[v] = float(long(uq_tuple[v]))
+                        row_data[v] = float((uq_tuple[v]))
                     else:
                         row_data[v] = uq_tuple[v]
                 if v not in schema and v != 'lambda' and v != 'direction':
@@ -1313,7 +1337,13 @@ class ExplanationGenerator:
             dir = 1
         else:
             dir = -1
+
+        if 'count_*' in row_data:
+            row_data['count'] = row_data['count_*']
         uq = {'target_tuple': row_data, 'dir':dir, 'query_result': []}
+
+        logger.debug("uq is")
+        logger.debug(uq)
 
         return [uq]
 
@@ -1321,16 +1351,22 @@ class ExplanationGenerator:
     def do_explain_online(self, uq_tuple):
 
         ecf = self.config
-        query_result_table = ecf.DEFAULT_RESULT_TABLE
-        pattern_table = ecf.DEFAULT_PATTERN_TABLE
+        query_result_table = ecf.query_result_table
+        pattern_table = ecf.pattern_table
         outputfile = ''
-        aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
+
+        logger.debug("pattern_table is")
+        logger.debug(pattern_table)
+
+        logger.debug("query_result_table is")
+        logger.debug(query_result_table)
         
         Q = self.wrap_user_question(self.global_patterns, self.global_patterns_dict, uq_tuple, self.schema)
 
-        log.debug("start finding explanations ...")
+        logger.debug("start finding explanations ...")
         
         start = time.clock()
         #regression_package = 'scikit-learn'
@@ -1344,7 +1380,7 @@ class ExplanationGenerator:
             
         end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
-        log.debug("finding explanations ... DONE")
+        logger.debug("finding explanations ... DONE")
 
         # for g_key in ecf.MATERIALIZED_DICT:
         #     for fv_key in ecf.MATERIALIZED_DICT[g_key]:
@@ -1356,22 +1392,22 @@ class ExplanationGenerator:
 
     def doExplain(self):
         # c=self.config
-        # log.info("start explaining ...")
+        # logger.info("start explaining ...")
         # start = time.clock()
         # data = load_data(c.query_result_file)
-        # log.debug("loaded query results from file")
+        # logger.debug("loaded query results from file")
         # constraints = load_constraints(ExplConfig.DEFAULT_CONSTRAINT_PATH)
-        # log.debug("loaded patterns from file")
+        # logger.debug("loaded patterns from file")
         # Q = load_user_question(c.user_question_file)
-        # log.debug("loaded user question from file")
+        # logger.debug("loaded user question from file")
         # category_similarity = CategorySimilarityMatrix(ExplConfig.EXAMPLE_SIMILARITY_MATRIX_PATH)
         # #category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
         # num_dis_norm = normalize_numerical_distance(data['df'])
         # end = time.clock()
-        # log.debug("done loading")
+        # logger.debug("done loading")
         # print('Loading time: ' + str(end-start) + 'seconds')
 
-        # log.debug("start finding explanations ...")
+        # logger.debug("start finding explanations ...")
         # start = time.clock()
         # #regression_package = 'scikit-learn'
         # regression_package = 'statsmodels'
@@ -1380,7 +1416,7 @@ class ExplanationGenerator:
         #                                                       aggregate_column, regression_package)
         # end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
-        # log.debug("finding explanations ... DONE")
+        # logger.debug("finding explanations ... DONE")
         
         # ofile = sys.stdout
         # if outputfile != '':
@@ -1417,9 +1453,9 @@ class ExplanationGenerator:
         
         # print(opts)
         start = time.clock()
-        log.info("start explaining ...")
+        logger.info("start explaining ...")
         global_patterns, schema, global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
-        log.debug("loaded patterns from database")
+        logger.debug("loaded patterns from database")
         # category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
         category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
@@ -1430,12 +1466,12 @@ class ExplanationGenerator:
         Q, global_patterns, global_patterns_dict = load_user_question_from_file(
             global_patterns, global_patterns_dict, user_question_file, 
             schema, conn, cur, pattern_table, query_result_table, None, category_similarity)
-        log.debug("loaded user question from file")
+        logger.debug("loaded user question from file")
 
         end = time.clock()
         print('Loading time: ' + str(end-start) + 'seconds')
 
-        log.debug("start finding explanations ...")
+        logger.debug("start finding explanations ...")
         
         start = time.clock()
         #regression_package = 'scikit-learn'
@@ -1450,7 +1486,7 @@ class ExplanationGenerator:
             
         end = time.clock()
         print('Total querying time: ' + str(end-start) + 'seconds')
-        log.debug("finding explanations ... DONE")
+        logger.debug("finding explanations ... DONE")
 
         ofile = sys.stdout
         if outputfile != '':
@@ -1562,6 +1598,8 @@ def main(argv=[]):
     # eg.doExplain()
     eg.initialize()
     elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
+    # elist = eg.do_explain_online({'name': 'Kirsten Bergmann', 'venue': 'iva', 'sum_pubcount': 6.0, 'direction': 'high', 'lambda': 0.2})
+
     # elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
     for e in elist:
         print(e.to_string())

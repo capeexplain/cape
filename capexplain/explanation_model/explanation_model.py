@@ -52,6 +52,18 @@ class Explanation(object):
         self.refinement_pattern = refinement_pattern
         # log.debug("created explanation:\n")
 
+    def ordered_tuple_string(self):
+        value_str = ''
+        agg = ''
+        for key in sorted(self.tuple_value.keys()):
+            if key.startswith('count') or key.startswith('sum'):
+                agg = key
+            else:
+                value_str += str(self.tuple_value[key]) + ','
+        if agg in self.tuple_value:
+            value_str += str(self.tuple_value[agg])
+        return value_str
+
     def to_string(self):
         e_tuple_str = ','.join(map(str, self.tuple_value.values()))
         # res_str = 'Top ' + str(j+1) + ' explanation:\n'

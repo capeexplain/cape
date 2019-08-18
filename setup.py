@@ -11,7 +11,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 PACKAGE = 'capexplain'
-VERSION = '0.1'
+VERSION = '0.3'
 
 setup(
     name=PACKAGE,
@@ -25,6 +25,7 @@ setup(
         'colorful>=0.4.1',
         'geopy',
         'idna>=2.7',
+        'matplotlib==3.0.2',
         'numpy>=1.14.5',
         'pandas==0.23.4',
         'patsy>=0.5.0',
@@ -35,16 +36,16 @@ setup(
         'requests>=2.19.1',
         'requests-toolbelt>=0.8.0',
         'scikit-learn>=0.19.2',
-        'scipy>=1.1.0',
+        'scipy==1.2.1',
         'six>=1.11.0',
         'sklearn>=0.0',
         'SQLAlchemy==1.2.10',
         'statsmodels>=0.9.0',
         'tqdm>=4.23.4',
         'urllib3<1.24,>=1.23',
-        'pandastable'
+        'pandastable>=0.12.0'
     ],
-    
+
     entry_points={
         'console_scripts': [
             'capexplain=capexplain.cape:main',
@@ -52,7 +53,7 @@ setup(
         ]
     },
 
-    description='Cape - a system for explaining outliers in aggregation results.',
+    description='Cape - a system for explaining outliers in aggregation results through counterbalancing.',
     long_description=long_description,
     long_description_content_type='text/markdown',
 
@@ -61,7 +62,7 @@ setup(
     keywords='db',
     platforms='any',
     license='Apache2',
-    
+
     classifiers=[
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',
