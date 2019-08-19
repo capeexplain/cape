@@ -34,10 +34,10 @@ TEST_ID = ''
 # Configuration for Explanation generation
 class ExplConfig(DictLike):
 
-    DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
-    # DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
-    DEFAULT_PATTERN_TABLE = 'dev.pub'
-    # DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
+    # DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
+    DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
+    # DEFAULT_PATTERN_TABLE = 'dev.pub'
+    DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
     DEFAULT_QUESTION_PATH = './input/user_question.csv'
 
     EXAMPLE_NETWORK_EMBEDDING_PATH = './input/NETWORK_EMBEDDING'
@@ -57,12 +57,12 @@ class ExplConfig(DictLike):
     REGRESSION_PACKAGES = [ 'scikit-learn', 'statsmodels' ]
     
     def __init__(self,
-                 query_result_table = DEFAULT_RESULT_TABLE,
-                 pattern_table = DEFAULT_PATTERN_TABLE,
-                 user_question_file = DEFAULT_QUESTION_PATH,
-                 outputfile = '',
-                 aggregate_column = DEFAULT_AGGREGATE_COLUMN,
-                 regression_package = 'statsmodels'
+                 query_result_table=DEFAULT_RESULT_TABLE,
+                 pattern_table=DEFAULT_PATTERN_TABLE,
+                 user_question_file=DEFAULT_QUESTION_PATH,
+                 outputfile='',
+                 aggregate_column=DEFAULT_AGGREGATE_COLUMN,
+                 regression_package='statsmodels'
     ):
         self.pattern_table = pattern_table
         self.query_result_table = query_result_table
@@ -1443,11 +1443,15 @@ class ExplanationGenerator:
         #         ofile.write('------------------------\n')
 
         ecf = self.config
-        query_result_table = ecf.DEFAULT_RESULT_TABLE
-        pattern_table = ecf.DEFAULT_PATTERN_TABLE
-        user_question_file = ecf.DEFAULT_QUESTION_PATH
+        # query_result_table = ecf.DEFAULT_RESULT_TABLE
+        # pattern_table = ecf.DEFAULT_PATTERN_TABLE
+        # user_question_file = ecf.DEFAULT_QUESTION_PATH
+        query_result_table = ecf.query_result_table
+        pattern_table = ecf.pattern_table
+        user_question_file = ecf.user_question_file
         outputfile = ''
-        aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        # aggregate_column = ecf.DEFAULT_AGGREGATE_COLUMN
+        aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
         
@@ -1591,8 +1595,6 @@ def main(argv=[]):
             user_input_config['outputfile'] = arg
         elif opt in ("-a", "--aggcolumn"):
             user_input_config['aggregate_column'] = arg
-
-    
 
     eg = ExplanationGenerator(user_input_config)
     # eg.doExplain()
