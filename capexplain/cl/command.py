@@ -112,7 +112,7 @@ class CmdOptions:
                 key = opt if (
                     option.cfgFieldName is None) else option.cfgFieldName
                 val = option.value
-                log.debug("option: {}:{}".format(key, val))
+                # log.debug("option: {}:{}".format(key, val))
                 if key in conn.getValidKeys():
                     conn[key] = val
                 elif key in config.getValidKeys():
