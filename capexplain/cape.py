@@ -101,11 +101,12 @@ def explainCommand(command, log):
 
     # setup configuration
     command.options.setupConfigAndConnection(dbconn, config)
-
     # create connection
     config.conn = dbconn.pgconnect()
     config.cur = config.conn.cursor()
-    config.pattern_table = dbconn.local_table[:-6]
+    # config.pattern_table = dbconn.local_table[:-6]
+    # print(config)
+    # config.pattern_table = config.pattern_table
     log.debug("connected to database")
 
     # do explaining
@@ -158,6 +159,8 @@ DB_OPTIONS = [ConfigOpt(longopt='host', shortopt='h', desc='database connection 
               ConfigOpt(longopt='port', shortopt='P', desc='database connection port',
                         otype=OptionType.Int, hasarg=True, defaultValue=5432)
               ]
+
+
 
 MINE_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
     ConfigOpt(longopt='target-table', shortopt='t',

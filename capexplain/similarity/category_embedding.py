@@ -129,7 +129,7 @@ class CategoryEmbedding(object):
                                                 ][-1][1] += row[aggr_col]
                 temp_col_list.append(col)
 
-        print(self.cate_val_cnt)
+        # print(self.cate_val_cnt)
         for col in self.cate_cols:
             print(col)
             cnt = 0
