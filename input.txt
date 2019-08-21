@@ -1,2 +1,2 @@
-community_area,primary_type,year,count,direction,lambda
-26,BATTERY,2011,16,low,0.0
+community_area,primary_type,year,count,direction
+20,ASSAULT,2002,141,low
