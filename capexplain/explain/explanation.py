@@ -843,7 +843,7 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
         lp2 = lp2_list[0]
 
         f_value = get_F_value(local_pattern[0], t_prime)
-        logger.debug(t_prime)
+        # logger.debug(t_prime)
         # f_value = get_F_value(sorted(local_pattern[0]), t_prime)
         tuples_same_F, agg_range, tuples_same_F_dict = get_tuples_by_F_V(local_pattern, lp2, f_value,
                                                                          # [get_V_value(local_pattern[2], t_prime), [[-3, 3]]],
@@ -1192,7 +1192,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
     l_pat_list = []
     res_list = []
     t_set = set(t.keys())
-    logger.debug(global_patterns_dict[0].keys())
+    # logger.debug(global_patterns_dict[0].keys())
     for v_key in global_patterns_dict[0]:
         # print(pat, pat[0])
         V_set = set(v_key[1:-1].replace("'", '').split(', '))
@@ -1220,7 +1220,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
 
     res_list = sorted(res_list, key=lambda x: (len(x[0][0]) + len(x[0][1]), x[1]))
     g_pat_list = list(map(lambda x: x[0], res_list))
-    logger.debug(g_pat_list)
+    # logger.debug(g_pat_list)
     return g_pat_list
 
 
