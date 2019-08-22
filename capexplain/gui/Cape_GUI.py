@@ -550,8 +550,9 @@ class CAPE_UI:
         config=ExplConfig()
         config.conn = self.config.conn
         config.cur = self.config.cur
-        config.query_table_name = self.cur_table_name
-        eg = ExplanationGenerator(config, {'pattern_table':'pattern.{}'.format(self.cur_table_name),'query_result_table':self.cur_table_name})
+        config.query_result_table = self.cur_table_name
+        config.pattern_table = 'pattern.{}'.format(self.cur_table_name)
+        eg = ExplanationGenerator(config)
         eg.initialize() 
         col_name = ['Explanation_Tuple',"Score",'From_Pattern',"Drill_Down_To","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"]
         exp_df = pd.DataFrame(columns=["From_Pattern","Drill_Down_To","Score","Distance","Outlierness","Denominator","relevent_model","relevent_param","refinement_model","drill_param"])
