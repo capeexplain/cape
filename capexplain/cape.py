@@ -105,15 +105,21 @@ def explainCommand(command, log):
     config.conn = dbconn.pgconnect()
     config.cur = config.conn.cursor()
     # config.pattern_table = dbconn.local_table[:-6]
-    # print(config)
+
     # config.pattern_table = config.pattern_table
     log.debug("connected to database")
 
     # do explaining
     log.debug("executing explain command")
-    e = ExplanationGenerator(config, None)
+    # e = ExplanationGenerator(config, None)
+    e = ExplanationGenerator(config, {'pattern_table': '{}'.format(config.pattern_table),
+                                       'query_result_table': config.query_result_table})
+    e.initialize()
     log.debug("created ExplanationGenerator")
-    e.doExplain()
+    # e.doExplain()
+    elist = e.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
+    for ee in elist:
+        print(ee.to_string())
     log.debug("explanation generation finished")
     config.conn.close()
 

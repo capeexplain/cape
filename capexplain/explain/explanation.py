@@ -4,7 +4,7 @@
 import sys, getopt
 import pandas, psycopg2
 import csv
-#import statsmodels.formula.api as smf
+# import statsmodels.formula.api as smf
 from sklearn import preprocessing
 import math
 import time
@@ -17,7 +17,8 @@ from capexplain.utils import *
 from capexplain.pattern_model.LocalRegressionPattern import *
 from capexplain.cl.cfgoption import DictLike
 from capexplain.explanation_model.explanation_model import *
-#from build.lib.capexplain.database.dbaccess import DBConnection
+
+# from build.lib.capexplain.database.dbaccess import DBConnection
 # setup logging
 # log = logging.getLogger(__name__)
 
@@ -28,16 +29,18 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-
 TEST_ID = ''
-#********************************************************************************
+
+
+# ********************************************************************************
 # Configuration for Explanation generation
 class ExplConfig(DictLike):
-
     # DEFAULT_RESULT_TABLE = 'pub_large_no_domain'
     DEFAULT_RESULT_TABLE = 'crime_clean_100000_2'
     # DEFAULT_PATTERN_TABLE = 'dev.pub'
     DEFAULT_PATTERN_TABLE = 'dev.crime_clean_100000'
+    # DEFAULT_RESULT_TABLE = 'crime_exp'
+    # DEFAULT_PATTERN_TABLE = 'dev.crime_exp'
     DEFAULT_QUESTION_PATH = './input/user_question.csv'
 
     EXAMPLE_NETWORK_EMBEDDING_PATH = './input/NETWORK_EMBEDDING'
@@ -54,8 +57,8 @@ class ExplConfig(DictLike):
     # global VISITED_DICT
     VISITED_DICT = dict()
 
-    REGRESSION_PACKAGES = [ 'scikit-learn', 'statsmodels' ]
-    
+    REGRESSION_PACKAGES = ['scikit-learn', 'statsmodels']
+
     def __init__(self,
                  query_result_table=DEFAULT_RESULT_TABLE,
                  pattern_table=DEFAULT_PATTERN_TABLE,
@@ -63,37 +66,38 @@ class ExplConfig(DictLike):
                  outputfile='',
                  aggregate_column=DEFAULT_AGGREGATE_COLUMN,
                  regression_package='statsmodels'
-    ):
+                 ):
         self.pattern_table = pattern_table
         self.query_result_table = query_result_table
         self.user_question_file = user_question_file
         self.outputfile = outputfile
         self.aggregate_column = aggregate_column
         self.regression_package = regression_package
-        self.global_patterns =None
+        self.global_patterns = None
         self.schema = None
         self.global_patterns_dict = None
         self.conn = self.cur = None
-#         try:
-#             self.conn = psycopg2.connect(dbname=DBConn.db,
-#                                          user=DBConn.user,
-#                                          host=DBConn.host,
-#                                          port=DBConn.port,
-#                                          password=DBConn.password)
-#             self.pattern_table = DBConn.local_table[:-6]
-#             self.cur = self.conn.cursor()
-#         except psycopg2.OperationalError:
-#             print('Fail to connect to the database!')
 
+    #         try:
+    #             self.conn = psycopg2.connect(dbname=DBConn.db,
+    #                                          user=DBConn.user,
+    #                                          host=DBConn.host,
+    #                                          port=DBConn.port,
+    #                                          password=DBConn.password)
+    #             self.pattern_table = DBConn.local_table[:-6]
+    #             self.cur = self.conn.cursor()
+    #         except psycopg2.OperationalError:
+    #             print('Fail to connect to the database!')
 
     def __str__(self):
         return self.__dict__.__str__()
+
 
 class TopkHeap(object):
     def __init__(self, k):
         self.topk = k
         self.data = []
- 
+
     def Push(self, elem):
         if len(self.data) < self.topk:
             heappush(self.data, elem)
@@ -104,14 +108,18 @@ class TopkHeap(object):
             topk_small = self.data[0]
             if elem.score > topk_small.score:
                 heapreplace(self.data, elem)
+
     def MinValue(self):
         # return min(list(map(lambda x: x[0], self.data)))
         return min(list(map(lambda x: x.score, self.data)))
+
     def MaxValue(self):
         # return max(list(map(lambda x: x[0], self.data)))
         return max(list(map(lambda x: x.score, self.data)))
+
     def TopK(self):
         return [x for x in reversed([heappop(self.data) for x in range(len(self.data))])]
+
     def HeapSize(self):
         return len(self.data)
 
@@ -126,7 +134,7 @@ def predict(local_pattern, t):
         if isinstance(local_pattern[7], str):
             params_str = local_pattern[7].split('\n')
             params_dict = {}
-            for i in range(0, len(params_str)-1):
+            for i in range(0, len(params_str) - 1):
                 p_cate = re.compile(r'(.*)\[T\.\s*(.*)\]\s+(-?\d+\.\d+)')
                 cate_res = p_cate.findall(params_str[i])
                 if len(cate_res) != 0:
@@ -156,11 +164,10 @@ def predict(local_pattern, t):
             else:
                 if v_attr in params_dict:
                     predictY += params_dict[v_attr] * float(t[v_attr])
-            
+
     return predictY
 
 
-        
 def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
     """Compute the similarity between two tuples t1 and t2 on their attributes var_attr
 
@@ -173,6 +180,8 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
     Returns:
         the Gower similarity between t1 and t2
     """
+    if 'domestic' in t1 or 'arrest' in t1:
+        return 1e10
     dis = 0.0
     cnt = 0
     if var_attr is None:
@@ -181,16 +190,16 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
 
     for v_col in var_attr:
         col = v_col.replace(' ', '')
-        
+
         if col not in t1 and col not in t2:
-            if col == 'name':
-                dis += 10000
-                cnt += 1
+            # if col == 'name':
+            #     dis += 10000
+            #     cnt += 1
             continue
         if col not in t1 or col not in t2:
-            if col == 'name':
-                dis += 10000
-                cnt += 1
+            # if col == 'name':
+            #     dis += 10000
+            #     cnt += 1
             #     if 1 > max_dis:
             #         max_dis = 1
             # else:
@@ -211,7 +220,7 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
             cnt += 1
             continue
 
-        if cat_sim.is_categorical(col):
+        if cat_sim.is_categorical(col) and col != 'year':
             t1_key = str(t1[col]).replace("'", '').replace(' ', '')
             t2_key = str(t2[col]).replace("'", '').replace(' ', '')
             s = 0
@@ -225,10 +234,10 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
                 dis += 1
                 max_dis = 1
             else:
-                dis += (((1.0/s)) * ((1.0/s))) / 100
+                dis += (((1.0 / s)) * ((1.0 / s))) / 100
                 # dis += (1-s) * (1-s)
-                if math.sqrt((((1.0/s)) * ((1.0/s)) - 1) / 100) > max_dis:
-                    max_dis = math.sqrt((((1.0/s)) * ((1.0/s)) - 1) / 100)
+                if math.sqrt((((1.0 / s)) * ((1.0 / s)) - 1) / 100) > max_dis:
+                    max_dis = math.sqrt((((1.0 / s)) * ((1.0 / s)) - 1) / 100)
             cnt += 1
         else:
             # print( num_dis_norm[col])
@@ -245,7 +254,7 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
             #         dis += math.pow(temp, 8)
             #     cnt += 1
 
-            if col not in num_dis_norm or num_dis_norm[col]['range'] is None:
+            if (col not in num_dis_norm or num_dis_norm[col]['range'] is None) and col != 'year':
                 if t1[col] == t2[col]:
                     dis += 0
                 else:
@@ -257,10 +266,11 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
                     if isinstance(t1[col], datetime.date):
                         # print(398, t1, t2)
                         # print(col, t1[col], t2[col])
-                        diff = datetime.datetime(t1[col].year, t1[col].month, t1[col].day) - datetime.datetime.strptime(t2[col], "%Y-%m-%d")
+                        diff = datetime.datetime(t1[col].year, t1[col].month, t1[col].day) - datetime.datetime.strptime(
+                            t2[col], "%Y-%m-%d")
                         temp = diff.days
                     else:
-                        # print(398, t1, t2)
+                        # print(263, t1, t2)
                         # print(col, t1[col], t2[col])
                         temp = abs(float(t1[col]) - float(t2[col]))
                     # if temp != 0:
@@ -270,14 +280,16 @@ def tuple_distance(t1, t2, var_attr, cat_sim, num_dis_norm, agg_col):
                     if temp > max_dis:
                         max_dis = temp
                 cnt += 1
-            
+    if 'year' in t1 and 'year' in t2 and 'community_area' in t1:
+        print(t1, t2, math.pow(dis, 0.5))
     return math.pow(dis, 0.5)
     # return max_dis
+
 
 def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_name, res_table_name):
     local_patterns = []
     local_patterns_dict = {}
-        
+
     if model_type is not None:
         mt_predicate = " AND model='{}'".format(model_type)
     else:
@@ -287,11 +299,11 @@ def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_na
             REPLACE(array_to_string(fixed_value, ', '), '"', '') LIKE '%{}%' AND 
             array_to_string(variable, ', ') = '{}' AND
             agg='{}'{};'''.format(
-                pat_table_name + '_local' + TEST_ID, str(F).replace("\'", '').replace('[', '').replace(']', ''), 
-                str(Fv).replace("\'", '').replace('[', '').replace(']', ''),
-                str(V).replace("\'", '').replace('[', '').replace(']', ''), 
-                agg_col, mt_predicate
-            )
+            pat_table_name + '_local' + TEST_ID, str(F).replace("\'", '').replace('[', '').replace(']', ''),
+            str(Fv).replace("\'", '').replace('[', '').replace(']', ''),
+            str(V).replace("\'", '').replace('[', '').replace(']', ''),
+            agg_col, mt_predicate
+        )
         # print(406, Fv, local_pattern_query)
     else:
         tF = get_F_value(F, t)
@@ -306,22 +318,22 @@ def get_local_patterns(F, Fv, V, agg_col, model_type, t, conn, cur, pat_table_na
         local_pattern_query = '''SELECT * FROM {} WHERE array_to_string(fixed, ', ')='{}' AND
             REPLACE(array_to_string(fixed_value, ', '), '"', '') LIKE '%{}%' AND array_to_string(variable, ', ')='{}' AND
             agg='{}'{};'''.format(
-                pat_table_name + '_local'+TEST_ID, str(F).replace("\'", '').replace('[', '').replace(']', ''),
-                '%'.join(list(map(str, tF))),
-                str(V).replace("\'", '').replace('[', '').replace(']', ''),
-                agg_col, mt_predicate
-            )
+            pat_table_name + '_local' + TEST_ID, str(F).replace("\'", '').replace('[', '').replace(']', ''),
+            '%'.join(list(map(str, tF))),
+            str(V).replace("\'", '').replace('[', '').replace(']', ''),
+            agg_col, mt_predicate
+        )
     # print(293, local_pattern_query)
     cur.execute(local_pattern_query)
     local_patterns = cur.fetchall()
-        
+
     return local_patterns
 
 
 def get_tuples_by_F(local_pattern, f_value, cur, table_name, cat_sim):
     def tuple_column_to_str_in_where_clause_2(col_value):
         # print(col_value, cat_sim.is_categorical(col_value[0]))
-        if cat_sim.is_categorical(col_value[0]):
+        if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
             # return "like '%" + str(col_value[1]) + "%'"
             return "= '" + str(col_value[1]) + "'"
         else:
@@ -331,23 +343,34 @@ def get_tuples_by_F(local_pattern, f_value, cur, table_name, cat_sim):
                 # return "like '%" + str(col_value[1]) + "%'"
                 return "= '" + str(col_value[1]) + "'"
 
+    # def tuple_column_to_str_in_where_clause_2(col_value):
+    #     # print(col_value, cat_sim.is_categorical(col_value[0]))
+    #     if cat_sim.is_categorical(col_value[0]):
+    #         return "like '%" + str(col_value[1]) + "%'"
+    #     else:
+    #         if is_float(col_value[1]):
+    #             return '=' + str(col_value[1])
+    #         else:
+    #             return "like '%" + str(col_value[1]) + "%'"
+
     F = str(local_pattern[0]).replace("\'", '')[1:-1]
     V = str(local_pattern[2]).replace("\'", '')[1:-1]
     F_list = F.split(', ')
     V_list = V.split(', ')
-    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(local_pattern[0], map(tuple_column_to_str_in_where_clause_2, zip(F_list, f_value))))))
+    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(local_pattern[0], map(
+        tuple_column_to_str_in_where_clause_2, zip(F_list, f_value))))))
     tuples_query = '''SELECT {},{},{} as {} FROM {} WHERE {} GROUP BY {}, {};'''.format(
-            F, V, local_pattern[3].replace('_', '(') + ')', local_pattern[3], table_name, where_clause, F, V
-        )
+        F, V, local_pattern[3].replace('_', '(') + ')', local_pattern[3], table_name, where_clause, F, V
+    )
     # tuples_query = "SELECT * FROM {} WHERE {};".format(table_name, where_clause)
-    
+
     # column_name_query = "SELECT column_name FROM information_schema.columns where table_name='{}';".format(table_name)
     # print(column_name_query)
     # cur.execute(column_name_query)
     # column_name = cur.fetchall()
     column_name = F_list + V_list + [local_pattern[3]]
     cur.execute(tuples_query)
-    # print(tuples_query)
+    # logger.debug(tuples_query)
     tuples = []
     res = cur.fetchall()
     min_agg = 1e10
@@ -378,6 +401,7 @@ def get_tuples_by_F(local_pattern, f_value, cur, table_name, cat_sim):
         # tuples.append(row_data)
     return tuples, max_agg - min_agg
 
+
 def get_tuples_by_F_V2(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim):
     def tuple_column_to_str_in_where_clause_2(col_value):
         # print(col_value, cat_sim.is_categorical(col_value[0]))
@@ -401,13 +425,15 @@ def get_tuples_by_F_V2(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_si
     V2 = str(lp2[2]).replace("\'", '')[1:-1]
     F2_list = F2.split(', ')
     V2_list = V2.split(', ')
-    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[0], map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value))))))
-    where_clause += ' AND ' 
-    where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[2], map(tuple_column_to_str_in_where_clause_2, zip(V1_list, v_value))))))
+    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[0], map(
+        tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value))))))
+    where_clause += ' AND '
+    where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[2], map(
+        tuple_column_to_str_in_where_clause_2, zip(V1_list, v_value))))))
     tuples_query = '''SELECT {},{},{} as {} FROM {} WHERE {} GROUP BY {}, {};'''.format(
-            F2, V2, lp2[3].replace('_', '(') + ')', lp2[3], table_name, where_clause, F2, V2
-        )
-    
+        F2, V2, lp2[3].replace('_', '(') + ')', lp2[3], table_name, where_clause, F2, V2
+    )
+
     column_name = F2_list + V2_list + [lp2[3]]
     cur.execute(tuples_query)
     # print(tuples_query)
@@ -419,27 +445,34 @@ def get_tuples_by_F_V2(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_si
         min_agg = min(min_agg, row[-1])
         max_agg = max(max_agg, row[-1])
         tuples.append(dict(zip(map(lambda x: x, column_name), row)))
-        
+
     return tuples, max_agg - min_agg
 
 
 def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim, ExplConfig):
     def tuple_column_to_str_in_where_clause_2(col_value):
-        # print(col_value, cat_sim.is_categorical(col_value[0]))
-        if cat_sim.is_categorical(col_value[0]):
+        # logger.debug(col_value)
+        # logger.debug(cat_sim.is_categorical(col_value[0]))
+        if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
             # return "like '%" + str(col_value[1]) + "%'"
-            return "= '" + str(col_value[1]) + "'"
+            return "like '%" + (
+                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            # return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '=' + str(col_value[1])
             else:
                 # return "like '%" + str(col_value[1]) + "%'"
                 return "= '" + str(col_value[1]) + "'"
+
     def tuple_column_to_str_in_where_clause_3(col_value):
-        # print(col_value, cat_sim.is_categorical(col_value[0]))
-        if cat_sim.is_categorical(col_value[0]):
+        # logger.debug(col_value)
+        # logger.debug(cat_sim.is_categorical(col_value[0]))
+        if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
             # return "like '%" + str(col_value[1]) + "%'"
-            return "= '" + str(col_value[1]) + "'"
+            return "like '%" + (
+                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            # return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '>=' + str(col_value[1])
@@ -448,10 +481,13 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
                 return "= '" + str(col_value[1]) + "'"
 
     def tuple_column_to_str_in_where_clause_4(col_value):
-        # print(col_value, cat_sim.is_categorical(col_value[0]))
-        if cat_sim.is_categorical(col_value[0]):
+        # logger.debug(col_value)
+        # logger.debug(cat_sim.is_categorical(col_value[0]))
+        if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
             # return "like '%" + str(col_value[1]) + "%'"
-            return "= '" + str(col_value[1]) + "'"
+            return "like '%" + (
+                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            # return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '<=' + str(col_value[1])
@@ -459,11 +495,19 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
                 # return "like '%" + str(col_value[1]) + "%'"
                 return "= '" + str(col_value[1]) + "'"
 
-    F1 = str(lp1[0]).replace("\'", '')[1:-1]
+    # lp1[0] = sorted(lp1[0])
+    # lp1[2] = sorted(lp1[2])
+    # lp2[0] = sorted(lp2[0])
+    # lp2[2] = sorted(lp2[2])
+    # V1 = str(sorted(lp1[2])).replace("\'", '')[1:-1]
+    # F1 = str(sorted(lp1[0])).replace("\'", '')[1:-1]
     V1 = str(lp1[2]).replace("\'", '')[1:-1]
+    F1 = str(lp1[0]).replace("\'", '')[1:-1]
     F1_list = F1.split(', ')
     V1_list = V1.split(', ')
 
+    # F2 = str(sorted(lp2[0])).replace("\'", '')[1:-1]
+    # V2 = str(sorted(lp2[2])).replace("\'", '')[1:-1]
     F2 = str(lp2[0]).replace("\'", '')[1:-1]
     V2 = str(lp2[2]).replace("\'", '')[1:-1]
     F2_list = F2.split(', ')
@@ -471,16 +515,21 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
     G_list = sorted(F2_list + V2_list)
     G_key = str(G_list).replace("\'", '')[1:-1]
     f_value_key = str(f_value).replace("\'", '')[1:-1]
+    # logger.debug(lp1)
+    # logger.debug(lp2)
+    # logger.debug(f_value)
+    # logger.debug(f_value_key)
     if lp2[3] == 'count':
         agg_fun = 'count(*)'
     else:
         agg_fun = lp2[3].replace('_', '(') + ')'
 
-
-
     if G_key not in ExplConfig.MATERIALIZED_DICT:
         ExplConfig.MATERIALIZED_DICT[G_key] = dict()
-        
+
+    # logger.debug(ExplConfig.MATERIALIZED_DICT)
+    # logger.debug(ExplConfig.MATERIALIZED_DICT[G_key])
+    # logger.debug(ExplConfig.MATERIALIZED_CNT)
     if f_value_key not in ExplConfig.MATERIALIZED_DICT[G_key]:
         ExplConfig.MATERIALIZED_DICT[G_key][f_value_key] = ExplConfig.MATERIALIZED_CNT
         dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ExplConfig.MATERIALIZED_CNT))
@@ -490,34 +539,41 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
             CREATE VIEW MV_{} AS SELECT {}, {} as {} FROM {} WHERE {} GROUP BY {};
         '''.format(
             str(ExplConfig.MATERIALIZED_CNT), G_key, agg_fun, lp2[3], table_name,
-            ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), 
-                zip(lp1[0], map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value)))))),
+            ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]),
+                                  zip(F1_list, map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value)))))),
             G_key
         )
         # print(585, cmv_query)
+        # logger.debug(lp1[0])
+        # logger.debug(F1_list)
+        # logger.debug(cmv_query)
         cur.execute(cmv_query)
         conn.commit()
         ExplConfig.MATERIALIZED_CNT += 1
 
-
-    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[0], map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value))))))
+    where_clause = ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(F1_list, map(
+        tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value))))))
     if v_value is not None:
-        where_clause += ' AND ' 
+        where_clause += ' AND '
         # print(593, v_value)
         v_range_l = map(lambda x: v_value[0][x] + v_value[1][x][0], range(len(v_value[0])))
         v_range_r = map(lambda x: v_value[0][x] + v_value[1][x][1], range(len(v_value[0])))
-        where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[2], 
-            map(tuple_column_to_str_in_where_clause_3, zip(V1_list, v_range_l))))))
-        where_clause += ' AND ' 
-        where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(lp1[2], 
-            map(tuple_column_to_str_in_where_clause_4, zip(V1_list, v_range_r))))))
+        where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(V1_list,
+                                                                                        map(
+                                                                                            tuple_column_to_str_in_where_clause_3,
+                                                                                            zip(V1_list, v_range_l))))))
+        where_clause += ' AND '
+        where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), zip(V1_list,
+                                                                                        map(
+                                                                                            tuple_column_to_str_in_where_clause_4,
+                                                                                            zip(V1_list, v_range_r))))))
     tuples_query = '''SELECT {},{},{} FROM MV_{} WHERE {};'''.format(
-            F2, V2, lp2[3], str(ExplConfig.MATERIALIZED_DICT[G_key][f_value_key]), where_clause
-        )
+        F2, V2, lp2[3], str(ExplConfig.MATERIALIZED_DICT[G_key][f_value_key]), where_clause
+    )
     # print(604, tuples_query)
     column_name = F2_list + V2_list + [lp2[3]]
     cur.execute(tuples_query)
-    # print(tuples_query)
+    logger.debug(tuples_query)
     tuples = []
     tuples_dict = dict()
     res = cur.fetchall()
@@ -532,23 +588,26 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
         if f_key not in tuples_dict:
             tuples_dict[f_key] = []
         tuples_dict[f_key].append(tuples[-1])
-        
+    logger.debug(tuples_dict)
     return tuples, (min_agg, max_agg), tuples_dict
 
 
 def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim, ExplConfig):
     def tuple_column_to_str_in_where_clause_2(col_value):
         # print(col_value, cat_sim.is_categorical(col_value[0]))
+        # logger.debug(col_value)
+        # logger.debug(cat_sim.is_categorical(col_value[0]))
         if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
-            # return "like '%" + str(col_value[1]) + "%'"
-            return "= '" + str(col_value[1]) + "'"
+            return "like '%" + (
+                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            # return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '=' + str(col_value[1])
             else:
                 # return "like '%" + str(col_value[1]) + "%'"
                 return "= '" + str(col_value[1]) + "'"
-    
+
     F1 = str(gp[0]).replace("\'", '')[1:-1]
     V1 = str(gp[1]).replace("\'", '')[1:-1]
     F1_list = F1.split(', ')
@@ -563,39 +622,39 @@ def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim, Ex
     else:
         agg_fun = gp[2].replace('_', '(') + ')'
 
-    
     if G_key not in ExplConfig.MATERIALIZED_DICT:
         ExplConfig.MATERIALIZED_DICT[G_key] = dict()
-        
+
     if f_value_key not in ExplConfig.MATERIALIZED_DICT[G_key]:
         ExplConfig.MATERIALIZED_DICT[G_key][f_value_key] = ExplConfig.MATERIALIZED_CNT
         dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ExplConfig.MATERIALIZED_CNT))
         cur.execute(dv_query)
         # print(504, MATERIALIZED_CNT)
+
         cmv_query = '''
             CREATE VIEW MV_{} AS SELECT {}, {} as {} FROM {} WHERE {} GROUP BY {};
         '''.format(
             str(ExplConfig.MATERIALIZED_CNT), G_key, agg_fun, gp[2], table_name,
-            ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), 
-                zip(gp[0], map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value)))))),
+            ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]),
+                                  zip(gp[0], map(tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value)))))),
             G_key
         )
-        # print(585, cmv_query)
+        # logger.debug(cmv_query)
         cur.execute(cmv_query)
         conn.commit()
         ExplConfig.MATERIALIZED_CNT += 1
 
-
     where_clause = ' AND '.join(
         list(map(lambda x: "{} {}".format(x[0], x[1]), zip(gp[0], map(
             tuple_column_to_str_in_where_clause_2, zip(F1_list, f_value)))))) + ' AND ' + \
-        ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]), 
-                zip(gp[1], map(tuple_column_to_str_in_where_clause_2, zip(V1_list, v_value))))))
+                   ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]),
+                                         zip(gp[1],
+                                             map(tuple_column_to_str_in_where_clause_2, zip(V1_list, v_value))))))
 
     tuples_query = '''SELECT {} FROM MV_{} WHERE {};'''.format(
-            gp[2], str(ExplConfig.MATERIALIZED_DICT[G_key][f_value_key]), where_clause
-        )
-    # print(530, tuples_query)
+        gp[2], str(ExplConfig.MATERIALIZED_DICT[G_key][f_value_key]), where_clause
+    )
+    # logger.debug(tuples_query)
     cur.execute(tuples_query)
     res = cur.fetchall()
     return res[0]
@@ -611,7 +670,7 @@ def find_global_patterns_exact_match(global_patterns_dict, F_prime_set, V_set, a
         # print(579, f_key, F_set, t_set)
         if F_key_set != F_prime_set:
             continue
-        
+
         for v_key in global_patterns_dict[f_key]:
             V_key_set = set(v_key[1:-1].replace("'", '').split(', '))
             if V_key_set != V_set:
@@ -621,6 +680,7 @@ def find_global_patterns_exact_match(global_patterns_dict, F_prime_set, V_set, a
                     continue
                 gp_list.append(pat)
     return gp_list
+
 
 def find_patterns_refinement(global_patterns_dict, F_prime_set, V_set, agg_col, reg_type, ExplConfig):
     # pattern refinement can have different model types
@@ -633,21 +693,27 @@ def find_patterns_refinement(global_patterns_dict, F_prime_set, V_set, agg_col, 
             for pat in global_patterns_dict[0][v_key][f_key]:
                 if pat[2] == agg_col:
                     pat_key = f_key + '|,|' + v_key + '|,|' + pat[2] + '|,|' + pat[3]
-                    
+
                     gp_list.append(pat)
                     if pat_key not in ExplConfig.VISITED_DICT:
                         ExplConfig.VISITED_DICT[pat_key] = True
     return gp_list
 
 
-def score_of_explanation(t1, t2, cat_sim, num_dis_norm, dir, denominator = 1, lp1 = None, lp2 = None):
+def score_of_explanation(t1, t2, cat_sim, num_dis_norm, dir, denominator=1, lp1=None, lp2=None):
     if lp1 is None:
         return 1.0
     else:
-        #print(lp1, lp2, t1, t2)
+        # print(lp1, lp2, t1, t2)
         agg_col = lp1[3]
-        t1fv = dict(zip(lp1[0] + lp1[2], map(lambda x:x, get_F_value(lp1[0] + lp1[2], t1))))
-        t2fv = dict(zip(lp2[0] + lp2[2], map(lambda x:x, get_F_value(lp2[0] + lp2[2], t2))))
+        # t1fv = dict(zip(lp1[0] + lp1[2], map(lambda x: x, get_F_value(lp1[0] + lp1[2], t1))))
+        # t2fv = dict(zip(lp2[0] + lp2[2], map(lambda x: x, get_F_value(lp2[0] + lp2[2], t2))))
+        t1fv = dict()
+        t2fv = dict()
+        for a in lp2[0] + lp2[2]:
+            t1fv[a] = t1[a]
+            if a in t2:
+                t2fv[a] = t2[a]
         # if lp1 == lp2:
         #     t_sim = tuple_similarity(t1fv, t2fv, lp1[2], cat_sim, num_dis_norm, agg_col)
         # else:
@@ -662,30 +728,39 @@ def score_of_explanation(t1, t2, cat_sim, num_dis_norm, dir, denominator = 1, lp
         for a2 in t2:
             if a2 != 'lambda' and a2 != agg_col:
                 cnt2 += 1
-        
-        if len(t1.keys()) + 1 != len(t2.keys()):
-            diff = len(t2.keys()) - len(t1.keys()) - 1
-            if 'lambda' not in t2:
-                diff += 1
-            w = 1
-            if 'name' in t2 and 'name' not in t1:
-                w = 10000
-            t_dis = math.sqrt(t_dis * t_dis + w * diff * diff)
-            
-            # print(488, t1, t2)
+
+        # if len(t1.keys()) + 1 != len(t2.keys()):
+        # diff = len(t2.keys()) - len(t1.keys()) - 1
+        diff = 0
+        for a1 in t1:
+            if a1 != 'lambda' and a1 != agg_col:
+                if a1 not in t2:
+                    diff += 1
+        for a2 in t2:
+            if a2 != 'lambda' and a2 != agg_col:
+                if a2 not in t1:
+                    diff += 1
+        # if 'lambda' not in t2:
+        #     diff += 1
+        # w = 1
+        # if 'name' in t2 and 'name' not in t1:
+        #     w = 10000
+        w = 10000
+        t_dis = math.sqrt(t_dis * t_dis + w * diff * diff)
+
+        # print(488, t1, t2)
         # print local_cons[i].var_attr, row
-        t1v = dict(zip(lp1[2], map(lambda x:x, get_V_value(lp1[2], t1))))        
+        t1v = dict(zip(lp1[2], map(lambda x: x, get_V_value(lp1[2], t1))))
         predicted_agg1 = predict(lp1, t1v)
-        t2v = dict(zip(lp2[2], map(lambda x:x, get_V_value(lp2[2], t2))))        
+        t2v = dict(zip(lp2[2], map(lambda x: x, get_V_value(lp2[2], t2))))
         predicted_agg2 = predict(lp2, t2v)
         # deviation - counterbalance_needed 
         deviation = float(t1[agg_col]) - predicted_agg1
         counterbalance = t2[agg_col] - predicted_agg2
         # deviation_normalized = (t1[agg_col] - predicted_agg1) / predicted_agg1
         # influence = -deviation / counterbalance
-        #score = (deviation + counterbalance) * t_sim
-        #score = deviation * (math.exp(t_sim) - 1)
-        
+        # score = (deviation + counterbalance) * t_sim
+        # score = deviation * (math.exp(t_sim) - 1)
 
         # if t_sim == 1:
         #     score = deviation * -dir
@@ -695,14 +770,16 @@ def score_of_explanation(t1, t2, cat_sim, num_dis_norm, dir, denominator = 1, lp
             score = deviation * -dir
         else:
             score = deviation / t_dis * -dir
-        
+
         # score = deviation * t_sim * -dir * 1 / (1 + math.exp(-(influence - 0.5)))
         # score *= math.log(deviation_normalized + 3)
         # score /= counterbalance
         # print(414, t1fv, t2fv)
-        # print(t_dis, deviation, score)
+        if 'year' in t1 and 'year' in t2 and 'community_area' in t1:
+            print(t1, t2, 705, t_dis, deviation, score)
         # return score / float(denominator) * cnt1 / cnt2
         return [100 * score / float(denominator), t_dis, 0, deviation, float(denominator)]
+
 
 def compare_tuple(t1, t2):
     flag1 = True
@@ -719,7 +796,7 @@ def compare_tuple(t1, t2):
                 flag2 = False
             elif t1[a] != t2[a]:
                 return 0
-    
+
     if flag1 and flag2:
         return -1
     elif flag1:
@@ -727,15 +804,18 @@ def compare_tuple(t1, t2):
     else:
         return 0
 
-def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_coarser, t_coarser, t_prime, target_tuple,
-        conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm, 
-        dir, query_result, norm_lb, dist_lb, tkheap, ExplConfig):
+
+def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_coarser, t_coarser, t_prime,
+              target_tuple,
+              conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm,
+              dir, query_result, norm_lb, dist_lb, tkheap, ExplConfig):
     reslist = []
     F_prime_set = F_set.union(U_set)
     agg_col = local_pattern[3]
     # gp2_list = find_global_patterns_exact_match(global_patterns_dict, F_prime_set, V_set, local_pattern[3], local_pattern[4])
     # gp2_list = find_patterns_refinement(global_patterns_dict, F_prime_set, V_set, local_pattern[3], local_pattern[4])
-    gp2_list = find_patterns_refinement(global_patterns_dict, F_set, V_set, local_pattern[3], local_pattern[4], ExplConfig)
+    gp2_list = find_patterns_refinement(global_patterns_dict, F_set, V_set, local_pattern[3], local_pattern[4],
+                                        ExplConfig)
     # print(714, F_set, V_set, gp2_list)
     if len(gp2_list) == 0:
         return []
@@ -755,19 +835,23 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
             continue
         # lp2_list = get_local_patterns(gp2[0], None, gp2[1], gp2[2], None, t_prime, conn, cur, pat_table_name, res_table_name)
         # print(731, t_prime)
-        lp2_list = get_local_patterns(gp2[0], None, gp2[1], gp2[2], gp2[3], t_prime, conn, cur, pat_table_name, res_table_name)
+        lp2_list = get_local_patterns(gp2[0], None, gp2[1], gp2[2], gp2[3], t_prime, conn, cur, pat_table_name,
+                                      res_table_name)
         # print(733, lp2_list)
         if len(lp2_list) == 0:
             continue
         lp2 = lp2_list[0]
-        
+
         f_value = get_F_value(local_pattern[0], t_prime)
-        tuples_same_F, agg_range, tuples_same_F_dict = get_tuples_by_F_V(local_pattern, lp2, f_value, 
-            # [get_V_value(local_pattern[2], t_prime), [[-3, 3]]],
-            None,
-            conn, cur, res_table_name, cat_sim,
-            ExplConfig)
-        lp3_list = get_local_patterns(lp2[0], f_value, lp2[2], lp2[3], lp2[4], t_prime, conn, cur, pat_table_name, res_table_name)
+        logger.debug(t_prime)
+        # f_value = get_F_value(sorted(local_pattern[0]), t_prime)
+        tuples_same_F, agg_range, tuples_same_F_dict = get_tuples_by_F_V(local_pattern, lp2, f_value,
+                                                                         # [get_V_value(local_pattern[2], t_prime), [[-3, 3]]],
+                                                                         None,
+                                                                         conn, cur, res_table_name, cat_sim,
+                                                                         ExplConfig)
+        lp3_list = get_local_patterns(lp2[0], f_value, lp2[2], lp2[3], lp2[4], t_prime, conn, cur, pat_table_name,
+                                      res_table_name)
         # tuples_same_F, agg_range = get_tuples_by_F(local_pattern, lp2, f_value, 
         #     conn, cur, res_table_name, cat_sim)
         # tuples_same_F, agg_range, tuples_same_F_dict = get_tuples_by_F_V(local_pattern, lp2, f_value, None,
@@ -781,26 +865,29 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
                 dev_ub = abs(lp3[8])
             # dev_ub = agg_maxmin[0][0] - agg_maxmin[0][1]
             k_score = tkheap.MinValue()
-            print(919, dev_ub, k_score, 100 * float(dev_ub) / (dist_lb * float(norm_lb)))
+            # print(919, dev_ub, k_score, 100 * float(dev_ub) / (dist_lb * float(norm_lb)))
             if tkheap.HeapSize() == ExplConfig.TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
-                print(921, dev_ub, dist_lb, norm_lb, lp3[0], lp3[1])
+                # print(921, dev_ub, dist_lb, norm_lb, lp3[0], lp3[1])
                 continue
             f_key = str(lp3[1]).replace('\'', '')[1:-1]
             if f_key in tuples_same_F_dict:
                 for idx, row in enumerate(tuples_same_F_dict[f_key]):
                     for idx2, row2 in enumerate(t_coarser):
                         if get_V_value(local_pattern[2], row2) == get_V_value(local_pattern[2], row):
-                            s = score_of_explanation(row, target_tuple, cat_sim, num_dis_norm, dir, float(row2[agg_col]), lp3, lp2)
+                            s = score_of_explanation(row, target_tuple, cat_sim, num_dis_norm, dir,
+                                                     float(row2[agg_col]), lp3, lp2)
                             break
-                
+
                     # e.g. U = {Venue}, u = {ICDE}, do not need to check whether {Author, Venue} {Year} holds on (JH, ICDE)
                     # expected values are replaced with the average across year for all (JH, ICDE, year) tuples
-                    #s = score_of_explanation(row, t_prime, cat_sim)
+                    # s = score_of_explanation(row, t_prime, cat_sim)
                     cmp_res = compare_tuple(row, target_tuple)
-                    if cmp_res == 0: # row is not subset of target_tuple, target_tuple is not subset of row
+                    if cmp_res == 0:  # row is not subset of target_tuple, target_tuple is not subset of row
                         # print(551, row, target_tuple, s)
                         # reslist.append([s[0], s[1:], dict(row), local_pattern, lp3, 1])  
-                        reslist.append(Explanation(1, s[0], s[1], s[2], s[3], dir, dict(row), ExplConfig.TOP_K, local_pattern, lp3))
+                        reslist.append(
+                            Explanation(1, s[0], s[1], s[2], s[3], dir, dict(row), ExplConfig.TOP_K, local_pattern,
+                                        lp3))
                     # else:
                     #     reslist.append([-s[0], s[1:], dict(row), local_pattern, lp3, 1])  
             # for f_key in tuples_same_F_dict:
@@ -822,7 +909,7 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
             #     continue
             # for row in tuples_same_F_dict[f_key]:
             #     s = score_of_explanation(row, target_tuple, cat_sim, num_dis_norm, dir, float(t_coarser[agg_col]), lp3[0], lp2)
-            
+
             #     # e.g. U = {Venue}, u = {ICDE}, do not need to check whether {Author, Venue} {Year} holds on (JH, ICDE)
             #     # expected values are replaced with the average across year for all (JH, ICDE, year) tuples
             #     #s = score_of_explanation(row, t_prime, cat_sim)
@@ -830,12 +917,12 @@ def DrillDown(global_patterns_dict, local_pattern, F_set, U_set, V_set, t_prime_
             #         # print(551, row, target_tuple, s)
             #         reslist.append([s[0], s[1:], dict(row), local_pattern, lp3[0], 1])
 
-    
     return reslist
 
-def find_explanation_regression_based(user_question_list, global_patterns, global_patterns_dict, 
-    cat_sim, num_dis_norm, agg_col, conn, cur, pat_table_name, res_table_name, ExplConfig):
 
+def find_explanation_regression_based(user_question_list, global_patterns, global_patterns_dict,
+                                      cat_sim, num_dis_norm, agg_col, conn, cur, pat_table_name, res_table_name,
+                                      ExplConfig):
     """Find explanations for user questions
 
     Args:
@@ -867,23 +954,22 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
 
         t = dict(uq['target_tuple'])
         start = time.time()
-        
-        
+
         end = time.time()
         local_pattern_loading_time += end - start
 
         uq['global_patterns'] = find_patterns_relevant(
-                global_patterns_dict, uq['target_tuple'], conn, cur, res_table_name, pat_table_name, cat_sim)
+            global_patterns_dict, uq['target_tuple'], conn, cur, res_table_name, pat_table_name, cat_sim)
 
-        # print(811, len(uq['global_patterns']))
+        # logger.debug(uq['global_patterns'])
         candidate_list = [[] for i in range(len(uq['global_patterns']))]
         top_k_lists = [[] for i in range(len(uq['global_patterns']))]
         validate_res_list = []
         # local_patterns_list.append(local_patterns)
         local_patterns = []
-        
+
         psi = []
-        
+
         ExplConfig.VISITED_DICT = dict()
         score_computing_time_cur_uq = 0
         score_computing_start = time.time()
@@ -898,21 +984,22 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
                 continue
             ExplConfig.VISITED_DICT[pat_key] = True
 
-            
             tF = get_F_value(uq['global_patterns'][i][0], t)
+            # tF = get_F_value(sorted(uq['global_patterns'][i][0]), t)
             local_pattern_query_fixed = '''SELECT * FROM {} 
-                    WHERE array_to_string(fixed, ', ')='{}' AND 
-                    array_to_string(fixed_value, ', ')='{}' AND
-                    array_to_string(variable, ', ')='{}' AND 
+                    WHERE array_to_string(fixed, ', ') like '%{}%' AND 
+                    array_to_string(fixed_value, ', ') like '%{}%' AND
+                    array_to_string(variable, ', ') like '%{}%' AND 
                     agg='{}' AND model='{}'
                 ORDER BY theta;
             '''.format(
-                pat_table_name + '_local' + TEST_ID, 
+                pat_table_name + '_local' + TEST_ID,
                 str(uq['global_patterns'][i][0]).replace("\'", '').replace('[', '').replace(']', ''),
-                str(tF)[1:-1].replace("\'", ''),
-                str(uq['global_patterns'][i][1]).replace("\'", '').replace('[', '').replace(']', ''), 
-                uq['global_patterns'][i][2], uq['global_patterns'][i][3] 
+                str(tF)[1:-1].replace("\'", '').replace('.0', ''),
+                str(uq['global_patterns'][i][1]).replace("\'", '').replace('[', '').replace(']', ''),
+                uq['global_patterns'][i][2], uq['global_patterns'][i][3]
             )
+            # logger.debug(local_pattern_query_fixed)
             cur.execute(local_pattern_query_fixed)
             res_fixed = cur.fetchall()
             if len(res_fixed) == 0:
@@ -928,31 +1015,32 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
             # t_coarser_list, agg_range, t_coarser_dict = get_tuples_by_F_V(local_patterns[i], local_patterns[i], 
             #     get_F_value(local_patterns[i][0], t), [get_V_value(local_patterns[i][2], t), [[0, 0]]],
             #     conn, cur, res_table_name, cat_sim)
-            t_t_list, agg_range, t_t_dict = get_tuples_by_F_V(local_patterns[i], local_patterns[i], 
-                get_F_value(local_patterns[i][0], t), 
-                #[get_V_value(local_patterns[i][2], t), [[-3, 3]]],
-                None,
-                conn, cur, res_table_name, cat_sim,
-                ExplConfig)
+            t_t_list, agg_range, t_t_dict = get_tuples_by_F_V(local_patterns[i], local_patterns[i],
+                                                              get_F_value(local_patterns[i][0], t),
+                                                              # [get_V_value(local_patterns[i][2], t), [[-3, 3]]],
+                                                              None,
+                                                              conn, cur, res_table_name, cat_sim,
+                                                              ExplConfig)
             # print(t_t_list)
             dist_lb = 1e10
             dev_ub = 0
             for t_t in t_t_list:
                 if compare_tuple(t_t, t) == 0:
-                    s = score_of_explanation(t_t, t, cat_sim, num_dis_norm, dir, t_t[agg_col], local_patterns[i], local_patterns[i])
+                    s = score_of_explanation(t_t, t, cat_sim, num_dis_norm, dir, t_t[agg_col], local_patterns[i],
+                                             local_patterns[i])
                     if str(t_t) not in marked:
                         marked[str(t_t)] = True
                         # topK_heap.Push([s[0], s[1:], 
                         #     list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))), 
                         #     local_patterns[i], None, 0])
                         topK_heap.Push(Explanation(0, s[0], s[1], s[2], s[3], uq['dir'],
-                            # list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))), 
-                            dict(t_t),
-                            ExplConfig.TOP_K, local_patterns[i], None))
+                                                   # list(map(lambda y: y[1], sorted(t_t.items(), key=lambda x: x[0]))),
+                                                   dict(t_t),
+                                                   ExplConfig.TOP_K, local_patterns[i], None))
                     # top_k_lists[i][-1].append([s[0], s[1:], dict(t_t), local_patterns[i], None, 0])
                     top_k_lists[i][-1].append(Explanation(0, s[0], s[1], s[2], s[3], uq['dir'],
-                            dict(t_t),
-                            ExplConfig.TOP_K, local_patterns[i], None))
+                                                          dict(t_t),
+                                                          ExplConfig.TOP_K, local_patterns[i], None))
                     if s[1] < dist_lb:
                         dist_lb = s[1]
                     if abs(s[3]) > dev_ub:
@@ -960,26 +1048,24 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
             if dist_lb < 1e-10:
                 dist_lb = 0.01
 
-            
             end = time.time()
             question_validating_time += end - start
 
-            
             F_set = set(local_patterns[i][0])
             V_set = set(local_patterns[i][2])
-            
+
             # if 'venue' in local_patterns[i][0] and 'name' not in local_patterns[i][0]:
             #     continue
             # if 'pubkey' in local_patterns[i][0] and 'name' not in local_patterns[i][0]:
             #     continue
             # F union V \subsetneq G            
-            
+
             # print(t_coarser)
             t_coarser_copy = list(t_t_list)
             # t_coarser_copy[agg_col] = 1
             # if len(local_patterns[i][0]) + len(local_patterns[i][2]) < len(t.keys()) -2:
-                # if 'pubkey' in local_patterns[i][0] and 'name' not in local_patterns[i][0]:
-                #     continue
+            # if 'pubkey' in local_patterns[i][0] and 'name' not in local_patterns[i][0]:
+            #     continue
             # if 'venue' in local_patterns[i][0] and 'name' not in local_patterns[i][0]:
             #     continue
 
@@ -994,11 +1080,12 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
             if topK_heap.HeapSize() == ExplConfig.TOP_K and 100 * float(dev_ub) / (dist_lb * float(norm_lb)) <= k_score:
                 print(1126, dev_ub, dist_lb, norm_lb, local_patterns[i][0], local_patterns[i][1])
                 continue
-            top_k_lists[i][-1] += DrillDown(global_patterns_dict, local_patterns[i], 
-                F_set, T_set.difference(F_set.union(V_set)), V_set, t_coarser_copy, t_coarser_copy, t, t,
-                conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm,
-                dir, uq['query_result'],
-                norm_lb, dist_lb, topK_heap, ExplConfig)
+            top_k_lists[i][-1] += DrillDown(global_patterns_dict, local_patterns[i],
+                                            F_set, T_set.difference(F_set.union(V_set)), V_set, t_coarser_copy,
+                                            t_coarser_copy, t, t,
+                                            conn, cur, pat_table_name, res_table_name, cat_sim, num_dis_norm,
+                                            dir, uq['query_result'],
+                                            norm_lb, dist_lb, topK_heap, ExplConfig)
             for tk in top_k_lists[i][-1]:
                 # print(937, tk.to_string())
                 # if str(tk[2]) not in marked:
@@ -1009,14 +1096,12 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
                     #     list(map(lambda y: y[1], sorted(tk[2].items(), key=lambda x: x[0]))), 
                     #     tk[3], tk[4], tk[5]])
                     topK_heap.Push(tk)
-            
 
             end = time.time()
-            
+
             score_computing_time += end - start
-                
-                
-        score_computing_end = time.time()             
+
+        score_computing_end = time.time()
         score_computing_time_cur_uq = score_computing_end - score_computing_start
         # uses heapq to manipulate merge of explanations from multiple constraints
         start = time.time()
@@ -1051,7 +1136,7 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
         #                 poped_tuple2 = list(heappop(top_k_lists[i][-1]))
         #                 poped_tuple2.append(i)
         #                 heappush(complementary_explanation_list, poped_tuple2)
-                        
+
         #         heapify(complementary_explanation_list)
         #     else:
         #         # for tk in top_k_lists[poped_tuple[3]][3]:
@@ -1076,13 +1161,12 @@ def find_explanation_regression_based(user_question_list, global_patterns, globa
         #         answer[j].append(top_k_lists[i])
         #     # print(len(answer[j][-1]))
 
-
-
     print('Local pattern loading time: ' + str(local_pattern_loading_time) + 'seconds')
     print('Question validating time: ' + str(question_validating_time) + 'seconds')
     print('Score computing time: ' + str(score_computing_time) + 'seconds')
     print('Result merging time: ' + str(result_merging_time) + 'seconds')
     return answer, local_patterns_list, score_computing_time_list
+
 
 def load_query_result(t, cur, query_result_table, agg_col):
     agg_arr = agg_col.split('_')
@@ -1094,21 +1178,21 @@ def load_query_result(t, cur, query_result_table, agg_col):
     group_arr.remove('agg_col')
     group = ', '.join(group_arr)
     aggregate_query = 'SELECT {}, {}({}) as {} FROM {} GROUP BY {};'.format(
-            group, agg, a, agg_col, query_result_table, group
-        )
+        group, agg, a, agg_col, query_result_table, group
+    )
     cur.execute(aggregate_query)
     res = cur.fetchall()
     qr = list(map(lambda y: dict(zip(map(lambda x: x, column_name), y)), res))
-    
+
     return qr
 
+
 def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name, pattern_table_name, cat_sim):
-    
     g_pat_list = []
     l_pat_list = []
     res_list = []
     t_set = set(t.keys())
-    # print(1036, global_patterns_dict[0].keys())
+    logger.debug(global_patterns_dict[0].keys())
     for v_key in global_patterns_dict[0]:
         # print(pat, pat[0])
         V_set = set(v_key[1:-1].replace("'", '').split(', '))
@@ -1117,7 +1201,7 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
         # print(579, v_key, V_set, t_set)
         if not V_set.issubset(t_set):
             continue
-        
+
         for f_key in global_patterns_dict[0][v_key]:
             for pat in global_patterns_dict[0][v_key][f_key]:
                 # F_set = set(f_key.split(','))
@@ -1129,19 +1213,19 @@ def find_patterns_relevant(global_patterns_dict, t, conn, cur, query_table_name,
                 if pat[2] not in t and pat[2] + '_star' not in t:
                     continue
 
-                agg_value = get_tuples_by_gp_uq(pat, get_F_value(pat[0], t), get_V_value(pat[1], t), 
-                    conn, cur, query_table_name, cat_sim,
-                    ExplConfig)
+                agg_value = get_tuples_by_gp_uq(pat, get_F_value(pat[0], t), get_V_value(pat[1], t),
+                                                conn, cur, query_table_name, cat_sim,
+                                                ExplConfig)
                 res_list.append([pat, agg_value[0]])
 
-                
-    res_list = sorted(res_list, key = lambda x: (len(x[0][0]) + len(x[0][1]), x[1]))
+    res_list = sorted(res_list, key=lambda x: (len(x[0][0]) + len(x[0][1]), x[1]))
     g_pat_list = list(map(lambda x: x[0], res_list))
-    # print(1065, g_pat_list)
+    logger.debug(g_pat_list)
     return g_pat_list
 
 
-def load_user_question_from_file(global_patterns, global_patterns_dict, uq_path, schema=None, conn=None, cur=None, pattern_table='', query_result_table='', pf=None, cat_sim=None):
+def load_user_question_from_file(global_patterns, global_patterns_dict, uq_path, schema=None, conn=None, cur=None,
+                                 pattern_table='', query_result_table='', pf=None, cat_sim=None):
     '''
         load user questions
     '''
@@ -1149,14 +1233,14 @@ def load_user_question_from_file(global_patterns, global_patterns_dict, uq_path,
     with open(uq_path, 'rt') as uqfile:
         reader = csv.DictReader(uqfile, quotechar='\'')
         headers = reader.fieldnames
-        #temp_data = csv.reader(uqfile, delimiter=',', quotechar='\'')
-        #for row in temp_data:
+        # temp_data = csv.reader(uqfile, delimiter=',', quotechar='\'')
+        # for row in temp_data:
         for row in reader:
             row_data = {}
             raw_row_data = {}
             agg_col = None
             for k, v in enumerate(headers):
-                # print(k, v)
+                print(k, v)
                 if schema is None or v not in schema:
                     if v != 'direction':
                         if is_float(row[v]):
@@ -1170,14 +1254,14 @@ def load_user_question_from_file(global_patterns, global_patterns_dict, uq_path,
                 else:
                     if row[v] != '*':
                         if v.startswith('count_') or v.startswith('sum_'):
-                            agg_col = v 
+                            agg_col = v
                         if schema[v] == 'integer':
                             row_data[v] = int(row[v])
                             raw_row_data[v] = int(row[v])
                         elif schema[v].startswith('double') or schema[v].startswith('float'):
                             row_data[v] = float(row[v])
                             raw_row_data[v] = float(row[v])
-                        else:    
+                        else:
                             row_data[v] = row[v]
                             raw_row_data[v] = row[v]
 
@@ -1185,22 +1269,21 @@ def load_user_question_from_file(global_patterns, global_patterns_dict, uq_path,
                 dir = 1
             else:
                 dir = -1
-            # print(615, schema, raw_row_data, row_data)
-            uq.append({'target_tuple': row_data, 'dir':dir})
+            print(615, schema, raw_row_data, row_data)
+            uq.append({'target_tuple': row_data, 'dir': dir})
             # uq[-1]['global_patterns'], uq[-1]['local_patterns'] = find_patterns_relevant(
             #     global_patterns_dict, uq[-1]['target_tuple'], cur, pattern_table
             # )
             # uq[-1]['global_patterns'] = find_patterns_relevant(
             #     global_patterns_dict, uq[-1]['target_tuple'], conn, cur, query_result_table, pattern_table, cat_sim)
 
-            
             # print(739, j, g_pat_cnt_by_theta[j])
             # print(list(map(lambda x: str(x[0]) + ' ' + str(x[1]) + '     ', g_pat_list_by_theta[j][0])))
             # print(list(map(lambda x: str(x[0]) + ' ' + str(x[1]) + '     ' if len(x) > 1 else '   empty   ', g_pat_list_by_theta[j][1])))
-    
+
             # uq[-1]['query_result'] = load_query_result(uq[-1]['target_tuple'], cur, query_result_table, agg_col)
             uq[-1]['query_result'] = []
-    # print(992, uq[-1])
+    print(992, uq[-1])
     return uq, global_patterns, global_patterns_dict
 
 
@@ -1211,7 +1294,7 @@ def load_patterns(cur, pat_table_name, query_table_name):
     global_pattern_table = pat_table_name + '_global'
     load_query = "SELECT * FROM {};".format(global_pattern_table)
     # load_query = "SELECT * FROM {} WHERE fixed = '[primary_type]' AND variable = '[community_area, arrest, week]';".format(global_pattern_table)
-    
+
     cur.execute(load_query)
     res = cur.fetchall()
     patterns = []
@@ -1247,15 +1330,16 @@ def load_patterns(cur, pat_table_name, query_table_name):
     schema = {}
     for s in res:
         schema[s[0]] = s[1]
-    
+
     # logger.debug('patterns')
     # logger.debug(patterns)
     return patterns, schema, pattern_dict
 
+
 class ExplanationGenerator:
 
-    def __init__(self, config : ExplConfig, user_input_config = None):
-        self.config = config 
+    def __init__(self, config: ExplConfig, user_input_config=None):
+        self.config = config
         if user_input_config is not None:
             if 'pattern_table' in user_input_config:
                 self.config.pattern_table = user_input_config['pattern_table']
@@ -1267,7 +1351,6 @@ class ExplanationGenerator:
                 self.config.outputfile = user_input_config['outputfile']
             if 'aggregate_column' in user_input_config:
                 self.config.aggregate_column = user_input_config['aggregate_column']
-                
 
     def initialize(self):
         ecf = self.config
@@ -1288,19 +1371,22 @@ class ExplanationGenerator:
         # print(opts)
         start = time.clock()
         logger.info("start explaining ...")
-        self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
+        self.global_patterns, self.schema, self.global_patterns_dict = load_patterns(cur, pattern_table,
+                                                                                     query_result_table)
         logger.debug("loaded patterns from database")
 
         if query_result_table.find('crime') == -1:
             self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
         else:
-            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[('community_area', 'community_area_loc')])
+            self.category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table,
+                                                               embedding_table_list=[
+                                                                   ('community_area', 'community_area_loc')])
         # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
-        #num_dis_norm = normalize_numerical_distance(data['df'])
+        # num_dis_norm = normalize_numerical_distance(data['df'])
         self.num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
         end = time.clock()
-        print('Loading time: ' + str(end-start) + 'seconds')
-
+        print('Loading time: ' + str(end - start) + 'seconds')
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
 
     def wrap_user_question(self, global_patterns, global_patterns_dict, uq_tuple, schema=None):
         '''
@@ -1325,12 +1411,12 @@ class ExplanationGenerator:
             else:
                 if uq_tuple[v] != '*':
                     if v.startswith('count_') or v.startswith('sum_'):
-                        agg_col = v 
+                        agg_col = v
                     if schema[v] == 'integer':
                         row_data[v] = int(uq_tuple[v])
                     elif schema[v].startswith('double') or schema[v].startswith('float'):
                         row_data[v] = float(uq_tuple[v])
-                    else:    
+                    else:
                         row_data[v] = uq_tuple[v]
 
         if uq_tuple['direction'][0] == 'h':
@@ -1340,13 +1426,12 @@ class ExplanationGenerator:
 
         if 'count_*' in row_data:
             row_data['count'] = row_data['count_*']
-        uq = {'target_tuple': row_data, 'dir':dir, 'query_result': []}
+        uq = {'target_tuple': row_data, 'dir': dir, 'query_result': []}
 
         logger.debug("uq is")
         logger.debug(uq)
 
         return [uq]
-
 
     def do_explain_online(self, uq_tuple):
 
@@ -1363,21 +1448,21 @@ class ExplanationGenerator:
 
         logger.debug("query_result_table is")
         logger.debug(query_result_table)
-        
+
         Q = self.wrap_user_question(self.global_patterns, self.global_patterns_dict, uq_tuple, self.schema)
 
         logger.debug("start finding explanations ...")
-        
+
         start = time.clock()
-        #regression_package = 'scikit-learn'
+        # regression_package = 'scikit-learn'
         regression_package = 'statsmodels'
 
         explanations_list, local_patterns_list, score_computing_time_list = find_explanation_regression_based(
             Q, self.global_patterns, self.global_patterns_dict, self.category_similarity, self.num_dis_norm,
-            aggregate_column, conn, cur, 
+            aggregate_column, conn, cur,
             pattern_table, query_result_table, ecf
         )
-            
+
         end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
         logger.debug("finding explanations ... DONE")
@@ -1388,7 +1473,6 @@ class ExplanationGenerator:
         #         cur.execute(dv_query)
         #         conn.commit()
         return explanations_list[0]
-
 
     def doExplain(self):
         # c=self.config
@@ -1417,7 +1501,7 @@ class ExplanationGenerator:
         # end = time.clock()
         # print('Total querying time: ' + str(end-start) + 'seconds')
         # logger.debug("finding explanations ... DONE")
-        
+
         # ofile = sys.stdout
         # if outputfile != '':
         #     ofile = open(outputfile, 'w')
@@ -1439,7 +1523,7 @@ class ExplanationGenerator:
         #             ofile.write('\n')
         #             ofile.write('(' + e_tuple_str + ')')
         #             ofile.write('\n')
-            
+
         #         ofile.write('------------------------\n')
 
         ecf = self.config
@@ -1454,42 +1538,52 @@ class ExplanationGenerator:
         aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
-        
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
         # print(opts)
         start = time.clock()
         logger.info("start explaining ...")
         global_patterns, schema, global_patterns_dict = load_patterns(cur, pattern_table, query_result_table)
         logger.debug("loaded patterns from database")
-        # category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
-        category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
-        # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
-        #num_dis_norm = normalize_numerical_distance(data['df'])
-        num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
 
+        # # category_similarity = CategorySimilarityMatrix(ecf.EXAMPLE_SIMILARITY_MATRIX_PATH, schema)
+        # category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        # # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
+        # #num_dis_norm = normalize_numerical_distance(data['df'])
+        # num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
+        if query_result_table.find('crime') == -1:
+            category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table)
+        else:
+            category_similarity = CategorySimilarityNaive(cur=cur, table_name=query_result_table, embedding_table_list=[
+                ('community_area', 'community_area_loc')])
+        # category_similarity = CategoryNetworkEmbedding(EXAMPLE_NETWORK_EMBEDDING_PATH, data['df'])
+        # num_dis_norm = normalize_numerical_distance(data['df'])
+        num_dis_norm = normalize_numerical_distance(cur=cur, table_name=query_result_table)
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
         # pf = PatternFinder(engine.connect(), query_result_table, fit=True, theta_c=0.5, theta_l=0.25, lamb=DEFAULT_LAMBDA, dist_thre=0.9,  supp_l=10,supp_g=1)
         Q, global_patterns, global_patterns_dict = load_user_question_from_file(
-            global_patterns, global_patterns_dict, user_question_file, 
+            global_patterns, global_patterns_dict, user_question_file,
             schema, conn, cur, pattern_table, query_result_table, None, category_similarity)
         logger.debug("loaded user question from file")
-
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
         end = time.clock()
-        print('Loading time: ' + str(end-start) + 'seconds')
+        print('Loading time: ' + str(end - start) + 'seconds')
 
         logger.debug("start finding explanations ...")
-        
+
         start = time.clock()
-        #regression_package = 'scikit-learn'
+        # regression_package = 'scikit-learn'
         regression_package = 'statsmodels'
-        
+
         explanations_list, local_patterns_list, score_computing_time_list = find_explanation_regression_based(
             Q, global_patterns, global_patterns_dict, category_similarity, num_dis_norm,
-            aggregate_column, conn, cur, 
+            aggregate_column, conn, cur,
             pattern_table, query_result_table, ecf
         )
         expl_end = time.time()
-            
+        logger.debug(ExplConfig.MATERIALIZED_DICT)
         end = time.clock()
-        print('Total querying time: ' + str(end-start) + 'seconds')
+        print('Total querying time: ' + str(end - start) + 'seconds')
         logger.debug("finding explanations ... DONE")
 
         ofile = sys.stdout
@@ -1498,13 +1592,13 @@ class ExplanationGenerator:
 
         for i, top_k_list in enumerate(explanations_list):
             ofile.write('User question {} in direction {}: {}\n'.format(
-                str(i+1), 'high' if Q[i]['dir'] > 0 else 'low', str(Q[i]['target_tuple']))
+                str(i + 1), 'high' if Q[i]['dir'] > 0 else 'low', str(Q[i]['target_tuple']))
             )
 
             # print(1300, len(top_k_list))
             for j, e in enumerate(top_k_list):
                 ofile.write('------------------------\n')
-                ofile.write('Top ' + str(j+1) + ' explanation:\n')
+                ofile.write('Top ' + str(j + 1) + ' explanation:\n')
                 ofile.write(e.to_string())
                 ofile.write('------------------------\n')
             #     print_str = ''
@@ -1521,7 +1615,7 @@ class ExplanationGenerator:
             #     # ofile.write('Constraint ' + str(e[1]+1) + ': [' + ','.join(local_patterns_list[i][e[1]][0]) + ']' + 
             #     #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][1]))) + ']' +
             #     #     '[' + ','.join(list(map(str, local_patterns_list[i][e[1]][2]))) + ']')
-                
+
             #     if e[5] == 1:
             #         ofile.write('From local pattern' + ': [' + ','.join(e[3][0]) + ']' + 
             #             '[' + ','.join(list(map(str, e[3][1]))) + ']' +
@@ -1570,10 +1664,11 @@ class ExplanationGenerator:
         ecf.MATERIALIZED_DICT = dict()
         ecf.MATERIALIZED_CNT = 0
 
-        
+
 def main(argv=[]):
     try:
-        opts, args = getopt.getopt(argv,"h:p:q:u:o:a",["help","ptable=","qtable=","ufile=","ofile=","aggregate_column="])
+        opts, args = getopt.getopt(argv, "h:p:q:u:o:a",
+                                   ["help", "ptable=", "qtable=", "ufile=", "ofile=", "aggregate_column="])
     except getopt.GetoptError:
         print('explanation.py -p <pattern_table> -q <query_result_table>  -u <user_question_file>\
          -o <outputfile> -a <aggregate_column>')
@@ -1584,7 +1679,7 @@ def main(argv=[]):
         if opt in ("-h", "--help"):
             print('explanation.py -p <pattern_table> -q <query_result_table> -u <user_question_file> \
                 -o <outputfile> -a <aggregate_column>')
-            sys.exit(2)    
+            sys.exit(2)
         elif opt in ("-p", "--ptable"):
             user_input_config['pattern_table'] = arg
         elif opt in ("-q", "--qtable"):
@@ -1599,15 +1694,14 @@ def main(argv=[]):
     eg = ExplanationGenerator(user_input_config)
     # eg.doExplain()
     eg.initialize()
-    elist = eg.do_explain_online({'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
+    # elist = eg.do_explain_online(
+    #     {'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
     # elist = eg.do_explain_online({'name': 'Kirsten Bergmann', 'venue': 'iva', 'sum_pubcount': 6.0, 'direction': 'high', 'lambda': 0.2})
 
-    # elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
+    elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
     for e in elist:
         print(e.to_string())
 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-

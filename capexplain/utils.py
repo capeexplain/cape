@@ -24,6 +24,8 @@ def projection(t, cols):
     for c in cols:
         if c in t:
             res.append(t[c])
+        else:
+            res.append('')
     return res
     # return list(map(lambda x: t[x], cols))
 

@@ -326,7 +326,7 @@ def get_tuples_by_F(local_pattern, f_value, cur, table_name, cat_sim):
     # column_name = cur.fetchall()
     column_name = F_list + V_list + [local_pattern[4] + '(' + local_pattern[3] + ')']
     cur.execute(tuples_query)
-    # print(tuples_query)
+    print(tuples_query)
     tuples = []
     res = cur.fetchall()
     min_agg = 1e10
