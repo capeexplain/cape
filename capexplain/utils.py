@@ -4,8 +4,10 @@ from itertools import combinations, permutations
 from math import factorial
 from tqdm import tqdm
 
+
 def printException(ex,finfo):
     print(exceptionToString(ex,finfo))
+
 
 def exceptionToString(ex,finfo):
     trace=traceback.format_stack()
@@ -16,8 +18,10 @@ def exceptionToString(ex,finfo):
                             ex,
                             "\n".join(trace))
 
+
 def formatCurFileAndLine(finfo):
     return 'FILE: {0.filename} LINE: {0.lineno}:'.format(finfo) 
+
 
 def projection(t, cols):
     res = list()
@@ -29,11 +33,14 @@ def projection(t, cols):
     return res
     # return list(map(lambda x: t[x], cols))
 
+
 def get_F_value(F, t):
     return projection(t, F)
 
+
 def get_V_value(V, t):
     return projection(t, V)
+
 
 def is_float(s):
     try:
@@ -45,6 +52,7 @@ def is_float(s):
     except ValueError:
         return False
 
+
 def is_integer(s):
     try:
         if isinstance(s, str) and s[-1] == 'L':
@@ -55,6 +63,7 @@ def is_integer(s):
     except ValueError:
         return False
 
+
 def float_or_integer(s):
     if is_float(s):
         return float(s)
@@ -63,11 +72,13 @@ def float_or_integer(s):
     else:
         return s
 
+
 def tuple_column_to_str_in_where_clause(col_value):
     if is_float(col_value):
         return '=' + str(col_value)
     else:
         return "like '%" + col_value + "%'"
+
 
 def normalize_numerical_distance(df=None, cur=None, table_name=''):
     '''
@@ -118,6 +129,7 @@ def normalize_numerical_distance(df=None, cur=None, table_name=''):
                     res[col]['range'] = res[col]['max'] - res[col]['min']
         return res
 
+
 ################################################################################
 class CombinationsWithLen():
     """
@@ -137,12 +149,14 @@ class CombinationsWithLen():
     def __len__(self):
         return factorial(self._inLen) // (factorial(self._inLen - self._r)) // factorial(self._r)
 
+
 def progress_iter(iter, showProgress=True, desc=None):
     if (showProgress == True):
         return tqdm(iter, desc=desc)
     else:
         return iter
-    
+
+
 ################################################################################
 class PermutationsWithLen():
     """
