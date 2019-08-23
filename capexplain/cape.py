@@ -116,11 +116,13 @@ def explainCommand(command, log):
                                        'query_result_table': config.query_result_table})
     e.initialize()
     log.debug("created ExplanationGenerator")
-    # e.doExplain()
+    e.do_batch_explain()
+    # elist = e.do_explain_online(
+    #     {'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
     # elist = e.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
-    elist = e.do_explain_online({'location_description': 'ATHLETIC CLUB', 'community_area': '24', 'year': '2017', 'count': 3, 'direction': 'high'})
-    for ee in elist:
-        print(ee.to_string())
+    # elist = e.do_explain_online({'location_description': 'ATHLETIC CLUB', 'community_area': '24', 'year': '2017', 'count': 3, 'direction': 'high'})
+    # for ee in elist:
+    #     print(ee.to_string())
     log.debug("explanation generation finished")
     config.conn.close()
 

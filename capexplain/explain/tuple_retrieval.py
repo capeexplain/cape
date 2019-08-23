@@ -7,9 +7,9 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
         # logger.debug(col_value)
         # logger.debug(cat_sim.is_categorical(col_value[0]))
         if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
-            return "like '%" + (
-                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
-            # return "= '" + str(col_value[1]) + "'"
+            # return "like '%" + (
+            #     str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '=' + str(col_value[1])
@@ -17,14 +17,13 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
                 # return "like '%" + str(col_value[1]) + "%'"
                 return "= '" + str(col_value[1]) + "'"
 
-
     def tuple_column_to_str_in_where_clause_3(col_value):
         # logger.debug(col_value)
         # logger.debug(cat_sim.is_categorical(col_value[0]))
         if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
-            return "like '%" + (
-                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
-            # return "= '" + str(col_value[1]) + "'"
+            # return "like '%" + (
+            #     str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '>=' + str(col_value[1])
@@ -35,16 +34,14 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
         # logger.debug(col_value)
         # logger.debug(cat_sim.is_categorical(col_value[0]))
         if cat_sim.is_categorical(col_value[0]) or col_value[0] == 'year':
-            return "like '%" + (
-                str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
-            # return "= '" + str(col_value[1]) + "'"
+            # return "like '%" + (
+            #     str(col_value[1]).replace('.0', '') if col_value[1][-2:] == '.0' else str(col_value[1])) + "%'"
+            return "= '" + str(col_value[1]) + "'"
         else:
             if is_float(col_value[1]):
                 return '<=' + str(col_value[1])
             else:
                 return "= '" + str(col_value[1]) + "'"
-
-
 
     V1 = str(lp1[2]).replace("\'", '')[1:-1]
     F1 = str(lp1[0]).replace("\'", '')[1:-1]
@@ -58,10 +55,6 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
     G_list = sorted(F2_list + V2_list)
     G_key = str(G_list).replace("\'", '')[1:-1]
     f_value_key = str(f_value).replace("\'", '')[1:-1]
-    # logger.debug(lp1)
-    # logger.debug(lp2)
-    # logger.debug(f_value)
-    # logger.debug(f_value_key)
 
     if lp2[3] == 'count':
         agg_fun = 'count(*)'
@@ -71,9 +64,6 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
     if G_key not in ExplConfig.MATERIALIZED_DICT:
         ExplConfig.MATERIALIZED_DICT[G_key] = dict()
 
-    # logger.debug(ExplConfig.MATERIALIZED_DICT)
-    # logger.debug(ExplConfig.MATERIALIZED_DICT[G_key])
-    # logger.debug(ExplConfig.MATERIALIZED_CNT)
     if f_value_key not in ExplConfig.MATERIALIZED_DICT[G_key]:
         ExplConfig.MATERIALIZED_DICT[G_key][f_value_key] = ExplConfig.MATERIALIZED_CNT
         dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ExplConfig.MATERIALIZED_CNT))
@@ -96,7 +86,6 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
 
     if v_value is not None:
         where_clause += ' AND '
-        # print(593, v_value)
         v_range_l = map(lambda x: v_value[0][x] + v_value[1][x][0], range(len(v_value[0])))
         v_range_r = map(lambda x: v_value[0][x] + v_value[1][x][1], range(len(v_value[0])))
         where_clause += ' AND '.join(list(map(lambda x: "{} {}".format(x[0], x[1]),
@@ -115,7 +104,7 @@ def get_tuples_by_F_V(lp1, lp2, f_value, v_value, conn, cur, table_name, cat_sim
 
     column_name = F2_list + V2_list + [lp2[3]]
     cur.execute(tuples_query)
-    logger.debug(tuples_query)
+    # logger.debug(tuples_query)
     tuples = []
     tuples_dict = dict()
     res = cur.fetchall()
@@ -156,7 +145,6 @@ def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim):
     G_list = sorted(F1_list + V1_list)
     G_key = str(G_list).replace("\'", '')[1:-1]
     f_value_key = str(f_value).replace("\'", '')[1:-1]
-    v_value_key = str(v_value).replace("\'", '')[1:-1]
 
     if gp[2] == 'count':
         agg_fun = 'count(*)'
@@ -170,7 +158,6 @@ def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim):
         ExplConfig.MATERIALIZED_DICT[G_key][f_value_key] = ExplConfig.MATERIALIZED_CNT
         dv_query = '''DROP VIEW IF EXISTS MV_{};'''.format(str(ExplConfig.MATERIALIZED_CNT))
         cur.execute(dv_query)
-        # print(504, MATERIALIZED_CNT)
 
         cmv_query = '''
             CREATE VIEW MV_{} AS SELECT {}, {} as {} FROM {} WHERE {} GROUP BY {};
@@ -199,3 +186,4 @@ def get_tuples_by_gp_uq(gp, f_value, v_value, conn, cur, table_name, cat_sim):
     cur.execute(tuples_query)
     res = cur.fetchall()
     return res[0]
+
