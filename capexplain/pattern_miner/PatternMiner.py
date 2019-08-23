@@ -41,8 +41,8 @@ class MinerConfig(DictLike):
                  lamb=0.1,
                  dist_thre=0.99,
                  reg_package='statsmodels',
-                 supp_l=10,
-                 supp_g=100,
+                 supp_l=5,
+                 supp_g=5,
                  fd_check=True,
                  supp_inf=False,  # changed from True for debugging error, but does not seem to work
                  manual_num=False,

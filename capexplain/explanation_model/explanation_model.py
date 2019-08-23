@@ -59,7 +59,7 @@ class Explanation(object):
             if key.startswith('count') or key.startswith('sum'):
                 agg = key
             else:
-                value_str += str(self.tuple_value[key]) + ','
+                value_str += str(self.tuple_value[key]) + '|'
         if agg in self.tuple_value:
             value_str += str(self.tuple_value[agg])
         return value_str

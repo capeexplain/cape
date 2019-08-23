@@ -104,7 +104,7 @@ class Plotter:
         self.a.legend(loc='best')
 
 
-    def plot_3D_const(self,df,x=None,y=None,z_value=None,label=None): # df is the dataframe containing the columns to be drawn
+    def plot_3D_const(self,df,x=None,y=None,z_value=None,color='r',label=None): # df is the dataframe containing the columns to be drawn
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
@@ -122,7 +122,7 @@ class Plotter:
         X1, Y1 = np.meshgrid(x_range, y_range)
         zs = np.array([z_value for x1,y1 in zip(np.ravel(X1), np.ravel(Y1))])
         Z = zs.reshape(X1.shape)
-        self.a.plot_surface(X1, Y1, Z,color='r',linewidth=2,label=label)
+        self.a.plot_surface(X1, Y1, Z,color=color,linewidth=2,label=label)
 
         if ('coded_'+x) in df.columns:
             self.a.set(xticks=df['coded_'+x].values, xticklabels=df[x])
@@ -171,7 +171,7 @@ class Plotter:
             self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
-        plane_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc="r")
+        plane_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
         plane_proxy_name = label
         self.legend_proxies_shape.append(plane_proxy_shape)
         self.legend_proxies_name.append(plane_proxy_name)
@@ -271,7 +271,7 @@ class Plotter:
             self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
-    def plot_3D_scatter(self,df,x,y,z,color='g',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
+    def plot_3D_scatter(self,df,x,y,z,color='b',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
@@ -371,12 +371,12 @@ class Plotter:
                     
             self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
 
-
-        scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
-        scatter_proxy_name = label
-        self.legend_proxies_shape.append(scatter_proxy_shape)
-        self.legend_proxies_name.append(scatter_proxy_name)
-        self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
+        if(label is not None):
+            scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
+            scatter_proxy_name = label
+            self.legend_proxies_shape.append(scatter_proxy_shape)
+            self.legend_proxies_name.append(scatter_proxy_name)
+            self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
 
 
     def add_text(self,text_content=None):

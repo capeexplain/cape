@@ -754,7 +754,7 @@ class CAPE_UI:
             rel_pattern_pred_list = rel_pattern_pred.split(',')
             rel_pattern_part_value_list = rel_pattern_part_value[0].split(',')
             exp_tuple = self.exp_df.iloc[int(n)]['Explanation_Tuple']
-            exp_tuple_list = exp_tuple.split(',')[:-1]
+            exp_tuple_list = exp_tuple.split('|')[:-1]
             exp_tuple_score = float(self.exp_df.iloc[int(n)]['Score'])
             drill_attr_list = self.exp_df.iloc[int(n)]['Drill_Down_To'].split(',')
 
@@ -766,11 +766,11 @@ class CAPE_UI:
                 exp_tuple_col.sort()
 
 
-        # logger.debug('exp_tuple_col is:')
-        # logger.debug(exp_tuple_col)
+        logger.debug('exp_tuple_col is:')
+        logger.debug(exp_tuple_col)
 
-        # logger.debug('exp_tuple_list is:')
-        # logger.debug(exp_tuple_list)
+        logger.debug('exp_tuple_list is:')
+        logger.debug(exp_tuple_list)
 
 
         exp_tuple_df_list = [exp_tuple_list]

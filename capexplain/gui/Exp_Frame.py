@@ -197,6 +197,9 @@ class Exp_Frame:
                 # logger.debug("self.explanation_df is")
                 # logger.debug(self.explanation_df)
 
+                logger.debug(self.none_drill_down_df)
+                logger.debug(self.question_df)
+                logger.debug(common_cols)
                 question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
                 explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
@@ -226,7 +229,7 @@ class Exp_Frame:
                 y = self.rel_pattern_pred_list[1]
                 z = self.rel_pattern_agg
 
-                const = round(self.rel_param,2)
+                const = round(float(self.rel_param),2)
 
                 none_drill_down_df = copy.deepcopy(self.none_drill_down_df[[x,y,z]])
                 # logger.debug(none_drill_down_df)
@@ -238,7 +241,10 @@ class Exp_Frame:
 
                 # logger.debug("self.explanation_df is")
                 # logger.debug(self.explanation_df)
-
+                logger.debug(self.none_drill_down_df)
+                logger.debug(self.question_df)
+                logger.debug(common_cols)
+                
                 question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
 
                 explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
@@ -255,7 +261,7 @@ class Exp_Frame:
 
                 pattern_only_df = pd.concat([none_drill_down_df,question_df,explanation_df]).drop_duplicates(keep=False)
 
-                self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model")
+                self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model",color='y')
                 self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
                 self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
                 self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
@@ -325,7 +331,7 @@ class Exp_Frame:
 
         elif(len(self.rel_pattern_pred_list)>2):
             
-            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='3D')
             self.rel_plotter.add_text("Cannot plot because the dimension of the data is higher than 2!")
 
 
@@ -373,35 +379,51 @@ class Exp_Frame:
         
             else:
 
+                self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='3D')
 
-                pass
+                x = self.rel_pattern_pred_list[0]
+                y = self.rel_pattern_pred_list[1]
+                z = self.rel_pattern_agg
 
-                # self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='3D')
+                const = round(float(self.rel_param),2)
 
-                # x = self.rel_pattern_pred_list[0]
-                # y = self.rel_pattern_pred_list[1]
-                # z = self.rel_pattern_agg
-
-                # const = round(float(self.rel_param),2)
-
-                # none_drill_down_df = self.none_drill_down_df[[x,y,z]]
+                none_drill_down_df = copy.deepcopy(self.none_drill_down_df[[x,y,z]])
                 # logger.debug(none_drill_down_df)
 
-                # question_df = self.question_df[[x,y,z]]
-                # logger.debug(question_df)
+                common_cols = self.rel_pattern_part_list + self.rel_pattern_pred_list
+
+                # logger.debug("common_cols for question is ")
+                # print(common_cols)
+
+                # logger.debug("self.explanation_df is")
+                # logger.debug(self.explanation_df)
+
+                question_df = pd.merge(self.none_drill_down_df,self.question_df,on=common_cols)
+
+                explanation_df = pd.merge(self.none_drill_down_df,self.explanation_df,on=common_cols)
+
+                # logger.debug("question_df is ")
+                # print(question_df)
+
+                question_df = question_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x,(z+"_x"):z})
+                question_df = question_df[[x,y,z]]
+
+                explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(z+"_x"):z})
+                explanation_df = explanation_df[[x,y,z]]
 
 
-                # pattern_only_df = pd.concat([none_drill_down_df,question_df]).drop_duplicates(keep=False)
+                pattern_only_df = pd.concat([none_drill_down_df,question_df,explanation_df]).drop_duplicates(keep=False)
 
-                # self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const)
-                # self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
-                # self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z)
-                # self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='b',marker='s',size=200)
+                self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model",color='y')
+                self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
+                self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
+                self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
+                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='g',marker='^',size=250,label="Explanation")
 
-                # self.rel_plotter.set_x_label(x)
-                # self.rel_plotter.set_y_label(y)
-                # self.rel_plotter.set_z_label(z)
-                # self.rel_plotter.set_title("User Question Graph")
+                self.rel_plotter.set_x_label(x)
+                self.rel_plotter.set_y_label(y)
+                self.rel_plotter.set_z_label(z)
+                self.rel_plotter.set_title("Pattern Graph")
 
         elif(self.rel_pattern_model=='linear'):
             if(len(self.rel_pattern_pred_list)==1):
@@ -458,81 +480,46 @@ class Exp_Frame:
 
         elif(self.drill_model=='const'):
 
-            if(len(self.drill_attr)==1):
-                self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
-                const=round(float(self.drill_param),2)
+            self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            const=round(float(self.drill_param),2)
 
-                x=self.rel_pattern_pred_list[0]
-                y=self.rel_pattern_agg
+            x=self.rel_pattern_pred_list[0]
+            y=self.rel_pattern_agg
 
-                self.drill_plotter.plot_2D_const(const,label="Refined Explanation Model")
+            self.drill_plotter.plot_2D_const(const,label="Refined Explanation Model")
 
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
+            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
 
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
+            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
 
-                self.drill_plotter.set_x_label(x)
-                self.drill_plotter.set_y_label(y)
-                self.drill_plotter.set_title("Refined Pattern Explanation")
-        
-            else:
-                pass
-
-                # self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='3D')
-
-                # x = self.rel_pattern_pred_list[0]
-                # y = self.rel_pattern_pred_list[1]
-                # z = self.rel_pattern_agg
-
-                # const = round(float(self.drill_param),2)
-
-                # drill_down_df = self.drill_down_df[[x,y,z]]
-                # logger.debug(drill_down_df)
-
-                # explanation_df = self.explanation_df[[x,y,z]]
-                # logger.debug(explanation_df)
-
-
-                # pattern_only_df = pd.concat([drill_down_df,explanation_df]).drop_duplicates(keep=False)
-
-                # self.drill_plotter.plot_3D_const(drill_down_df,x=x,y=y,z_value=const)
-                # self.drill_plotter.plot_3D_scatter(drill_down_df,x=x,y=y,z=z,alpha=0)
-                # self.drill_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z)
-                # self.drill_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='b',marker='s',size=200,label='Explanation')
-
-                # self.drill_plotter.set_x_label(x)
-                # self.drill_plotter.set_y_label(y)
-                # self.drill_plotter.set_z_label(z)
-                # self.drill_plotter.set_title("Pattern Graph")
-
-                # self.drill_canvas.draw()
-
+            self.drill_plotter.set_x_label(x)
+            self.drill_plotter.set_y_label(y)
+            self.drill_plotter.set_title("Refined Pattern Explanation")
 
         elif(self.drill_model=='linear'):
 
-            if(len(self.drill_attr)==1):
-                self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
-                # x = self.drill_attr[0]
-                x=self.rel_pattern_pred_list[0]
+            self.drill_plotter = Plotter(figure=self.drill_figure,data_convert_dict=self.data_convert_dict,mode='2D')
+            # x = self.drill_attr[0]
+            x=self.rel_pattern_pred_list[0]
 
-                logger.debug(x)
-                y = self.rel_pattern_agg
+            logger.debug(x)
+            y = self.rel_pattern_agg
 
-                intercept_value = self.drill_param['Intercept']
-                slope_name = list(self.drill_param)[1]
-                slope_value = float(self.drill_param[slope_name])
+            intercept_value = self.drill_param['Intercept']
+            slope_name = list(self.drill_param)[1]
+            slope_value = float(self.drill_param[slope_name])
 
-                logger.debug(self.drill_down_df)
-                draw_line_df = self.drill_down_df[[x]]
+            logger.debug(self.drill_down_df)
+            draw_line_df = self.drill_down_df[[x]]
 
-                # logger.debug(explanation_df)
-                self.drill_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Refined Explanation Model")
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y)
-                self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,zorder=1)
-                self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
-                self.drill_plotter.set_x_label(x)
-                self.drill_plotter.set_y_label(y)
-                self.drill_plotter.set_title("Refined Pattern Explanation")
+            # logger.debug(explanation_df)
+            self.drill_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Refined Explanation Model")
+            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y)
+            self.drill_plotter.plot_2D_scatter(self.explanation_df,x=x,y=y,zorder=1)
+            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
+            self.drill_plotter.set_x_label(x)
+            self.drill_plotter.set_y_label(y)
+            self.drill_plotter.set_title("Refined Pattern Explanation")
 
         self.drill_canvas.draw()
 
