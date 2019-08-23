@@ -1,2 +1,2 @@
-community_area,primary_type,year,count,direction
-20,ASSAULT,2002,141,low
+community_area,local_description,year,count,direction
+28,CHA PARKING LOT,2016,1,low

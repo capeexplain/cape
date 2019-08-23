@@ -183,9 +183,9 @@ MINE_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
     ConfigOpt(longopt='regpackage', shortopt='r', desc=('regression analysis package to use {}'.format(
         MinerConfig.STATS_MODELS)), hasarg=True, cfgFieldName='reg_package', defaultValue='statsmodels'),
     ConfigOpt(longopt='local-support', shortopt=None, desc='local support threshold',
-              hasarg=True, otype=OptionType.Int, cfgFieldName='supp_l',defaultValue=10),
+              hasarg=True, otype=OptionType.Int, cfgFieldName='supp_l',defaultValue=5),
     ConfigOpt(longopt='global-support', shortopt=None, desc='global support thresh',
-              hasarg=True, otype=OptionType.Int, cfgFieldName='supp_g',defaultValue=100),
+              hasarg=True, otype=OptionType.Int, cfgFieldName='supp_g',defaultValue=5),
     ConfigOpt(longopt='fd-optimizations', shortopt='f', hasarg=True,
               desc='activate functional dependency detection and optimizations', cfgFieldName='fd_check', defaultValue=False),
     ConfigOpt(longopt='algorithm', shortopt='a', desc='algorithm to use for pattern mining {}'.format(
