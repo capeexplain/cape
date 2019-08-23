@@ -654,8 +654,8 @@ class ExplanationGenerator:
         '''
         row_data = {}
         agg_col = None
-        if 'lambda' not in uq_tuple:
-            uq_tuple['lambda'] = 0.1
+        # if 'lambda' not in uq_tuple:
+        #     uq_tuple['lambda'] = 0.1
         for k, v in enumerate(uq_tuple):
             # print(k, v)
             if schema is None or v not in schema:
@@ -846,7 +846,7 @@ def main(argv=[]):
     # eg.doExplain()
     eg.initialize()
     elist = eg.do_explain_online(
-        {'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1, 'lambda': 0.2, 'direction': 'low'})
+        {'name': 'Jiawei Han', 'venue': 'kdd', 'year': 2007, 'sum_pubcount': 1,  'direction': 'low'})
     # elist = eg.do_explain_online({'name': 'Kirsten Bergmann', 'venue': 'iva', 'sum_pubcount': 6.0, 'direction': 'high', 'lambda': 0.2})
 
     # elist = eg.do_explain_online({'primary_type': 'BATTERY', 'community_area': '26', 'year': '2011', 'count': 16, 'lambda': 0.2, 'direction': 'low'})
