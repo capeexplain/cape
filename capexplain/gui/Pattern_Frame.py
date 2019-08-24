@@ -55,7 +55,7 @@ class Local_Pattern_Frame:
         toolbar.update()
         canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 
-        if(len(self.pattern_data_df)>=50):
+        if(len(self.pattern_data_df)>=100):
             self.text_plotter = Plotter(figure=self.figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.text_plotter.add_text("Cannot plot because the size of the data is so large!")
 
@@ -75,10 +75,10 @@ class Local_Pattern_Frame:
                 self.plotter.plot_2D_scatter(draw_df,x=variable_name,y=self.agg_alias,label=self.agg_alias)
                 if(low_outlier_df.empty is False):
                     self.plotter.plot_2D_scatter(low_outlier_df,x=variable_name, y=self.agg_alias, 
-                        label='Low Outlier(s)',color='r',marker='*',size=250)
+                        label='Low Outlier(s)',color='#98df8a',marker='*',size=250)
                 if(high_outlier_df.empty is False):
                     self.plotter.plot_2D_scatter(high_outlier_df,x=variable_name, y=self.agg_alias, 
-                        label='High Outlier(s)',color='g',marker='*',size=250)
+                        label='High Outlier(s)',color='#ff9896',marker='*',size=250)
 
                 self.plotter.set_x_label(variable_name)
                 self.plotter.set_y_label(self.agg_alias)
@@ -120,10 +120,10 @@ class Local_Pattern_Frame:
                 self.plotter.plot_2D_scatter(draw_scatter_df,x=variable_name,y=self.agg_alias,label=self.agg_alias)
                 if(low_outlier_df.empty is False):
                     self.plotter.plot_2D_scatter(low_outlier_df,x=variable_name, y=self.agg_alias, 
-                        label='Low Outlier(s)',color='r',marker='*',size=250)
+                        label='Low Outlier(s)',color='#98df8a',marker='*',size=250)
                 if(high_outlier_df.empty is False):
                     self.plotter.plot_2D_scatter(high_outlier_df,x=variable_name, y=self.agg_alias, 
-                        label='High Outlier(s)',color='g',marker='*',size=250)
+                        label='High Outlier(s)',color='#ff9896',marker='*',size=250)
                 self.plotter.set_x_label(variable_name)
                 self.plotter.set_y_label(self.agg_alias)
                 self.plotter.set_title("Pattern Graph")

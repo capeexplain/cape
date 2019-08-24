@@ -163,7 +163,7 @@ class Exp_Frame:
 
     def load_rel_exp_graph(self):
 
-        if(len(self.none_drill_down_df)>=50):
+        if(len(self.none_drill_down_df)>=100):
 
             self.rel_plotter = Plotter(figure=self.rel_figure,data_convert_dict=self.data_convert_dict,mode='2D')
             self.rel_plotter.add_text("Cannot plot because the size of the data is so large!")
@@ -214,8 +214,8 @@ class Exp_Frame:
                 explanation_df = explanation_df.rename(index=str, columns={(y+"_x"): y,(x+"_x"):x})
                 explanation_df = explanation_df[[x,y]]
 
-                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=5,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='#ed665d',marker='v',size=250,zorder=10,label="User Question")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=5,label="Explanation")
                 self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,zorder=0,label=self.rel_pattern_agg)
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -264,8 +264,8 @@ class Exp_Frame:
                 self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model",color='y')
                 self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
                 self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
-                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='g',marker='^',size=250,label="Explanation")
+                self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='#ed665d',marker='v',size=250,label="User Question")
+                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='#98df8a',marker='^',size=250,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -312,8 +312,8 @@ class Exp_Frame:
 
                 self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Explanation Model")
                 self.rel_plotter.plot_2D_scatter(none_drill_down_df,x=x,y=y,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=1,label="User Question")
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=2,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='#ed665d',marker='v',size=250,zorder=1,label="User Question")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=2,label="Explanation")
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
                 self.rel_plotter.set_title("Pattern Graph")
@@ -370,9 +370,9 @@ class Exp_Frame:
 
                 # logger.debug(question_df)
 
-                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=250,zorder=10,label="User Question")
+                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='#ed665d',marker='v',size=250,zorder=10,label="User Question")
                 self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=250,zorder=0,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=0,label="Explanation")
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
                 self.rel_plotter.set_title("User Question Graph")
@@ -417,8 +417,8 @@ class Exp_Frame:
                 self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model",color='y')
                 self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0)
                 self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='r',marker='v',size=250,label="User Question")
-                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='g',marker='^',size=250,label="Explanation")
+                self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='#ed665d',marker='v',size=250,label="User Question")
+                self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='#98df8a',marker='^',size=250,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -458,9 +458,9 @@ class Exp_Frame:
 
                 self.rel_plotter.plot_2D_linear(draw_line_df,slope=slope_value,intercept=intercept_value,label="Relevent Model")
                 self.rel_plotter.plot_2D_scatter(copy.deepcopy(self.none_drill_down_df),x=x,y=y,label=self.rel_pattern_agg)
-                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='r',marker='v',size=150,zorder=1,label="User Question")
+                self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='#ed665d',marker='v',size=250,zorder=1,label="User Question")
                 logger.debug(explanation_df)
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='g',marker='^',size=150,zorder=0,label="Explanation")
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=0,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
@@ -488,7 +488,7 @@ class Exp_Frame:
 
             self.drill_plotter.plot_2D_const(const,label="Refined Explanation Model")
 
-            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='g',marker='^',size=250,zorder=10,label="Explanation")
+            self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='#98df8a',marker='^',size=250,zorder=10,label="Explanation")
 
             self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg)
 

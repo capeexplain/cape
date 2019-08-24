@@ -518,13 +518,13 @@ class CAPE_UI:
         self.low_outlier_text = Label(self.high_low_frame,text='Unusually\nLow: ',font=('Times New Roman bold',10),bg='light yellow')
         self.low_outlier_text.grid(column=0,row=0)
 
-        self.low_outlier_label = Label(self.high_low_frame,bg='#dc0000',height=2, width=2)
+        self.low_outlier_label = Label(self.high_low_frame,bg='#98df8a',height=2, width=2)
         self.low_outlier_label.grid(column=1,row=0)
 
         self.high_outlier_text = Label(self.high_low_frame,text='Unusually\nHigh: ',font=('Times New Roman bold',10),bg='light yellow')
         self.high_outlier_text.grid(column=0,row=1)
 
-        self.high_outlier_label = Label(self.high_low_frame,bg='#00e600',height=2, width=2)
+        self.high_outlier_label = Label(self.high_low_frame,bg='#ff9896',height=2, width=2)
         self.high_outlier_label.grid(column=1,row=1)
 
         if(self.low_outlier_row_numbers):
@@ -539,9 +539,9 @@ class CAPE_UI:
         self.query_result_table.updateModel(model)
         self.query_result_table.redraw()
         if(self.low_outlier_row_numbers):
-            self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#dc0000', cols='all')
+            self.query_result_table.setRowColors(rows=self.low_outlier_row_numbers, clr='#98df8a', cols='all')
         if(self.high_outlier_row_numbers):
-            self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#00e600', cols='all')
+            self.query_result_table.setRowColors(rows=self.high_outlier_row_numbers, clr='#ff9896', cols='all')
 
 
     def handle_question(self,direction):

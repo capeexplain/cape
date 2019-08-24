@@ -24,7 +24,7 @@ coded = re.compile('(coded\_).*')
 
 class Plotter:
 
-    def __init__(self,figure,data_convert_dict,mode='2D'):
+    def __init__(self,figure,data_convert_dict,mode='2D',bg_color='#f0e9e9'):
         
         self.data_convert_dict = data_convert_dict
         self.figure = figure
@@ -36,8 +36,10 @@ class Plotter:
 
         if(mode=='2D'):
             self.a = self.figure.add_subplot(111)
+            self.a.set_facecolor(bg_color)
         elif(mode=='3D'):
             self.a= self.figure.gca(projection='3d')
+            self.a.set_facecolor(bg_color)
 
         self.x_max = None
         self.x_min = None
@@ -98,13 +100,13 @@ class Plotter:
         self.a.set_title(title_name)
 
 
-    def plot_2D_const(self,const_value,label=None):
+    def plot_2D_const(self,const_value,label=None,color='#ff9e4a'):
 
-        self.a.axhline(const_value,c="red",linewidth=2,label=label)
+        self.a.axhline(const_value,c=color,linewidth=2,label=label)
         self.a.legend(loc='best')
 
 
-    def plot_3D_const(self,df,x=None,y=None,z_value=None,color='r',label=None): # df is the dataframe containing the columns to be drawn
+    def plot_3D_const(self,df,x=None,y=None,z_value=None,color='#ff9e4a',label=None): # df is the dataframe containing the columns to be drawn
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
@@ -178,7 +180,7 @@ class Plotter:
         self.a.legend(self.legend_proxies_shape,self.legend_proxies_name)
 
 
-    def plot_2D_linear(self,x,slope,intercept,label=None):  # x:df column; slope,intercept:numeric values
+    def plot_2D_linear(self,x,slope,intercept,color='#ff9e4a',label=None):  # x:df column; slope,intercept:numeric values
         var_min = pd.to_numeric(x.min()).item()
         var_max = pd.to_numeric(x.max()).item()
         logger.debug("var_min is:")
@@ -193,14 +195,14 @@ class Plotter:
         logger.debug("y_vals is:")
         logger.debug(y_vals)
 
-        self.a.plot(X1, y_vals, c='r',linewidth=2,label=label)
+        self.a.plot(X1, y_vals, c=color,linewidth=2,label=label)
         self.a.legend(loc='best')
 
     def plot_3D_linear(self,x,y,x_weight,y_weight):
         pass 
 
 
-    def plot_2D_scatter(self,df,x=None,y=None,color='b',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
+    def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
 
         df = self.df_type_conversion(df)
 
@@ -271,7 +273,7 @@ class Plotter:
             self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
-    def plot_3D_scatter(self,df,x,y,z,color='b',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
+    def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
