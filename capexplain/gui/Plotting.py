@@ -55,6 +55,8 @@ class Plotter:
         numeric_cols = []
         str_cols = []
 
+        logger.debug('********************df befoe converting*********************')
+        logger.debug(data_frame)
         for n in list(data_frame):
             if coded.search(n) is not None:
                 continue
@@ -62,6 +64,8 @@ class Plotter:
                 numeric_cols.append(n) 
             elif(self.data_convert_dict[n]=='str'):
                 str_cols.append(n)
+        logger.debug("str_cols are :")
+        logger.debug(str_cols)
 
         if(len(numeric_cols)>0):
             data_frame[numeric_cols] = data_frame[numeric_cols].apply(lambda x : pd.to_numeric(x))
@@ -81,6 +85,8 @@ class Plotter:
                     dict1 = dict(zip(data_frame[n],data_frame['coded_'+n]))
                     dict1['dict_name'] = 'coded_'+n
                     self.encoding_list.append(dict1)
+        logger.debug("~~~~~~~~~~~~~~~~~~~after converting, df is ~~~~~~~~~~~~~~~~~~~~~~")
+        logger.debug(data_frame)
 
         return data_frame
         
@@ -146,7 +152,7 @@ class Plotter:
             x_division_value = (self.x_max - self.x_min) // 5
             if(x_division_value==0):
                 x_division_value = 1
-                    
+
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
@@ -202,7 +208,7 @@ class Plotter:
         pass 
 
 
-    def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
+    def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,refresh_ticks=True): # x,y are 2 df column names
 
         df = self.df_type_conversion(df)
 
@@ -224,9 +230,9 @@ class Plotter:
 
 
         if ('coded_'+x) in df.columns:
-
-            x_ticks = df['coded_'+x].values
-            self.a.set(xticks=x_ticks, xticklabels=df[x])
+            if(refresh_ticks==True):
+                x_ticks = df['coded_'+x].values
+                self.a.set(xticks=x_ticks, xticklabels=df[x])
 
         else:
             x_min = floor(df[x].values.min())
@@ -246,11 +252,13 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
-        if ('coded_'+y) in df.columns:          
-            y_ticks = df['coded_'+y].values
-            self.a.set(yticks=y_ticks, yticklabels=df[y])
+        if ('coded_'+y) in df.columns:
+            if(refresh_ticks==True):          
+                y_ticks = df['coded_'+y].values
+                self.a.set(yticks=y_ticks, yticklabels=df[y])
 
         else:
             y_min = floor(df[y].values.min())
@@ -269,11 +277,11 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-                    
-            self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
-    def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
+    def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,refresh_ticks=True): # x,y,z are 3 df columns
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
@@ -297,9 +305,9 @@ class Plotter:
         self.a.scatter(X, Y, Z, s=size, c=color,marker=marker,zorder=zorder,alpha=alpha,label=label)
         
         if ('coded_'+x) in df.columns:
-            x_ticks = df['coded_'+x].values
-            self.a.set(xticks=x_ticks, xticklabels=df[x])
-
+            if(refresh_ticks==True):
+                x_ticks = df['coded_'+x].values
+                self.a.set(xticks=x_ticks, xticklabels=df[x])
 
         else:
             x_min = floor(df[x].values.min())
@@ -319,12 +327,13 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
-            
-            y_ticks = df['coded_'+y].values
-            self.a.set(yticks=y_ticks, yticklabels=df[y])
+            if(refresh_ticks==True):
+                y_ticks = df['coded_'+y].values
+                self.a.set(yticks=y_ticks, yticklabels=df[y])
 
         else:
             y_min = floor(df[y].values.min())
@@ -343,15 +352,16 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-                    
-            self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
 
         if ('coded_'+z) in df.columns:
             
             z_ticks = df['coded_'+z].values
-            self.a.set(zticks=z_ticks, zticklabels=df[z])
+            if(refresh_ticks==True):
+                self.a.set(zticks=z_ticks, zticklabels=df[z])
 
         else:
             z_min = floor(df[z].values.min())
@@ -370,8 +380,9 @@ class Plotter:
             z_division_value = (self.z_max - self.z_min) // 5
             if(z_division_value==0):
                 z_division_value = 1
-                    
-            self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
+
+            if(refresh_ticks==True):
+                self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
 
         if(label is not None):
             scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)

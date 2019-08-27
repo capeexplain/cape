@@ -91,8 +91,8 @@ class DBinfo:
 
         for n in data_type_list:
             try:
-                print("SELECT " + n[0] + '::numeric FROM crime_demo;')
-                self.cur.execute("SELECT " + n[0] + '::numeric FROM crime_demo;')
+                print("SELECT " + n[0] + '::numeric FROM '+str(table_name)+';')
+                self.cur.execute("SELECT " + n[0] + '::numeric FROM '+str(table_name)+';')
                 self.conn.commit()
                 plot_data_convert_dict[n[0]] = 'numeric'
                 query_data_convert_dict[n[0]] = 'numeric'
