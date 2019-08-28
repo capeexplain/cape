@@ -11,7 +11,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 PACKAGE = 'capexplain'
-VERSION = '0.3'
+VERSION = '0.5'
 
 setup(
     name=PACKAGE,

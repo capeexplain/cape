@@ -58,6 +58,8 @@ class Plotter:
         numeric_cols = []
         str_cols = []
 
+        logger.debug('********************df befoe converting*********************')
+        logger.debug(data_frame)
         for n in list(data_frame):
             if coded.search(n) is not None:
                 continue
@@ -65,6 +67,8 @@ class Plotter:
                 numeric_cols.append(n) 
             elif(self.data_convert_dict[n]=='str'):
                 str_cols.append(n)
+        logger.debug("str_cols are :")
+        logger.debug(str_cols)
 
         if(len(numeric_cols)>0):
             data_frame[numeric_cols] = data_frame[numeric_cols].apply(lambda x : pd.to_numeric(x))
@@ -84,6 +88,8 @@ class Plotter:
                     dict1 = dict(zip(data_frame[n],data_frame['coded_'+n]))
                     dict1['dict_name'] = 'coded_'+n
                     self.encoding_list.append(dict1)
+        logger.debug("~~~~~~~~~~~~~~~~~~~after converting, df is ~~~~~~~~~~~~~~~~~~~~~~")
+        logger.debug(data_frame)
 
         return data_frame
         
@@ -149,7 +155,7 @@ class Plotter:
             x_division_value = (self.x_max - self.x_min) // 5
             if(x_division_value==0):
                 x_division_value = 1
-                    
+
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
@@ -208,6 +214,7 @@ class Plotter:
 
     def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y are 2 df column names
 
+
         df = self.df_type_conversion(df)
 
         row_size = df.shape[0]
@@ -228,7 +235,6 @@ class Plotter:
 
 
         if ('coded_'+x) in df.columns:
-
             if(max_label==True):
                 x_ticks = df['coded_'+x].values
                 self.a.set_xticks(df['coded_'+x].values)
@@ -256,7 +262,8 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
             if(max_label==True):
@@ -267,8 +274,6 @@ class Plotter:
                 self.max_coded_y_labels.append(df[y])
             else:
                 self.a.set(yticks=self.max_coded_y_labels[0], yticklabels=self.max_coded_y_labels[1])
-         
-
         else:
             y_min = floor(df[y].values.min())
             y_max = ceil(df[y].values.max()+1)
@@ -286,8 +291,8 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-                    
-            self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
     def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y,z are 3 df columns
@@ -323,7 +328,6 @@ class Plotter:
             else:
                 self.a.set(xticks=self.max_coded_x_labels[0], xticklabels=self.max_coded_x_labels[1])
 
-
         else:
             x_min = floor(df[x].values.min())
             x_max = ceil(df[x].values.max()+1)
@@ -342,7 +346,8 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
             if(max_label==True):
@@ -353,7 +358,7 @@ class Plotter:
                 self.max_coded_y_labels.append(df[y])
             else:
                 self.a.set(yticks=self.max_coded_y_labels[0], yticklabels=self.max_coded_y_labels[1])
-            
+
 
         else:
             y_min = floor(df[y].values.min())
@@ -372,8 +377,8 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-                    
-            self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
+            if(refresh_ticks==True):
+                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
 
@@ -386,7 +391,6 @@ class Plotter:
                 self.max_coded_z_labels.append(df[z])
             else:
                 self.a.set(zticks=self.max_coded_z_labels[0], zticklabels=self.max_coded_z_labels[1])
-            
 
         else:
             z_min = floor(df[z].values.min())
@@ -405,8 +409,9 @@ class Plotter:
             z_division_value = (self.z_max - self.z_min) // 5
             if(z_division_value==0):
                 z_division_value = 1
-                    
-            self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
+
+            if(refresh_ticks==True):
+                self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
 
         if(label is not None):
             scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
