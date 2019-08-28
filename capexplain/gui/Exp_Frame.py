@@ -266,7 +266,6 @@ class Exp_Frame:
                 pattern_only_df = pd.concat([none_drill_down_df,question_df,explanation_df]).drop_duplicates(keep=False)
 
                 self.rel_plotter.plot_3D_const(none_drill_down_df,x=x,y=y,z_value=const,label="Explanation Model",color='y')
-
                 self.rel_plotter.plot_3D_scatter(none_drill_down_df,x=x,y=y,z=z,alpha=0,max_label=True)
                 self.rel_plotter.plot_3D_scatter(pattern_only_df,x=x,y=y,z=z,label=self.rel_pattern_agg)
                 self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='#ed665d',marker='v',size=250,label="User Question")
@@ -431,6 +430,7 @@ class Exp_Frame:
                 self.rel_plotter.plot_3D_scatter(question_df,x=x,y=y,z=z,color='#ed665d',marker='v',size=250,label="User Question")
                 self.rel_plotter.plot_3D_scatter(explanation_df,x=x,y=y,z=z,color='#98df8a',marker='^',size=250,label="Explanation")
 
+
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)
                 self.rel_plotter.set_z_label(z)
@@ -502,6 +502,7 @@ class Exp_Frame:
             self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.drill_down_df),x=x,y=y,zorder=0,label=self.rel_pattern_agg,max_label=True)
 
             self.drill_plotter.plot_2D_scatter(copy.deepcopy(self.explanation_df),x=x,y=y,color='#98df8a',marker='^',size=250,zorder=10,label="Explanation")
+
 
             self.drill_plotter.set_x_label(x)
             self.drill_plotter.set_y_label(y)

@@ -215,6 +215,7 @@ class Plotter:
     def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y are 2 df column names
 
 
+
         df = self.df_type_conversion(df)
 
         row_size = df.shape[0]
@@ -243,6 +244,7 @@ class Plotter:
                 self.max_coded_x_labels.append(df[x])
             else:
                 self.a.set(xticks=self.max_coded_x_labels[0], xticklabels=self.max_coded_x_labels[1])
+
 
         else:
             x_min = floor(df[x].values.min())
@@ -297,6 +299,7 @@ class Plotter:
 
     def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y,z are 3 df columns
 
+
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
 
@@ -327,6 +330,7 @@ class Plotter:
                 self.max_coded_x_labels.append(df[x])
             else:
                 self.a.set(xticks=self.max_coded_x_labels[0], xticklabels=self.max_coded_x_labels[1])
+
 
         else:
             x_min = floor(df[x].values.min())
@@ -360,6 +364,7 @@ class Plotter:
                 self.a.set(yticks=self.max_coded_y_labels[0], yticklabels=self.max_coded_y_labels[1])
 
 
+
         else:
             y_min = floor(df[y].values.min())
             y_max = ceil(df[y].values.max()+1)
@@ -391,6 +396,9 @@ class Plotter:
                 self.max_coded_z_labels.append(df[z])
             else:
                 self.a.set(zticks=self.max_coded_z_labels[0], zticklabels=self.max_coded_z_labels[1])
+
+
+ 
 
         else:
             z_min = floor(df[z].values.min())
