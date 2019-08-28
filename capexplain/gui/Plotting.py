@@ -30,6 +30,9 @@ class Plotter:
         self.figure = figure
         self.legend_proxies_shape= []  # for 3d legend specifically
         self.legend_proxies_name = [] # for 3d legend specifically
+        self.max_coded_x_labels = []
+        self.max_coded_y_labels = []
+        self.max_coded_z_labels = []
 
         plt.rc('xtick',labelsize=9)
         plt.rc('ytick',labelsize=9)
@@ -150,7 +153,8 @@ class Plotter:
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
-            self.a.set(yticks=df['coded_'+y].values, yticklabels=df[y])
+            self.a.set_xticks(df['coded_'+x].values)
+            self.a.set_xticklabels(df[x],rotation=45)
 
         else:
             y_min = floor(df[y].values.min())
@@ -202,7 +206,7 @@ class Plotter:
         pass 
 
 
-    def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y are 2 df column names
+    def plot_2D_scatter(self,df,x=None,y=None,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y are 2 df column names
 
         df = self.df_type_conversion(df)
 
@@ -225,8 +229,14 @@ class Plotter:
 
         if ('coded_'+x) in df.columns:
 
-            x_ticks = df['coded_'+x].values
-            self.a.set(xticks=x_ticks, xticklabels=df[x])
+            if(max_label==True):
+                x_ticks = df['coded_'+x].values
+                self.a.set_xticks(df['coded_'+x].values)
+                self.a.set_xticklabels(df[x],rotation=45)
+                self.max_coded_x_labels.append(x_ticks)
+                self.max_coded_x_labels.append(df[x])
+            else:
+                self.a.set(xticks=self.max_coded_x_labels[0], xticklabels=self.max_coded_x_labels[1])
 
         else:
             x_min = floor(df[x].values.min())
@@ -248,9 +258,16 @@ class Plotter:
 
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
-        if ('coded_'+y) in df.columns:          
-            y_ticks = df['coded_'+y].values
-            self.a.set(yticks=y_ticks, yticklabels=df[y])
+        if ('coded_'+y) in df.columns:
+            if(max_label==True):
+                y_ticks = df['coded_'+y].values
+                self.a.set_yticks(df['coded_'+y].values)
+                self.a.set_yticklabels(df[y],rotation=45)
+                self.max_coded_y_labels.append(y_ticks)
+                self.max_coded_y_labels.append(df[y])
+            else:
+                self.a.set(yticks=self.max_coded_y_labels[0], yticklabels=self.max_coded_y_labels[1])
+         
 
         else:
             y_min = floor(df[y].values.min())
@@ -273,7 +290,7 @@ class Plotter:
             self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
-    def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None): # x,y,z are 3 df columns
+    def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y,z are 3 df columns
 
         df = self.df_type_conversion(df)
         row_size = df.shape[0]
@@ -297,8 +314,14 @@ class Plotter:
         self.a.scatter(X, Y, Z, s=size, c=color,marker=marker,zorder=zorder,alpha=alpha,label=label)
         
         if ('coded_'+x) in df.columns:
-            x_ticks = df['coded_'+x].values
-            self.a.set(xticks=x_ticks, xticklabels=df[x])
+            if(max_label==True):
+                x_ticks = df['coded_'+x].values
+                self.a.set_xticks(df['coded_'+x].values)
+                self.a.set_xticklabels(df[x],rotation=45)
+                self.max_coded_x_labels.append(x_ticks)
+                self.max_coded_x_labels.append(df[x])
+            else:
+                self.a.set(xticks=self.max_coded_x_labels[0], xticklabels=self.max_coded_x_labels[1])
 
 
         else:
@@ -322,9 +345,15 @@ class Plotter:
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
+            if(max_label==True):
+                y_ticks = df['coded_'+y].values
+                self.a.set_yticks(df['coded_'+y].values)
+                self.a.set_yticklabels(df[y],rotation=45)
+                self.max_coded_y_labels.append(y_ticks)
+                self.max_coded_y_labels.append(df[y])
+            else:
+                self.a.set(yticks=self.max_coded_y_labels[0], yticklabels=self.max_coded_y_labels[1])
             
-            y_ticks = df['coded_'+y].values
-            self.a.set(yticks=y_ticks, yticklabels=df[y])
 
         else:
             y_min = floor(df[y].values.min())
@@ -349,9 +378,15 @@ class Plotter:
 
 
         if ('coded_'+z) in df.columns:
+            if(max_label==True):
+                z_ticks = df['coded_'+z].values
+                self.a.set_zticks(df['coded_'+z].values)
+                self.a.set_zticklabels(df[z],rotation=45)
+                self.max_coded_z_labels.append(z_ticks)
+                self.max_coded_z_labels.append(df[z])
+            else:
+                self.a.set(zticks=self.max_coded_z_labels[0], zticklabels=self.max_coded_z_labels[1])
             
-            z_ticks = df['coded_'+z].values
-            self.a.set(zticks=z_ticks, zticklabels=df[z])
 
         else:
             z_min = floor(df[z].values.min())
