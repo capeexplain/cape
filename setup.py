@@ -42,7 +42,7 @@ setup(
         'SQLAlchemy==1.2.10',
         'statsmodels>=0.9.0',
         'tqdm>=4.23.4',
-        'urllib3<1.24,>=1.23',
+        'urllib3>=1.23,<1.25',
         'pandastable>=0.12.0'
     ],
 
