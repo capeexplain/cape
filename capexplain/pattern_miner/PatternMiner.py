@@ -287,9 +287,9 @@ class PatternFinder:
         if self.config.algorithm=='naive': #only for performance comparison
             for Fsize in range(1,min(4,self.n)):
                 for F in combinations(self.schema,Fsize):
-                    df_start=time()
+                    self.stats.startTimer('df')
                     fs=pd.read_sql('SELECT '+','.join(F)+' FROM '+self.config.table+' GROUP BY '+','.join(F),self.config.conn)
-                    self.time['df']+=time()-df_start
+                    self.stats.stopTimer('df')
                     for Vsize in range(1,min(4,self.n)-Fsize+1):
                         for V in combinations([attr for attr in self.schema if attr not in F],Vsize):
                             for a in aList:
@@ -309,19 +309,19 @@ class PatternFinder:
                                 for f in fs.itertuples():
                                     if None in f[1:]:
                                         continue
-                                    df_start=time()
+                                    self.stats.startTimer('df')
                                     fval=str(f[1:])
                                     if Fsize==1:
                                         fval=fval.replace(",", "")
                                     df=pd.read_sql('SELECT '+','.join(F)+','+','.join(V)+','+agg+'('+a+') FROM '+self.config.table+
                                                    ' WHERE ('+','.join(F)+')='+fval+' GROUP BY '+
                                                    ','.join(F)+','+','.join(V),self.config.conn)
-                                    self.time['df']+=time()-df_start                                   
+                                    self.stats.stopTimer('df')
                                     n=len(df)
                                     if n<self.config.supp_l:
                                         continue
                                     
-                                    reg_start=time()
+                                    self.stats.startTime('regression')
                                     describe=[mean(df[agg]),mode(df[agg]),percentile(df[agg],25)
                                               ,percentile(df[agg],50),percentile(df[agg],75)]
                                     num_f+=1 
@@ -362,12 +362,12 @@ class PatternFinder:
                                             valid_l_f+=1
                                         #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
                                             pattern.append(self.addLocal(F,f,V,aggPattern,'linear',theta_l,describe,param,0,0))
-                                    self.time['regression']+=time()-reg_start
+                                    self.stats.stopTimer('regression')
                                 if pattern:
-                                    insert_start=time()
+                                    self.stats.startTimer('insertion')
                                     self.config.conn.execute("INSERT INTO "+self.config.pattern_schema+"."+self.config.table+"_local values"+','.join(pattern))
-                                    self.time['insertion']+=time()-insert_start
-                                
+                                    self.stats.stopTimer('insertion')
+
                                 if num_f:
                                     lamb_c=valid_c_f/num_f
                                     if valid_c_f>=self.config.supp_g and lamb_c>self.config.lamb:
