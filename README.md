@@ -80,7 +80,7 @@ Cape's mining algorithm takes the following arguments:
 --local-support <arg>          - local support threshold (DEFAULT: 10)
 --global-support <arg>         - global support thresh (DEFAULT: 100)
 -f ,--fd-optimizations <arg>   - activate functional dependency detection and optimizations (DEFAULT: False)
--a ,--algorithm <arg>          - algorithm to use for pattern mining {'naive', 'optimized', 'naive_alternative'} (DEFAULT: optimized)
+-a ,--algorithm <arg>          - algorithm to use for pattern mining {'naive', 'cube', 'share_grp', 'optimized'} (DEFAULT: optimized)
 --show-progress <arg>          - show progress meters (DEFAULT: True)
 --manual-config                - manually configure numeric-like string fields (treat fields as string or numeric?) (DEFAULT: False)
 
