@@ -321,7 +321,7 @@ class PatternFinder:
                                     if n<self.config.supp_l:
                                         continue
                                     
-                                    self.stats.startTime('regression')
+                                    self.stats.startTimer('regression')
                                     describe=[mean(df[agg]),mode(df[agg]),percentile(df[agg],25)
                                               ,percentile(df[agg],50),percentile(df[agg],75)]
                                     num_f+=1 
@@ -330,7 +330,7 @@ class PatternFinder:
                                     if theta_c>self.config.theta_c:
                                         valid_c_f+=1
                                         #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
-                                        pattern.append(self.addLocal(F,f,V,aggPattern,'const',theta_c,describe,'NULL'))
+                                        pattern.append(self.addLocal(F,f,V,aggPattern,'const',theta_c,describe,'NULL',0,0))
                                     #fitting linear
                                     if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in V)
                                                         or
@@ -408,7 +408,7 @@ class PatternFinder:
                                     "consider group-by attributes %s with F=%s", group, f)
                                 self.fit_cube(f, group, a, agg, cols)
                 self.dropCube()
-        else:  # self.config.algorithm=='optimized' or self.config.algorithm=='naive_alternative'
+        else:  # self.config.algorithm=='optimized' or self.config.algorithm=='share_grp'
             self.failedf = set()
             for size in self.progress(range(2, min(4, len(grouping_attr))+1), desc='pattern size'):
                 log.debug("PROCESS PATTERN SIZE %u", size)
@@ -521,7 +521,7 @@ class PatternFinder:
         else:
             name = 'sum_'+a
         self.config.conn.execute("DROP TABLE IF EXISTS cube")
-        query = "CREATE TABLE cube AS SELECT "+agg+"("+qa+") AS \""+name+"\", "+group+','+grouping+" FROM "+self.config.table+"\
+        query = "CREATE TABLE cube AS SELECT "+agg+"("+qa+") AS \""+name+"\", "+grouping+" FROM "+self.config.table+"\
         "+"GROUP BY CUBE("+group+") having "+'+'.join(['grouping('+att+')' if att not in self.num
                                                        else "GROUPING(CAST("+att+" AS NUMERIC))" for att in attr])+'>='+str(len(attr)-4)
         log.debug("Materialize CUBE:\n\n%s", query)
