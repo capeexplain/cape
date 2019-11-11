@@ -47,7 +47,9 @@ class MinerConfig(DictLike):
                  supp_g=5,
                  fd_check=True,
                  supp_inf=False,  # changed from True for debugging error, but does not seem to work
-                 manual_num=False,
+                 manual_num=False, # this will be overridden by num or summable
+                 num = None, # manually assign numeric attributes
+                 summable = None, #manually assign summable attributes
                  algorithm='optimized',
                  showProgress=True,
                  experiment=None, # indicate the type of experiment to run
@@ -72,6 +74,8 @@ class MinerConfig(DictLike):
         self.experiment = experiment
         self.rep = rep
         self.csv = csv
+        self.num = num.split(',') if num else []
+        self.summable = summable.split(',') if summable else []
         log.debug("created miner configuration:\n%s", self.__dict__)
 
     def validateConfiguration(self):
@@ -95,6 +99,11 @@ class MinerConfig(DictLike):
             if not self.csv:
                 log.error("missing experiment output file")
                 raise Exception('you must provide an output file for experiment')
+        if self.summable:
+            for attr in self.summable:
+                if attr not in self.num:
+                    log.error("summable is not numeric")
+                    raise Exception("summable must be a subset of numeric")
         log.debug(
             "validation of miner configuration successful:\n%s", self.__dict__)
         return True
@@ -227,6 +236,13 @@ class PatternFinder:
 
         log.debug("possible grouping attributes: %s", self.grouping_attr)
 
+        if self.config.num:
+            self.num = self.config.num
+            self.summable = self.config.summable
+            log.debug("input given numerical attributes %s and summable attributes %s",
+                    self.num, self.summable)
+            return
+
         for col in self.schema:
             try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
                 self.config.conn.execute(
@@ -239,11 +255,6 @@ class PatternFinder:
             self.setNumeric()
         else:
             self.summable = self.num
-
-        #hardcoded for crime table
-        if self.config.table[:5] == 'crime':
-            self.summable = []
-            self.num = ['year']
 
         log.debug("tables has numerical attributes %s and summable attributes %s",
                   self.num, self.summable)

@@ -202,7 +202,11 @@ MINE_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
     ConfigOpt(longopt='rep', shortopt=None, desc='repititions to run for experiment', otype=OptionType.Int, defaultValue=3, hasarg=True),
     ConfigOpt(longopt='csv', shortopt=None, desc='csv file for experiment result, which will be used for plot',
         defaultValue=None, hasarg=True),
-    ConfigOpt(longopt='manual-config', shortopt=None, desc='manually configure numeric-like string fields (treat fields as string or numeric?)',cfgFieldName='manual_num',defaultValue=False)
+    ConfigOpt(longopt='manual-config', shortopt=None, desc='manually configure numeric-like string fields (treat fields as string or numeric?)',cfgFieldName='manual_num',defaultValue=False),
+    ConfigOpt(longopt='numeric', shortopt=None, desc='manually set numeric attributes (overrides manual-config)', cfgFieldName='num',
+        defaultValue=None, hasarg=True),
+    ConfigOpt(longopt='summable', shortopt=None, desc='manually set summable attributes, must be subset of numeric',
+        defaultValue=None, hasarg=True),
 ]
 
 # EXPLAIN_OPTIONS = COMMON_OPTIONS + [ ConfigOpt(longopt='qfile', shortopt='q', desc='file storing aggregation query result', hasarg=True, cfgFieldName='query_result_file'),
