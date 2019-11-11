@@ -1,6 +1,7 @@
 import sys
 import pprint
 import logging
+from os import path
 import pandas as pd
 from itertools import combinations
 from time import sleep, time
@@ -30,6 +31,7 @@ class MinerConfig(DictLike):
 
     ALGORITHMS = {'naive', 'cube', 'share_grp', 'optimized'}
     STATS_MODELS = {'statsmodels', 'sklearn'}
+    EXPERIMENT = {'num_attribute', 'size', 'fd'}
 
     def __init__(self,
                  conn=None,
@@ -47,7 +49,10 @@ class MinerConfig(DictLike):
                  supp_inf=False,  # changed from True for debugging error, but does not seem to work
                  manual_num=False,
                  algorithm='optimized',
-                 showProgress=True):
+                 showProgress=True,
+                 experiment=None, # indicate the type of experiment to run
+                 rep=3, # only useful when experiment = True, indicate number of repititions
+                 csv=None):  # if set, result is appended to this csv
         self.conn = conn
         self.theta_c = theta_c
         self.theta_l = theta_l
@@ -64,6 +69,9 @@ class MinerConfig(DictLike):
         self.table = table
         self.pattern_schema = pattern_schema
         self.showProgress = showProgress
+        self.experiment = experiment
+        self.rep = rep
+        self.csv = csv
         log.debug("created miner configuration:\n%s", self.__dict__)
 
     def validateConfiguration(self):
@@ -71,18 +79,57 @@ class MinerConfig(DictLike):
         Validate configuration.
         """
         log.debug("validate miner configuration ...")
-        if self.reg_package not in self.STATS_MODELS:
+        if self.reg_package not in MinerConfig.STATS_MODELS:
             log.warning('Invalid input for reg_package, reset to default')
             self.reg_package = 'statsmodels'
-        if self.algorithm not in self.ALGORITHMS:
+        if self.algorithm not in MinerConfig.ALGORITHMS:
             log.warning('Invalid input for algorithm, reset to default')
             self.algorithm = 'optimized'
         if self.table is None:
             log.error("user did not specify table for mining")
             raise Exception('please specify a table to mine')
+        if self.experiment:
+            if self.experiment not in MinerConfig.EXPERIMENT:
+                log.error("Invalid experiment")
+                raise Exception('you can only experiment on size, num_attribute or fd')
+            if not self.csv:
+                log.error("missing experiment output file")
+                raise Exception('you must provide an output file for experiment')
         log.debug(
             "validation of miner configuration successful:\n%s", self.__dict__)
         return True
+
+    def run_experiment(self, fd_on = False): #fd_on overrides self.fd_check
+        if not path.exists(self.csv): # create and make header
+            f = open(self.csv, 'a+')
+            f.write('query,regression,rest,total,algo,')
+            if (self.experiment == 'fd'):
+                f.write('size,')
+            f.write(self.experiment+'\n')
+        else:
+            f = open(self.csv, 'a+')
+
+        self.fd_check = fd_on
+
+        #run pattern miner self.rep times
+        query = regression = total = 0
+        for i in range(self.rep):
+            p = PatternFinder(self)
+            p.findPattern()
+            query += p.stats.time['aggregate'] + p.stats.time['df'] + p.stats.time['query_cube'] + p.stats.time['query_materializecube']
+            regression += p.stats.time['regression']
+            total += p.stats.time['total']
+
+        total /= self.rep
+        query /= self.rep
+        regression /= self.rep
+        rest = total - query - regression
+        f.write(','.join([str(query), str(regression), str(rest), str(total), self.algorithm, self.table.split('_')[-1]]))
+        if self.experiment == 'fd':
+            fd = 't' if fd_on else 'f'
+            f.write(',' + fd)
+        f.write('\n')
+        f.close()
 
     def __str__(self):
         return self.__dict__.__str__()
@@ -261,6 +308,7 @@ class PatternFinder:
             ret = [self.validateFd(group, i)
                    for i in range(1, n)]  # division from 1 to n-1
             return ret
+
 
     def findPattern(self, user=None):
         """
@@ -533,7 +581,6 @@ class PatternFinder:
         self.config.conn.execute("DROP TABLE cube;")
 
     def cubeQuery(self, g, f, cols):
-        self.stats.startTimer('query_cube')
         self.stats.incr('query.sort')
         res = " and ".join(["g_"+a+"=0" for a in g])
         if len(g) < len(cols):
@@ -541,12 +588,13 @@ class PatternFinder:
             res = res+" and "+unused
         query = "SELECT * FROM cube where "+res+" ORDER BY "+",".join(f)
         log.debug("Run query over materialized CUBE:\n\n %s", query)
-        self.stats.stopTimer('query_cube')
         return query
 
     def fit_cube(self, f, group, a, agg, cols):
         self.failedf = set()  # to not trigger error
+        self.stats.startTimer('query_cube')
         fd = pd.read_sql(self.cubeQuery(group, f, cols), self.config.conn)
+        self.stats.stopTimer('query_cube')
         g = tuple([att for att in f]+[attr for attr in group if attr not in f])
         division = len(f)
         if a == '*':
