@@ -472,7 +472,7 @@ class Exp_Frame:
                 self.rel_plotter.plot_2D_scatter(question_df,x=x,y=y,color='#ed665d',marker='v',size=250,zorder=1,label="User Question")
 
                 logger.debug(explanation_df)
-                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=0,label="Explanation",refresh_ticks=False)
+                self.rel_plotter.plot_2D_scatter(explanation_df,x=x,y=y,color='#98df8a',marker='^',size=250,zorder=0,label="Explanation")
 
                 self.rel_plotter.set_x_label(x)
                 self.rel_plotter.set_y_label(y)

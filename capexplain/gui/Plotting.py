@@ -159,8 +159,8 @@ class Plotter:
             self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
 
         if ('coded_'+y) in df.columns:
-            self.a.set_xticks(df['coded_'+x].values)
-            self.a.set_xticklabels(df[x],rotation=45)
+            self.a.set_yticks(df['coded_'+y].values)
+            self.a.set_yticklabels(df[y],rotation=45)
 
         else:
             y_min = floor(df[y].values.min())
@@ -264,9 +264,6 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            if(refresh_ticks==True):
-                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
-
         if ('coded_'+y) in df.columns:
             if(max_label==True):
                 y_ticks = df['coded_'+y].values
@@ -293,8 +290,6 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-            if(refresh_ticks==True):
-                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
 
 
     def plot_3D_scatter(self,df,x,y,z,color='#729ece',marker='o',size=60,zorder=0,alpha=1,label=None,max_label=False): # x,y,z are 3 df columns
@@ -350,9 +345,6 @@ class Plotter:
             if(x_division_value==0):
                 x_division_value = 1
 
-            if(refresh_ticks==True):
-                self.a.set(xticks=list(range(self.x_min,self.x_max,x_division_value)))
-
         if ('coded_'+y) in df.columns:
             if(max_label==True):
                 y_ticks = df['coded_'+y].values
@@ -382,9 +374,6 @@ class Plotter:
             y_division_value = (self.y_max - self.y_min) // 5
             if(y_division_value==0):
                 y_division_value = 1
-            if(refresh_ticks==True):
-                self.a.set(yticks=list(range(self.y_min,self.y_max,y_division_value)))
-
 
 
         if ('coded_'+z) in df.columns:
@@ -418,8 +407,6 @@ class Plotter:
             if(z_division_value==0):
                 z_division_value = 1
 
-            if(refresh_ticks==True):
-                self.a.set(zticks=list(range(self.z_min,self.z_max,z_division_value)))
 
         if(label is not None):
             scatter_proxy_shape = plt.Rectangle((0, 0), 1, 1, fc=color)
