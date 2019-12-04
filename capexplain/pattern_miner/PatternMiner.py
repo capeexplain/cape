@@ -1,6 +1,7 @@
 import sys
 import pprint
 import logging
+from os import path
 import pandas as pd
 from itertools import combinations
 from time import sleep, time
@@ -28,8 +29,9 @@ class MinerConfig(DictLike):
     MinerConfig - configuration for the pattern mining algorithm
     """
 
-    ALGORITHMS = {'naive', 'naive_alternative', 'optimized'}
+    ALGORITHMS = {'naive', 'cube', 'share_grp', 'optimized'}
     STATS_MODELS = {'statsmodels', 'sklearn'}
+    EXPERIMENT = {'num_attribute', 'size', 'fd'}
 
     def __init__(self,
                  conn=None,
@@ -45,9 +47,14 @@ class MinerConfig(DictLike):
                  supp_g=5,
                  fd_check=True,
                  supp_inf=False,  # changed from True for debugging error, but does not seem to work
-                 manual_num=False,
+                 manual_num=False, # this will be overridden by num or summable
+                 num = None, # manually assign numeric attributes
+                 summable = None, #manually assign summable attributes
                  algorithm='optimized',
-                 showProgress=True):
+                 showProgress=True,
+                 experiment=None, # indicate the type of experiment to run
+                 rep=3, # only useful when experiment = True, indicate number of repititions
+                 csv=None):  # if set, result is appended to this csv
         self.conn = conn
         self.theta_c = theta_c
         self.theta_l = theta_l
@@ -64,6 +71,11 @@ class MinerConfig(DictLike):
         self.table = table
         self.pattern_schema = pattern_schema
         self.showProgress = showProgress
+        self.experiment = experiment
+        self.rep = rep
+        self.csv = csv
+        self.num = num.split(',') if num else []
+        self.summable = summable.split(',') if summable else []
         log.debug("created miner configuration:\n%s", self.__dict__)
 
     def validateConfiguration(self):
@@ -71,18 +83,62 @@ class MinerConfig(DictLike):
         Validate configuration.
         """
         log.debug("validate miner configuration ...")
-        if self.reg_package not in self.STATS_MODELS:
+        if self.reg_package not in MinerConfig.STATS_MODELS:
             log.warning('Invalid input for reg_package, reset to default')
             self.reg_package = 'statsmodels'
-        if self.algorithm not in self.ALGORITHMS:
+        if self.algorithm not in MinerConfig.ALGORITHMS:
             log.warning('Invalid input for algorithm, reset to default')
             self.algorithm = 'optimized'
         if self.table is None:
             log.error("user did not specify table for mining")
             raise Exception('please specify a table to mine')
+        if self.experiment:
+            if self.experiment not in MinerConfig.EXPERIMENT:
+                log.error("Invalid experiment")
+                raise Exception('you can only experiment on size, num_attribute or fd')
+            if not self.csv:
+                log.error("missing experiment output file")
+                raise Exception('you must provide an output file for experiment')
+        if self.summable:
+            for attr in self.summable:
+                if attr not in self.num:
+                    log.error("summable is not numeric")
+                    raise Exception("summable must be a subset of numeric")
         log.debug(
             "validation of miner configuration successful:\n%s", self.__dict__)
         return True
+
+    def run_experiment(self, fd_on = False): #fd_on overrides self.fd_check
+        if not path.exists(self.csv): # create and make header
+            f = open(self.csv, 'a+')
+            f.write('query,regression,rest,total,algo,')
+            if (self.experiment == 'fd'):
+                f.write('size,')
+            f.write(self.experiment+'\n')
+        else:
+            f = open(self.csv, 'a+')
+
+        self.fd_check = fd_on
+
+        #run pattern miner self.rep times
+        query = regression = total = 0
+        for i in range(self.rep):
+            p = PatternFinder(self)
+            p.findPattern()
+            query += p.stats.time['aggregate'] + p.stats.time['df'] + p.stats.time['query_cube'] + p.stats.time['query_materializecube']
+            regression += p.stats.time['regression']
+            total += p.stats.time['total']
+
+        total /= self.rep
+        query /= self.rep
+        regression /= self.rep
+        rest = total - query - regression
+        f.write(','.join([str(query), str(regression), str(rest), str(total), self.algorithm, self.table.split('_')[-1]]))
+        if self.experiment == 'fd':
+            fd = 't' if fd_on else 'f'
+            f.write(',' + fd)
+        f.write('\n')
+        f.close()
 
     def __str__(self):
         return self.__dict__.__str__()
@@ -180,6 +236,13 @@ class PatternFinder:
 
         log.debug("possible grouping attributes: %s", self.grouping_attr)
 
+        if self.config.num:
+            self.num = self.config.num
+            self.summable = self.config.summable
+            log.debug("input given numerical attributes %s and summable attributes %s",
+                    self.num, self.summable)
+            return
+
         for col in self.schema:
             try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
                 self.config.conn.execute(
@@ -192,6 +255,7 @@ class PatternFinder:
             self.setNumeric()
         else:
             self.summable = self.num
+
         log.debug("tables has numerical attributes %s and summable attributes %s",
                   self.num, self.summable)
 
@@ -256,6 +320,7 @@ class PatternFinder:
                    for i in range(1, n)]  # division from 1 to n-1
             return ret
 
+
     def findPattern(self, user=None):
         """
         Main function mining patterns for a table.
@@ -278,7 +343,102 @@ class PatternFinder:
             "mine patterns for group-by attrs %s and aggregate input attributes %s", grouping_attr, aList)
 
         log.info("USE ALGORITHM %s", self.config.algorithm)
-        if self.config.algorithm == 'naive':  # CUBE ALGORITHM
+        if self.config.algorithm=='naive': #only for performance comparison
+            for Fsize in range(1,min(4,self.n)):
+                for F in combinations(self.schema,Fsize):
+                    self.stats.startTimer('df')
+                    fs=pd.read_sql('SELECT '+','.join(F)+' FROM '+self.config.table+' GROUP BY '+','.join(F),self.config.conn)
+                    self.stats.stopTimer('df')
+                    for Vsize in range(1,min(4,self.n)-Fsize+1):
+                        for V in combinations([attr for attr in self.schema if attr not in F],Vsize):
+                            for a in aList:
+                                if a in F or a in V:
+                                    continue
+                                if a=='*':
+                                    agg='count'
+                                    aggPattern='count'
+                                else:
+                                    agg='sum'
+                                    a= 'CAST ('+a+' AS NUMERIC)'
+                                    aggPattern='sum_'+a
+                                num_f=0
+                                valid_c_f=0
+                                valid_l_f=0
+                                pattern=[]
+                                for f in fs.itertuples():
+                                    if None in f[1:]:
+                                        continue
+                                    self.stats.startTimer('df')
+                                    fval=str(f[1:])
+                                    if Fsize==1:
+                                        fval=fval.replace(",", "")
+                                    df=pd.read_sql('SELECT '+','.join(F)+','+','.join(V)+','+agg+'('+a+') FROM '+self.config.table+
+                                                   ' WHERE ('+','.join(F)+')='+fval+' GROUP BY '+
+                                                   ','.join(F)+','+','.join(V),self.config.conn)
+                                    self.stats.stopTimer('df')
+                                    n=len(df)
+                                    if n<self.config.supp_l:
+                                        continue
+                                    
+                                    self.stats.startTimer('regression')
+                                    describe=[mean(df[agg]),mode(df[agg]),percentile(df[agg],25)
+                                              ,percentile(df[agg],50),percentile(df[agg],75)]
+                                    num_f+=1 
+                                    #fitting constant
+                                    theta_c=chisquare(df[agg].dropna())[1]
+                                    if theta_c>self.config.theta_c:
+                                        valid_c_f+=1
+                                        #self.pc.add_local(f,oldKey,v,a,agg,'const',theta_c)
+                                        pattern.append(self.addLocal(F,f,V,aggPattern,'const',theta_c,describe,'NULL',0,0))
+                                    #fitting linear
+                                    if  theta_c!=1 and ((self.config.reg_package=='sklearn' and all(attr in self.num for attr in V)
+                                                        or
+                                                        (self.config.reg_package=='statsmodels' and all(attr in self.num for attr in V)))):
+                        
+                                        if self.config.reg_package=='sklearn':
+                                            lr=LinearRegression()
+                                            lr.fit(df[V],df[agg])
+                                            theta_l=lr.score(df[V],df[agg])
+                                            theta_l=1-(1-theta_l)*(n-1)/(n-len(V)-1)
+                                            param=lr.coef_.tolist()
+                                            param.append(lr.intercept_.tolist())
+                                            param="'"+str(param)+"'"
+                                        else: #statsmodels
+                                            #num_cat=1
+                                            #for attr in v:
+                                                #if attr not in self.num:
+                                                    #num_cat*=self.group_rows[frozenset([attr])]
+                                            #if num_cat>500:
+                                                #return
+                                            
+                                            lr=sm.ols(agg+'~'+'+'.join([attr if attr in self.num else 'C('+attr+')' for attr in V]),
+                                                      data=df,missing='drop').fit()
+                                            theta_l=lr.rsquared_adj
+                                            #theta_l=chisquare(df[agg],lr.predict())[1]
+                                            param=Json(dict(lr.params))
+                                            
+                                        if theta_l and theta_l>self.config.theta_l:
+                                            valid_l_f+=1
+                                        #self.pc.add_local(f,oldKey,v,a,agg,'linear',theta_l)
+                                            pattern.append(self.addLocal(F,f,V,aggPattern,'linear',theta_l,describe,param,0,0))
+                                    self.stats.stopTimer('regression')
+                                if pattern:
+                                    self.stats.startTimer('insertion')
+                                    self.config.conn.execute("INSERT INTO "+self.config.pattern_schema+"."+self.config.table+"_local values"+','.join(pattern))
+                                    self.stats.stopTimer('insertion')
+
+                                if num_f:
+                                    lamb_c=valid_c_f/num_f
+                                    if valid_c_f>=self.config.supp_g and lamb_c>self.config.lamb:
+                                        #self.pc.add_global(f,v,a,agg,'const',self.theta_c,lamb_c)
+                                        self.glob.append(self.addGlobal(F,V,aggPattern,'const',self.config.theta_c,lamb_c,0,0))
+                                            
+                                    lamb_l=valid_l_f/num_f
+                                    if valid_l_f>=self.config.supp_g and lamb_l>self.config.lamb:
+                                        #self.pc.add_global(f,v,a,agg,'linear',str(self.theta_l),str(lamb_l))
+                                        self.glob.append(self.addGlobal(F,V,aggPattern,'linear',self.config.theta_l,lamb_l,0,0))
+
+        elif self.config.algorithm == 'cube':  # CUBE ALGORITHM
             for a in self.progress(aList, desc='agg functions'):
                 if not user:
                     if a == '*':  # For count, only do a count(*)
@@ -305,9 +465,9 @@ class PatternFinder:
                                 self.stats.incr('patcand.global')
                                 log.debug(
                                     "consider group-by attributes %s with F=%s", group, f)
-                                self.fit_naive(f, group, a, agg, cols)
+                                self.fit_cube(f, group, a, agg, cols)
                 self.dropCube()
-        else:  # self.config.algorithm=='optimized' or self.config.algorithm=='naive_alternative'
+        else:  # self.config.algorithm=='optimized' or self.config.algorithm=='share_grp'
             self.failedf = set()
             for size in self.progress(range(2, min(4, len(grouping_attr))+1), desc='pattern size'):
                 log.debug("PROCESS PATTERN SIZE %u", size)
@@ -343,7 +503,7 @@ class PatternFinder:
                             self.group_rows[frozenset(group)] = cur_rows
                         self.stats.stopTimer('fd_detect')
                         if not isSuperkey:
-                            if self.config.algorithm == 'naive_alternative':
+                            if self.config.algorithm == 'share_grp':
                                 for fsize in self.progress(range(size-1, 0, -1), desc='Fsize'):
                                     for f in self.progress(combinations(group, fsize), desc='F'):
                                         self.stats.startTimer('df')
@@ -420,7 +580,7 @@ class PatternFinder:
         else:
             name = 'sum_'+a
         self.config.conn.execute("DROP TABLE IF EXISTS cube")
-        query = "CREATE TABLE cube AS SELECT "+agg+"("+qa+") AS \""+name+"\", "+group+','+grouping+" FROM "+self.config.table+"\
+        query = "CREATE TABLE cube AS SELECT "+agg+"("+qa+") AS \""+name+"\", "+grouping+" FROM "+self.config.table+"\
         "+"GROUP BY CUBE("+group+") having "+'+'.join(['grouping('+att+')' if att not in self.num
                                                        else "GROUPING(CAST("+att+" AS NUMERIC))" for att in attr])+'>='+str(len(attr)-4)
         log.debug("Materialize CUBE:\n\n%s", query)
@@ -432,7 +592,6 @@ class PatternFinder:
         self.config.conn.execute("DROP TABLE cube;")
 
     def cubeQuery(self, g, f, cols):
-        self.stats.startTimer('query_cube')
         self.stats.incr('query.sort')
         res = " and ".join(["g_"+a+"=0" for a in g])
         if len(g) < len(cols):
@@ -440,12 +599,13 @@ class PatternFinder:
             res = res+" and "+unused
         query = "SELECT * FROM cube where "+res+" ORDER BY "+",".join(f)
         log.debug("Run query over materialized CUBE:\n\n %s", query)
-        self.stats.stopTimer('query_cube')
         return query
 
-    def fit_naive(self, f, group, a, agg, cols):
+    def fit_cube(self, f, group, a, agg, cols):
         self.failedf = set()  # to not trigger error
+        self.stats.startTimer('query_cube')
         fd = pd.read_sql(self.cubeQuery(group, f, cols), self.config.conn)
+        self.stats.stopTimer('query_cube')
         g = tuple([att for att in f]+[attr for attr in group if attr not in f])
         division = len(f)
         if a == '*':
