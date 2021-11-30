@@ -488,6 +488,7 @@ class PatternFinder:
                                 aggList.append('count')
                             else:
                                 aggList.append('sum_'+a+'')
+                                aggList.append('avg_'+a+'')
                         log.debug("consider attributes %s", aggList)
                         if len(aggList) == 0:
                             continue
@@ -632,6 +633,7 @@ class PatternFinder:
                 agg.append('count(*) AS \"count\"')
             else:
                 agg.append('sum(CAST('+a+' AS NUMERIC)) AS \"sum_'+a+'\"')
+                agg.append('avg(CAST('+a+' AS NUMERIC)) AS \"avg_'+a+'\"')
         query = "CREATE TEMP TABLE agg as SELECT "+group+"," + \
             ','.join(agg)+" FROM "+self.config.table+" GROUP BY "+group
         self.config.conn.execute(query)
