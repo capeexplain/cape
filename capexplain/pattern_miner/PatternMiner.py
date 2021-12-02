@@ -252,7 +252,7 @@ class PatternFinder:
         for attr in self.schema:
             # aggresive approach:
             n_distinct = unique[attr][0]
-            if attr in self.num or n_distinct >= self.num_rows*self.config.dist_thre:
+            if attr in self.summable or n_distinct >= self.num_rows*self.config.dist_thre:
                 continue
             self.grouping_attr.append(attr)
             self.group_rows[frozenset([attr])] = n_distinct
