@@ -227,32 +227,32 @@ class PatternFinder:
             "SELECT count(*) as num from "+self.config.table, self.config.conn)['num'][0]
         log.debug("input table has %d rows", self.num_rows)
 
-        # check uniqueness, grouping_attr contains only non-unique attributes
-        unique = pd.read_sql("SELECT "+','.join(["count(distinct "+attr+") as "+attr for attr in self.schema]) + " FROM "+self.config.table,
-                             self.config.conn)
-
-        log.debug("possible grouping attributes: %s", self.grouping_attr)
-
         if self.config.num:
             self.num = self.config.num
             self.summable = self.config.summable
             log.debug("input given numerical attributes %s and summable attributes %s",
                     self.num, self.summable)
-            return
-
-        for col in self.schema:
-            try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
-                self.config.conn.execute(
-                    "SELECT CAST("+col+" AS NUMERIC) FROM "+self.config.table)
-                self.num.append(col)
-            except:
-                continue
-        if self.config.manual_num:
-            self.summable = self.num
-            self.setNumeric()
         else:
-            self.summable = self.num
+            for col in self.schema:
+                try:  # Boris: this may fail, better to get the datatype from the catalog and have a list of numeric datatypes to check for
+                    self.config.conn.execute(
+                        "SELECT CAST("+col+" AS NUMERIC) FROM "+self.config.table)
+                    self.num.append(col)
+                except:
+                    continue
+            if self.config.manual_num:
+                self.summable = self.num
+                self.setNumeric()
+            else:
+                self.summable = self.num
             
+        log.debug("tables has numerical attributes %s and summable attributes %s",
+                  self.num, self.summable)
+
+        # check uniqueness, grouping_attr contains only non-unique attributes
+        unique = pd.read_sql("SELECT "+','.join(["count(distinct "+attr+") as "+attr for attr in self.schema]) + " FROM "+self.config.table,
+                             self.config.conn)
+
         for attr in self.schema:
             # aggresive approach:
             n_distinct = unique[attr][0]
@@ -261,8 +261,7 @@ class PatternFinder:
             self.grouping_attr.append(attr)
             self.group_rows[frozenset([attr])] = n_distinct
 
-        log.debug("tables has numerical attributes %s and summable attributes %s",
-                  self.num, self.summable)
+        log.debug("possible grouping attributes: %s", self.grouping_attr)
 
     def progress(self, iter, desc=None):
         return progress_iter(iter=iter, desc=desc, showProgress=self.config.showProgress)
