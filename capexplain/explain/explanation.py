@@ -1,4 +1,4 @@
-#!/usr/bin/python
+# !/usr/bin/python
 # -*- coding:utf-8 -*- 
 
 from heapq import *
@@ -604,6 +604,7 @@ class ExplanationGenerator:
 
     def __init__(self, config: ExplConfig, user_input_config=None):
         self.config = config
+        logger.debug(user_input_config)
         if user_input_config is not None:
             if 'pattern_table' in user_input_config:
                 self.config.pattern_table = user_input_config['pattern_table']
@@ -739,7 +740,8 @@ class ExplanationGenerator:
         query_result_table = ecf.query_result_table
         pattern_table = ecf.pattern_table
         user_question_file = ecf.user_question_file
-        outputfile = ''
+        outputfile = ecf.outputfile
+        print(f"outputfile: {outputfile}")
         aggregate_column = ecf.aggregate_column
         conn = ecf.conn
         cur = ecf.cur
@@ -794,7 +796,7 @@ class ExplanationGenerator:
 
         ofile = sys.stdout
         if outputfile != '':
-            ofile = open(outputfile, 'w')
+            ofile = open(outputfile, 'a')
 
         for i, top_k_list in enumerate(explanations_list):
             ofile.write('User question {} in direction {}: {}\n'.format(
@@ -814,6 +816,7 @@ class ExplanationGenerator:
         #         conn.commit()
         # ecf.MATERIALIZED_DICT = dict()
         # ecf.MATERIALIZED_CNT = 0
+        ofile.close()
 
 
 def main(argv=[]):

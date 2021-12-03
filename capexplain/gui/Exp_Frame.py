@@ -13,7 +13,7 @@ import re
 from capexplain.explain.explanation import ExplanationGenerator
 from capexplain.explain.explanation import ExplConfig
 import matplotlib
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt

@@ -115,6 +115,7 @@ def explainCommand(command, log):
     # do explaining
     log.debug("executing explain command")
     # e = ExplanationGenerator(config, None)
+    print(config)
     e = ExplanationGenerator(config, {'pattern_table': '{}'.format(config.pattern_table),
                                        'query_result_table': config.query_result_table})
     e.initialize()
@@ -224,7 +225,7 @@ EXPLAIN_OPTIONS = COMMON_OPTIONS + DB_OPTIONS + [
               hasarg=True, cfgFieldName='query_result_table'),
     ConfigOpt(longopt='ufile', desc='file storing user question',
               hasarg=True, cfgFieldName='user_question_file'),
-    ConfigOpt(longopt='ofile', shortopt='o', desc='file to write output to',
+    ConfigOpt(longopt='ofile', desc='file to write output to',
               hasarg=True, cfgFieldName='outfile'),
     ConfigOpt(longopt='aggcolumn', shortopt='a', desc='column that was input to the aggregation function',
               hasarg=True, cfgFieldName='aggregate_column'),

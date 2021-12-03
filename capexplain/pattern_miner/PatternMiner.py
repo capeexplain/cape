@@ -76,7 +76,6 @@ class MinerConfig(DictLike):
         self.csv = csv
         self.num = num.split(',') if num else []
         self.summable = summable.split(',') if summable else []
-        log.debug("created miner configuration:\n%s", self.__dict__)
 
     def validateConfiguration(self):
         """
@@ -207,6 +206,11 @@ class PatternFinder:
         log.debug("initialized datastructures")
         self.fetchInputTableInfo()
         log.info("fetched basic table information - ready to mine")
+        print(f"self.num: {self.num}")
+        print(f"self.summable: {self.summable}")
+        print(f"self.grouping_attr: {self.grouping_attr}")
+        print("created miner configuration:\n%s", self.__dict__)
+
 
     def fetchInputTableInfo(self):
         try:
